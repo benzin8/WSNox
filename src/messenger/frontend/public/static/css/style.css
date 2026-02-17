@@ -1,157 +1,159 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-/* Ensure the page itself does not scroll; the chat area will handle internal scrolling. */
-html,
-body {
-  height: 100%;
-  overflow: hidden;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #f5f7fa;
-  color: #333;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.app-container {
-    width: 95%;
-    max-width: 500px;
-    height: 90vh;
-    max-height: 700px;
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-    display: flex;
-    flex-direction: column;
+  html,
+  body {
+    height: 100%;
     overflow: hidden;
-}
+  }
 
-.chat-header {
-  padding: 16px 20px;
-  background: #4a6cf7; /* nice blue */
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f7fa;
+    color: #333;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 
-.chat-header h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-}
+  .app-container {
+      width: 100%;
+      /* Ограничиваем ширину для десктопа, чтобы не растягивалось на 2 метра */
+      max-width: 900px; 
+      /* Используем dvh для корректного отображения на мобилках */
+      height: 100dvh; 
+      /* margin: 0 auto центрирует окно на больших экранах */
+      margin: 0 auto;
+      background: white;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 12px;
+  }
 
-.status {
-  font-size: 0.85rem;
-  opacity: 0.9;
-}
+  .chat-header {
+    padding: 16px 20px;
+    background: #4a6cf7;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
 
-.chat-container {
+  .chat-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .status {
+    font-size: 0.85rem;
+    opacity: 0.9;
+  }
+
+  .chat-container {
     flex: 1;
     display: flex;
     flex-direction: column;
     padding: 16px;
+    /* ДОБАВЛЕНО: Отступ между сообщениями и полем ввода */
+    gap: 16px; 
+    min-height: 0;
+    overflow: hidden;
+  }
 
-  /* keep inner content from forcing the container to grow
-     and let the .chat-box handle vertical scrolling */
-  min-height: 0;         /* критически важно */
-  overflow: hidden;      /* критически важно */
-}
-
-.chat-box {
+  .chat-box {
     flex: 1;
     overflow-y: auto;
 
-  background: #fafbff;
+    background: #fafbff;
     border-radius: 12px;
     padding: 16px;
     display: flex;
     flex-direction: column;
     gap: 12px;
   /* margin-bottom removed so the chat-box size stays inside the container
-     and doesn't add extra space that can push the header out */
+      and doesn't add extra space that can push the header out */
     border: 1px solid #e9ecef;
 
     min-height: 0;         /* критически важно */
-}
+  }
 
-.message {
-  max-width: 80%;
-  padding: 10px 14px;
-  border-radius: 18px;
-  line-height: 1.4;
-  position: relative;
-  word-wrap: break-word;
-}
+  .message {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    line-height: 1.4;
+    position: relative;
+    word-wrap: break-word;
+  }
 
-.message.outgoing {
-  background: #4a6cf7;
-  color: white;
-  align-self: flex-end;
-  border-bottom-right-radius: 4px;
-}
+  .message.outgoing {
+    background: #4a6cf7;
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+  }
 
-.message.incoming {
-  background: #f1f3f5;
-  color: #212529;
-  align-self: flex-start;
-  border-bottom-left-radius: 4px;
-}
+  .message.incoming {
+    background: #f1f3f5;
+    color: #212529;
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+  }
 
-.input-area {
-  display: flex;
-  gap: 10px;
-  /* keep the input area fixed in height and prevent it from shrinking
-     when the chat grows */
-  flex: 0 0 auto;
-}
+  .input-area {
+    display: flex;
+    gap: 10px;
+    /* keep the input area fixed in height and prevent it from shrinking
+      when the chat grows */
+    flex: 0 0 auto;
+  }
 
-.input-area input {
-  flex: 1;
-  padding: 12px 16px;
-  border: 1px solid #ced4da;
-  border-radius: 24px;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color 0.2s;
-}
+  .input-area input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid #ced4da;
+    border-radius: 24px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
 
-.input-area input:focus {
-  border-color: #4a6cf7;
-}
+  .input-area input:focus {
+    border-color: #4a6cf7;
+  }
 
-.input-area button {
-  padding: 12px 24px;
-  border: none;
-  background: #4a6cf7;
-  color: white;
-  border-radius: 24px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background 0.2s;
-}
+  .input-area button {
+    padding: 12px 24px;
+    border: none;
+    background: #4a6cf7;
+    color: white;
+    border-radius: 24px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
 
-.input-area button:hover:not(:disabled) {
-  background: #3a5be0;
-}
+  .input-area button:hover:not(:disabled) {
+    background: #3a5be0;
+  }
 
-.input-area button:disabled {
-  background: #adb5bd;
-  cursor: not-allowed;
-}
+  .input-area button:disabled {
+    background: #adb5bd;
+    cursor: not-allowed;
+  }
 
-/* Scrollbar styling (optional) */
-.chat-box::-webkit-scrollbar {
-  width: 6px;
-}
-.chat-box::-webkit-scrollbar-thumb {
-  background: #c1c9d6;
-  border-radius: 3px;
-}
+  /* Scrollbar styling (optional) */
+  .chat-box::-webkit-scrollbar {
+    width: 6px;
+  }
+  .chat-box::-webkit-scrollbar-thumb {
+    background: #c1c9d6;
+    border-radius: 3px;
+  }
+
