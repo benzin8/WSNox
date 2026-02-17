@@ -1,34 +1,73 @@
 const chat = document.getElementById('chatBox');
 const button = document.getElementById('sendBtn');
 const input = document.getElementById('messageInput');
+const statusElem = document.getElementById('connectionStatus');
 
 console.log("JS loaded!");
 
-if (!chat || !button || !input) {
-  console.error('Не найден один из элементов: chatBox, sendBtn, messageInput');
+const currentUserID = Number(prompt("Выберете user_id 1 или 2: "));
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const wsUrl = `${protocol}//${window.location.host}/chat/${currentUserID}`;
+
+const socketManager = new SocketManager(wsUrl);
+
+socketManager.onStatusChange = (isConnected) => {
+    if (isConnected) {
+        statusElem.textContent = 'Онлайн';
+        statusElem.style.color = "#a0ffa0";
+        button.disabled = input.value.trim() === '';
+    } else {
+        statusElem.textContent = 'Офлайн';
+        statusElem.style.color = "#ff8080";
+        button.disabled = true;
+    }
+};
+
+socketManager.onMessageCallBack = (msgText) => {
+    addMessageToUI(msgText, 'incoming');
 }
 
+socketManager.connect();
+
 input.addEventListener('input', () => {
-  button.disabled = input.value.trim() === '';
+    const hasText = input.value.trim() !== '';
+    const isConnected = socketManager.socket && socketManager.socket.readyState === WebSocket.OPEN;
+    button.disabled = !(hasText && isConnected);
 });
 
-
 function sendMessage() {
-  const message = input.value.trim();
-  if (!message) return;
+    const text = input.value.trim();
+    if (!text) return;
 
-  const messageElem = document.createElement('div');
-  messageElem.textContent = message;
-  messageElem.className = 'message outgoing';
+    const recipientId = currentUserID === 1 ? 2 : 1;
 
-  chat.appendChild(messageElem);
+    const payload = {
+        message: text,
+        recipient_id: recipientId,
+    }
 
-  chat.scrollTop = chat.scrollHeight;
+    const sent = socketManager.sendMessage(JSON.stringify(payload));
+    if (sent) {
+        addMessageToUI(text, 'outgoing');
+        input.value = '';
+        button.disabled = true;
+        scrollToBottom();
+    } else {
+        alert('Message not sent, socket closed');
+    }
+}
 
-  input.value = '';
-  input.focus();
 
-  button.disabled = true;
+function addMessageToUI(text, type) { // type: 'incoming' or 'outgoing'
+    const messageElem = document.createElement('div');
+    messageElem.textContent = text;
+    messageElem.className = `message ${type}`;
+    chat.appendChild(messageElem);
+    scrollToBottom();
+}
+
+function scrollToBottom() {
+    chat.scrollTop = chat.scrollHeight;
 }
 
 button.addEventListener('click', sendMessage);
