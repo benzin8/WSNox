@@ -14,4 +14,4 @@ app.mount("/static",
         name="static")
 
 app.include_router(frontend_router)
-app.include_router(ws_router, prefix="/ws")
+app.include_router(ws_router)
