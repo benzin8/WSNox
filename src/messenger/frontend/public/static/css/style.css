@@ -1,159 +1,196 @@
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-  html,
-  body {
-    height: 100%;
-    overflow: hidden;
-  }
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #b5cbed;
+  color: #333;
+}
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #f5f7fa;
-    color: #333;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
+/* Делаем контейнер на весь экран */
+.app-container {
+  display: flex;
+  flex-direction: row; /* Элементы идут слева направо! */
+  width: 100vw;
+  height: 100vh; /* На мобилках лучше заменить на 100dvh */
+  background: rgb(114, 160, 191);
+  overflow: hidden;
+}
 
-  .app-container {
-      width: 100%;
-      /* Ограничиваем ширину для десктопа, чтобы не растягивалось на 2 метра */
-      max-width: 900px; 
-      /* Используем dvh для корректного отображения на мобилках */
-      height: 100dvh; 
-      /* margin: 0 auto центрирует окно на больших экранах */
-      margin: 0 auto;
-      background: white;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      border-radius: 12px;
-  }
+/* === ЛЕВАЯ ПАНЕЛЬ (Пользователи) === */
+.sidebar {
+  width: 300px; /* Фиксированная ширина колонки */
+  background: #ffffff;
+  border-right: 1px solid #e0e0e0; /* Полоска, отделяющая от чата */
+  display: flex;
+  flex-direction: column;
+}
 
-  .chat-header {
-    padding: 16px 20px;
-    background: #4a6cf7;
-    color: white;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+.sidebar-header {
+  padding: 16px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
 
-  .chat-header h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
+.sidebar-header h3 {
+  font-size: 1.1rem;
+  color: #333;
+}
 
-  .status {
-    font-size: 0.85rem;
-    opacity: 0.9;
-  }
+.user-list {
+  flex: 1;
+  overflow-y: auto; /* Скролл, если пользователей будет много */
+}
 
-  .chat-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 16px;
-    /* ДОБАВЛЕНО: Отступ между сообщениями и полем ввода */
-    gap: 16px; 
-    min-height: 0;
-    overflow: hidden;
-  }
+.user-item {
+  padding: 16px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
 
-  .chat-box {
-    flex: 1;
-    overflow-y: auto;
+.user-item:hover {
+  background: #f5f7fa;
+}
 
-    background: #fafbff;
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  /* margin-bottom removed so the chat-box size stays inside the container
-      and doesn't add extra space that can push the header out */
-    border: 1px solid #e9ecef;
+/* Выделение выбранного чата */
+.user-item.active {
+  background: #4a6cf7;
+  color: white;
+}
 
-    min-height: 0;         /* критически важно */
-  }
+/* === ПРАВАЯ ПАНЕЛЬ (Чат) === */
+.main-chat {
+  flex: 1; /* Забирает всё свободное место (остаток экрана) */
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Критически важно, чтобы длинный текст не ломал верстку */
+  background: #20395f;
+}
 
-  .message {
-    max-width: 80%;
-    padding: 10px 14px;
-    border-radius: 18px;
-    line-height: 1.4;
-    position: relative;
-    word-wrap: break-word;
-  }
+.chat-header {
+  padding: 16px 20px;
+  background: #4a6cf7;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-  .message.outgoing {
-    background: #4a6cf7;
-    color: white;
-    align-self: flex-end;
-    border-bottom-right-radius: 4px;
-  }
+.chat-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
 
-  .message.incoming {
-    background: #f1f3f5;
-    color: #212529;
-    align-self: flex-start;
-    border-bottom-left-radius: 4px;
-  }
+.status {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
 
-  .input-area {
-    display: flex;
-    gap: 10px;
-    /* keep the input area fixed in height and prevent it from shrinking
-      when the chat grows */
-    flex: 0 0 auto;
-  }
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  /* ДОБАВЛЕНО: Отступ между сообщениями и полем ввода */
+  gap: 16px; 
+  min-height: 0;
+  overflow: hidden;
+}
 
-  .input-area input {
-    flex: 1;
-    padding: 12px 16px;
-    border: 1px solid #ced4da;
-    border-radius: 24px;
-    font-size: 1rem;
-    outline: none;
-    transition: border-color 0.2s;
-  }
+.chat-box {
+  flex: 1;
+  overflow-y: auto;
 
-  .input-area input:focus {
-    border-color: #4a6cf7;
-  }
+  background: #c2cdf5;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+/* margin-bottom removed so the chat-box size stays inside the container
+    and doesn't add extra space that can push the header out */
+  border: 1px solid #e9ecef;
 
-  .input-area button {
-    padding: 12px 24px;
-    border: none;
-    background: #4a6cf7;
-    color: white;
-    border-radius: 24px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: background 0.2s;
-  }
+  min-height: 0;         /* критически важно */
+}
 
-  .input-area button:hover:not(:disabled) {
-    background: #3a5be0;
-  }
+.message {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  line-height: 1.4;
+  position: relative;
+  word-wrap: break-word;
+}
 
-  .input-area button:disabled {
-    background: #adb5bd;
-    cursor: not-allowed;
-  }
+.message.outgoing {
+  background: #4a6cf7;
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
 
-  /* Scrollbar styling (optional) */
-  .chat-box::-webkit-scrollbar {
-    width: 6px;
-  }
-  .chat-box::-webkit-scrollbar-thumb {
-    background: #c1c9d6;
-    border-radius: 3px;
-  }
+.message.incoming {
+  background: #f1f3f5;
+  color: #212529;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.input-area {
+  display: flex;
+  gap: 10px;
+  /* keep the input area fixed in height and prevent it from shrinking
+    when the chat grows */
+  flex: 0 0 auto;
+}
+
+.input-area input {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #ced4da;
+  border-radius: 24px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-area input:focus {
+  border-color: #4a6cf7;
+}
+
+.input-area button {
+  padding: 12px 24px;
+  border: none;
+  background: #4a6cf7;
+  color: white;
+  border-radius: 24px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.input-area button:hover:not(:disabled) {
+  background: #3a5be0;
+}
+
+.input-area button:disabled {
+  background: #adb5bd;
+  cursor: not-allowed;
+}
+
+/* Scrollbar styling (optional) */
+.chat-box::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-box::-webkit-scrollbar-thumb {
+  background: #c1c9d6;
+  border-radius: 3px;
+}
 

@@ -8,24 +8,37 @@
 </head>
 <body>
   <div class="app-container">
-    <header class="chat-header">
-      <h2>💬 SecureChat</h2>
-      <div class="status" id="connectionStatus">Соединение...</div>
-    </header>
-
-    <div class="chat-container">
-      <div class="chat-box" id="chatBox"></div>
-
-      <div class="input-area">
-        <input
-          type="text"
-          id="messageInput"
-          placeholder="Введите сообщение..."
-          maxlength="500"
-        />
-        <button id="sendBtn" disabled>Отправить</button>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h3>Контакты</h3>
       </div>
-    </div>
+      <div class="user-list">
+        <div class="user-item active">User 1</div>
+        <div class="user-item">User 2</div>
+      </div>
+    </aside>
+
+    <main class="main-chat">
+      <header class="chat-header">
+        <h2>💬 SecureChat</h2>
+        <div class="status" id="connectionStatus">Соединение...</div>
+      </header>
+
+      <div class="chat-container">
+        <div class="chat-box" id="chatBox"></div>
+
+        <div class="input-area">
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Введите сообщение..."
+            maxlength="500"
+          />
+          <button id="sendBtn" disabled>Отправить</button>
+        </div>
+      </div>
+    </main>
+    
   </div>
 
   <script src="/static/js/socket_manager.js"></script>
