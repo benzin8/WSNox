@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from typing import AsyncGenerator
-from core.config import settings
+from messenger.backend.core.config import settings
 
 engine = create_async_engine(
     settings.database_url,
