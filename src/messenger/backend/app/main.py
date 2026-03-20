@@ -7,11 +7,11 @@ from .ws.router import ws_router
 app = FastAPI()
 
 
-FRONTEND_PUBLIC_DIR = PROJECT_ROOT / "src" / "messenger" / "frontend" / "public"
+FRONTEND_PUBLIC_DIR = PROJECT_ROOT / "src" / "messenger" / "frontend_react" / "dist"
 
-app.mount("/static",
-        StaticFiles(directory=FRONTEND_PUBLIC_DIR / "static"),
-        name="static")
+app.mount("/assets",
+        StaticFiles(directory=FRONTEND_PUBLIC_DIR / "assets"),
+        name="assets")
 
 app.include_router(frontend_router)
 app.include_router(ws_router)

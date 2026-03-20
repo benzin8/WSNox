@@ -5,7 +5,7 @@ from messenger import PROJECT_ROOT
 
 frontend_router = APIRouter()
 
-FRONTEND_PUBLIC_DIR = PROJECT_ROOT / "src" / "messenger" / "frontend" / "public"
+FRONTEND_PUBLIC_DIR = PROJECT_ROOT / "src" / "messenger" / "frontend_react" / "dist"
 
 @frontend_router.get("/")
 async def root():

@@ -1,6 +1,7 @@
 from fastapi import WebSocket, APIRouter
 from fastapi.websockets import WebSocketDisconnect
 from typing import Dict
+import json
 
 class ConnectionManager:
     def __init__(self) -> None:
@@ -40,8 +41,6 @@ async def websocket_chat(websocket: WebSocket, user_id: int) -> None:
     try:
         while True:
             data = await websocket.receive_text()
-
-            import json
             msg_data = json.loads(data)
             recipient_id = msg_data.get('recipient_id')
             text = msg_data["message"]
