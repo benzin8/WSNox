@@ -23,8 +23,9 @@ class PhoneVerify(BaseModel):
 
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=32)
+    name: str = Field(..., min_length=2, max_length=32)
     email: Optional[EmailStr] = None
-    phone_number: str
+    phone_number: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
