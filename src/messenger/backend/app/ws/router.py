@@ -3,7 +3,9 @@ from fastapi.websockets import WebSocketDisconnect
 from typing import Dict
 import json
 import asyncio
+
 from messenger.backend.core.redis import get_redis
+from messenger.backend.core.crypto import encrypt_message, decrypt_message
 
 REDIS_CHAT_CHANNEL = "chat_messages"
 
@@ -19,11 +21,12 @@ class ConnectionManager:
         if user_id in self.active_connections:
             del self.active_connections[user_id]
 
-    async def send_personal_message(self, message: str, recipient_id: int) -> None:
+    async def send_personal_message(self, message: str, recipient_id: int, sender_id: int) -> None:
+        encrypted_message = encrypt_message(message)
         redis = get_redis()
         payload = json.dumps({
             "recipient_id": recipient_id,
-            "message": message
+            "message": encrypted_message
         })
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
 
@@ -41,7 +44,8 @@ class ConnectionManager:
                     
                     if recipient_id in self.active_connections:
                         try:
-                            await self.active_connections[recipient_id].send_text(text_message)
+                            decrypted_message = decrypt_message(text_message)
+                            await self.active_connections[recipient_id].send_text(decrypted_message)
                         except Exception:
                             # if socket is dead, remove it
                             del self.active_connections[recipient_id]
@@ -62,7 +66,7 @@ async def websocket_chat(websocket: WebSocket, user_id: int) -> None:
             text = msg_data.get("message")
 
             if recipient_id and text:
-                await manager.send_personal_message(text, recipient_id)
+                await manager.send_personal_message(text, recipient_id, user_id)
 
     except WebSocketDisconnect:
         manager.disconnect(int(user_id))
