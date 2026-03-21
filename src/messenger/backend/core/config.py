@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     
     secret_key: str
     algorithm: str
-
+    redis_url: str
     @property
     def database_url(self) -> str:
         return f"mysql+aiomysql://{self.db_user}:{self.db_pass}@{self.db_host}:{self.db_port}/{self.db_name}"
