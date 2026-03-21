@@ -21,4 +21,11 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     profile: Mapped["Profile"] = relationship(back_populates="user", uselist=False)
-    sent_messages: Mapped[list["Message"]] = relationship(back_populates="sender")
+    sent_messages: Mapped[list["Message"]] = relationship(
+        "Message",
+        back_populates="sender",
+        foreign_keys="Message.sender_id")
+    received_messages: Mapped[list["Message"]] = relationship(
+        "Message",
+        back_populates="recipient",
+        foreign_keys="Message.recipient_id")
