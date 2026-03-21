@@ -1,9 +1,19 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt
-from messenger.backend.config import settings
+from messenger.backend.core.config import settings
+from passlib.context import CryptContext
 
-SECRET_KEY = settings.SECRET_KEY
-ALGORITHM = settings.ALGORITHM
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.algorithm
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password:str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(password:str, hashed_password:str) -> bool:
+    return pwd_context.verify(password, hashed_password)
 
 def create_token(data: dict, expires_delta: timedelta, is_refresh: bool = False):
     to_encode = data.copy()
