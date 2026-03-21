@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from messenger import PROJECT_ROOT
 from .api_v1.routers import frontend_router
+from .api_v1.routers.auth_router import auth_router
 from .ws.router import ws_router
 from messenger.backend.core.redis import init_redis, close_redis
 
@@ -32,3 +33,4 @@ app.mount("/assets",
 
 app.include_router(frontend_router)
 app.include_router(ws_router)
+app.include_router(auth_router)
