@@ -1,5 +1,5 @@
-from src.messenger.backend.db import Base
-from src.messenger.backend.models.user import User
+from messenger.backend.db import Base
+from messenger.backend.models.user import User
 from sqlalchemy import Text, String, JSON, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 

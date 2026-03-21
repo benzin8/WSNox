@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
-from src.messenger.backend.db import Base
+from messenger.backend.db import Base
 
 from sqlalchemy import Text, String, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
