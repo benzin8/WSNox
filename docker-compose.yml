@@ -3,13 +3,14 @@ version: '3.8'
 services:
   db:
     image: mysql:8.0
+    env_file: .env
     container_name: messenger_db
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: messenger_db
-      MYSQL_USER: messenger_user
-      MYSQL_PASSWORD: messenger_password
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASS}
     ports:
       - "3306:3306"
     volumes:
@@ -28,17 +29,19 @@ services:
     build: .
     container_name: messenger_backend
     restart: always
+    env_file: .env
     ports:
       - "8000:8000"
     environment:
-      - DB_USER=messenger_user
-      - DB_PASS=messenger_password
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_NAME=messenger_db
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=your-super-secret-key-change-it-in-production
-      - ALGORITHM=HS256
+      - DOCKER_MODE=true
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - REDIS_URL=${REDIS_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
     depends_on:
       - db
       - redis
