@@ -5,8 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 
-from fastapi import HTTPException
-
 from messenger.backend.core.security import hash_password
 
 class UserCRUD:
@@ -26,7 +24,7 @@ class UserCRUD:
             await session.refresh(user)
             return user
         except IntegrityError:
-            raise HTTPException(status_code=400, detail=f"User with this phone number already exists")
+            return None
     
     @staticmethod
     async def get_user_by_phone(session: AsyncSession, phone_number: str) -> User | None:
@@ -35,4 +33,14 @@ class UserCRUD:
             .where(User.phone_number == phone_number)
         )
         result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def login_user(session: AsyncSession, phone_number: str, password: str) -> User:
+        query = (
+            select(User)
+            .where(User.phone_number == phone_number)
+        )
+        result = await session.execute(query)
+
         return result.scalar_one_or_none()
