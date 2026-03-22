@@ -1,3 +1,4 @@
+from messenger.backend.app.api_v1.schemas.user import UserCreate
 from messenger.backend.core.redis import get_redis
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,9 +41,13 @@ async def verify_sms(data: PhoneVerify, db: AsyncSession = Depends(get_db_sessio
         
  
 @auth_router.post("/register")
-async def register(name: str, username: str, password: str):
-    hashed_password = hash_password(password)
-    pass
+async def register(data: UserCreate, db: AsyncSession = Depends(get_db_session)):
+    redis = get_redis()
+    verifed_number = await redis.get(f"verifed_for_reg:{data.phone_number}")
+    if not verifed_number:
+        raise HTTPException(status_code=400, detail="Phone number not verified")
+    await UserCRUD.create_user(db, data, data.password)
+    return {"message": "User created successfully"}
     
 @auth_router.get("/login")
 async def login(db: AsyncSession = Depends(get_db_session)):
