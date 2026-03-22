@@ -44,4 +44,6 @@ COPY --from=frontend-builder /app/frontend/dist /app/src/messenger/frontend_reac
 EXPOSE 8000
 
 # Start Uvicorn
-CMD ["uvicorn", "src.messenger.backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
