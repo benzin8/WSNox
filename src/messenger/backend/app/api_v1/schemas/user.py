@@ -30,6 +30,28 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
 
+class UserLogin(BaseModel):
+    phone_number: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    username: str
+    phone_number: str
+    email: Optional[EmailStr] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AuthResponse(BaseModel):
+    status: str
+    user: UserResponse
+    access: str
+    refresh: str
+    
+
 class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
