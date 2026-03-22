@@ -2,14 +2,31 @@ from messenger.backend.models import User
 from messenger.backend.app.api_v1.schemas.user import UserCreate
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
+
+from fastapi import HTTPException
 
 from messenger.backend.core.security import hash_password
 
 class UserCRUD:
-    async def create_user(self, session: AsyncSession, user_data: UserCreate, password: str):
+    @staticmethod
+    async def create_user(session: AsyncSession, user_data: UserCreate, password: str):
         hashed_password = hash_password(password)
-        pass
+        try:
+            user = User(
+                name = user_data.name,
+                username = user_data.username,
+                email = user_data.email,
+                phone_number = user_data.phone_number,
+                hashed_password = hashed_password
+            )
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+            return user
+        except IntegrityError:
+            raise HTTPException(status_code=400, detail=f"User with this phone number already exists")
     
     @staticmethod
     async def get_user_by_phone(session: AsyncSession, phone_number: str) -> User | None:
