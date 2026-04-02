@@ -1,10 +1,14 @@
-from messenger.backend.app.api_v1.schemas.user import UserCreate, UserLogin, UserResponse, AuthResponse
-from messenger.backend.core.redis import get_redis
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
-from messenger.backend.services.verification import send_verification_code, verify_code
+
+from messenger.backend.app.api_v1.schemas.user import UserCreate, UserLogin, UserResponse, AuthResponse
 from messenger.backend.app.api_v1.schemas.user import PhoneVerify, PhoneNumberRequest
+
+from messenger.backend.services.verification import send_verification_code, verify_code
 from messenger.backend.app.crud.user import UserCRUD
 from messenger.backend.core.security import verify_password, create_pair_jwt_tokens
 
@@ -58,21 +62,26 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db_session))
     }
     
 @auth_router.post("/login", response_model=AuthResponse)
-async def login(data: UserLogin, db: AsyncSession = Depends(get_db_session)):
+async def login(data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db_session)):
     redis = get_redis()
+
+    phone_number = data.username
+    password = data.password
     
-    verifed_number = await redis.get(f"verifed_for_login:{data.phone_number}")
+    verifed_number = await redis.get(f"verifed_for_login:{phone_number}")
     if not verifed_number:
         raise HTTPException(status_code=400, detail="Phone number not verified")
 
-    user = await UserCRUD.login_user(db, data.phone_number, data.password)
-    if not user or not verify_password(data.password, user.hashed_password):
+    user = await UserCRUD.login_user(db, phone_number, password)
+    if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid phone number or password")
 
     tokens = create_pair_jwt_tokens(user.id)
-    await redis.delete(f"verifed_for_login:{data.phone_number}")
+    await redis.delete(f"verifed_for_login:{phone_number}")
     return {
         "status": "success",
         "user": UserResponse.model_validate(user),
-        **tokens
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "token_type": "bearer"
     }
