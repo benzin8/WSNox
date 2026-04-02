@@ -27,8 +27,11 @@ export default function LoginPage() {
 
             const { access, refresh } = response.data;
 
-            Cookies.set('access_token', access, { expires: 1/3 });
-            Cookies.set('refresh_token', refresh, { expires: 7 });
+            localStorage.setItem('access_token', access);
+            localStorage.setItem('refresh_token', refresh);
+            
+            console.log("Login success");
+            console.log("Access token: ", access);
             
             navigate('/chat');
         } catch (err) {
@@ -39,6 +42,7 @@ export default function LoginPage() {
     };
 
     if (!phoneNumber) {
+        console.log("No phone number");
         return <Navigate to="/auth/send-code" replace />;
     }
 
@@ -82,7 +86,7 @@ export default function LoginPage() {
                         onClick={() => navigate('/auth/send-code')}
                         className="w-full text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
                     >
-                        Sign in with a different account
+                       Зайти под другим номером
                     </button>
                 </form>
             </div>

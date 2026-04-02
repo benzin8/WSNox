@@ -45,6 +45,7 @@ export default function RegisterPage() {
     };
 
     if (!phoneNumber || !code) {
+        console.log("No phone number or code");
         return <Navigate to="/auth/send-code" replace />;
     }
 
