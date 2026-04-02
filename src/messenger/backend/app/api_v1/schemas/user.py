@@ -48,8 +48,8 @@ class UserResponse(BaseModel):
 class AuthResponse(BaseModel):
     status: str
     user: UserResponse
-    access: str
-    refresh: str
+    access_token: str
+    refresh_token: str
     
 
 class UserRead(UserBase):
