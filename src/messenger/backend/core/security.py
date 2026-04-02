@@ -36,4 +36,4 @@ def create_pair_jwt_tokens(user_id: int):
     access = create_token({"sub": str(user_id)}, timedelta(minutes=30))
     refresh = create_token({"sub": str(user_id)}, timedelta(days=7), is_refresh=True)
     
-    return {"access": access, "refresh": refresh}
+    return {"access_token": access, "refresh_token": refresh}
