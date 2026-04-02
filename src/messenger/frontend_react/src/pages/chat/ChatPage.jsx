@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { Send, LogOut, User, MessageSquare, Phone, MoreVertical, Search } from 'lucide-react';
+import { useChatAction } from '../../hooks/useChatAction';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const WS_BASE = import.meta.env.VITE_WS_BASE_URL;
@@ -11,7 +12,9 @@ function ChatPage() {
   const [inputText, setInputText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  
+  const [searchQuery, setSearchQuery] = useState(null);
+
+  const { searchChats, searchResult, isSearching, error } = useChatAction();
   const navigate = useNavigate();
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -19,7 +22,9 @@ function ChatPage() {
   // 1. Get user profile and setup WebSocket
   useEffect(() => {
     const token = localStorage.getItem('access_token');
+    console.log("Token: ", token);
     if (!token) {
+      console.log("No token");
       navigate('/auth/send-code');
       return;
     }
@@ -37,7 +42,11 @@ function ChatPage() {
       ws.onopen = () => setIsConnected(true);
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        setMessages((prev) => [...prev, { ...data, type: 'incoming', id: Date.now() }]);
+        setMessages((prev) => [...prev, {
+          ...data,
+          type: 'incoming',
+          id: Date.now()
+        }]);
       };
       ws.onclose = () => setIsConnected(false);
 
@@ -102,6 +111,7 @@ function ChatPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
             <input 
+              onChange={(e) => {searchChats(e.target.value); setSearchQuery(e.target.value)}}
               type="text" 
               placeholder="Search chats..."
               className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-lime-400/50 transition-all"
@@ -110,19 +120,41 @@ function ChatPage() {
         </div>
 
         <div className="flex-grow overflow-y-auto p-2 space-y-1 scrollbar-hide">
-          {/* Mock Contact */}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/40 border border-zinc-700/50 cursor-pointer hover:bg-zinc-800 transition-all">
-            <div className="w-12 h-12 rounded-full bg-zinc-700 flex items-center justify-center">
-              <User size={24} className="text-zinc-400" />
-            </div>
-            <div className="flex-grow">
-              <div className="flex justify-between items-baseline">
-                  <h4 className="font-semibold">Бот помошник</h4>
-                  <span className="text-[10px] text-zinc-500 uppercase">Online</span>
+          {searchQuery?.length > 0 && searchResult?.length > 0 ? (
+            searchResult.map((chat) => (
+              <div key={chat.id} 
+                className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
+                <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
+                  <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
+                </div>
+                <div className="flex-grow">
+                  <div className="flex justify-between items-baseline">
+                    <h4 className="font-semibold text-zinc-100">{chat.username}</h4>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-zinc-400 truncate">Чем я могу вам помочь сегодня?</p>
+            ))
+          ) : (
+            <>
+            {searchQuery?.length >= 1 && searchResult?.length === 0 && !isSearching && (
+              <div className="p-1 text-center text-zinc-500 text-sm">
+                Чат или пользователь "{searchQuery}" не найден
+              </div>
+            )}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/40 border border-zinc-700/50 cursor-pointer hover:bg-zinc-800 transition-all">
+              <div className="w-12 h-12 rounded-full bg-zinc-700 flex items-center justify-center">
+                <User size={24} className="text-zinc-400" />
+              </div>
+              <div className="flex-grow">
+              <div className="flex justify-between items-baseline">
+                  <h4 className="font-semibold">Бот помошник</h4> {/* TODO: add name */}
+                  <span className="text-[10px] text-zinc-500 uppercase">Online</span> {/* TODO: add online status */}
+              </div>
+              <p className="text-xs text-zinc-400 truncate">Чем я могу вам помочь сегодня?</p> {/* TODO: add last message */}
             </div>
           </div>
+          </>
+          )}
         </div>
       </div>
 

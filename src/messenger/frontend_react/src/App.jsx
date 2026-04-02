@@ -9,7 +9,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import ChatPage from './pages/chat/ChatPage';
 
 const ProtectedRoute = ({ children }) => {
-  const token = Cookies.get('access_token');
+  const token = localStorage.getItem('access_token');
   if (!token) {
     return <Navigate to="/auth/send-code" replace />;
   }
@@ -17,11 +17,11 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(!!Cookies.get('access_token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
 
   useEffect(() => {
     const checkAuth = () => {
-      setIsAuthenticated(!!Cookies.get('access_token'));
+      setIsAuthenticated(!!localStorage.getItem('access_token'));
     };
 
     window.addEventListener('storage', checkAuth);
