@@ -58,14 +58,16 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db_session))
     return {
         "status": "success",
         "user": UserResponse.model_validate(user),
-        **tokens
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "token_type": "bearer"
     }
     
 @auth_router.post("/login", response_model=AuthResponse)
-async def login(data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db_session)):
+async def login(data: UserLogin, db: AsyncSession = Depends(get_db_session)):
     redis = get_redis()
 
-    phone_number = data.username
+    phone_number = data.phone_number
     password = data.password
     
     verifed_number = await redis.get(f"verifed_for_login:{phone_number}")
