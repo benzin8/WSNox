@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
+from messenger.backend.app.api_v1.schemas.user import UserResponse
+
 class ChatResponse(BaseModel):
     id: int
     name: str
@@ -13,7 +15,7 @@ class ChatResponse(BaseModel):
         from_attributes = True
 
 class UserSearchResponse(BaseModel):
-    chats: List[ChatResponse]
+    chats: List[UserResponse]
     
 class ChatCreateRequest(BaseModel):
     user_id: int
