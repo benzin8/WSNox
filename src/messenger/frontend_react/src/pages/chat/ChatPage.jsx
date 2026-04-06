@@ -4,6 +4,8 @@ import { jwtDecode } from 'jwt-decode';
 import { Send, LogOut, User, MessageSquare, Phone, MoreVertical, Search } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
 
+import { ChatWindow } from '../../components/chat/ChatWindow';
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const WS_BASE = import.meta.env.VITE_WS_BASE_URL;
 
@@ -13,8 +15,9 @@ function ChatPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState(null);
+  const [chatName, setChatName] = useState('');
 
-  const { searchChats, searchResult, isSearching, error } = useChatAction();
+  const { searchChats, searchResult, isSearching, error, getOrCreateChats, activeChat, setActiveChat, getUserDataByChatId } = useChatAction();
   const navigate = useNavigate();
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -91,6 +94,15 @@ function ChatPage() {
     navigate('/auth/send-code');
   };
 
+  const handleSelectChat = async (userID) => {
+    const chat = await getOrCreateChats(userID)
+    if (chat) {
+      setSearchQuery("");
+      const userData = await getUserDataByChatId(chat.id)
+      setChatName(userData.username);
+    }
+  }
+
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
       {/* Sidebar */}
@@ -122,7 +134,7 @@ function ChatPage() {
         <div className="flex-grow overflow-y-auto p-2 space-y-1 scrollbar-hide">
           {searchQuery?.length > 0 && searchResult?.length > 0 ? (
             searchResult.map((chat) => (
-              <div key={chat.id} 
+              <div key={chat.id} onClick={() => handleSelectChat(chat.id)}
                 className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
                 <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
                   <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
@@ -157,77 +169,7 @@ function ChatPage() {
           )}
         </div>
       </div>
-
-      {/* Main Chat Area */}
-      <div className="flex-grow flex flex-col bg-zinc-900 shadow-2xl">
-        {/* Chat Header */}
-        <header className="h-20 border-b border-zinc-800 flex items-center justify-between px-8 bg-zinc-900/80 backdrop-blur-md">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
-              <User size={20} className="text-lime-400" />
-            </div>
-            <div>
-              <h3 className="font-bold leading-tight">Бот помошник</h3>
-              <p className="text-xs text-lime-400 font-medium">В сети</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-zinc-400">
-            <Phone size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
-            <MoreVertical size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
-          </div>
-        </header>
-
-        {/* Message List */}
-        <div className="flex-grow overflow-y-auto p-6 space-y-4 scrollbar-hide">
-          {messages.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40">
-              <MessageSquare size={48} className="mb-4 text-lime-400" />
-              <p>Нет сообщений. Начните разговор!</p>
-            </div>
-          )}
-          
-          {messages.map((msg) => (
-            <div 
-              key={msg.id}
-              className={`flex w-full ${msg.type === 'outgoing' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div 
-                className={`max-w-[70%] px-4 py-3 rounded-2xl text-sm shadow-sm ${
-                  msg.type === 'outgoing' 
-                  ? 'bg-lime-400 text-zinc-900 font-medium rounded-tr-none' 
-                  : 'bg-zinc-800 text-zinc-100 rounded-tl-none border border-zinc-700'
-                }`}
-              >
-                {msg.message}
-              </div>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input Area */}
-        <div className="p-6 bg-zinc-900/50 border-t border-zinc-800">
-          <form 
-            onSubmit={sendMessage}
-            className="flex items-center gap-3 bg-zinc-800 rounded-2xl p-2 pl-4 border border-zinc-700 focus-within:border-lime-400/50 focus-within:ring-4 focus-within:ring-lime-500/10 transition-all"
-          >
-            <input 
-              type="text"
-              placeholder="Type your message..."
-              className="flex-grow bg-transparent border-none focus:outline-none text-sm py-2"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-            />
-            <button 
-              type="submit"
-              disabled={!inputText.trim() || !isConnected}
-              className="p-3 bg-lime-400 text-zinc-900 rounded-xl hover:bg-lime-300 transition-all disabled:grayscale disabled:opacity-50"
-            >
-              <Send size={18} />
-            </button>
-          </form>
-        </div>
-      </div>
+      <ChatWindow activeChat={activeChat} messages={messages} sendMessage={sendMessage} isConnected={isConnected} messagesEndRef={messagesEndRef} inputText={inputText} setInputText={setInputText} chatName={chatName} />
     </div>
   );
 }
