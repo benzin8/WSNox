@@ -2,10 +2,13 @@ import {useState} from "react";
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const token = localStorage.getItem('access_token');
+const config = {headers: {Authorization: `Bearer ${token}`}}
 
 export const useChatAction = () => {
     const [searchResult, setSearchResult] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [activeChat, setActiveChat] = useState(null);
     const [error, setError] = useState(null);
 
     const searchChats = async (query) => {
@@ -16,14 +19,8 @@ export const useChatAction = () => {
             setSearchResult([]);
             return;
         }
-
         try {
-            const token = localStorage.getItem('access_token');
-            console.log(token);
-            const res = await axios.get(`${API_BASE}/chats/search?query=${query}`,
-                {headers: {Authorization: `Bearer ${token}`}}
-            )
-            console.log("res", res.data);
+            const res = await axios.get(`${API_BASE}/chats/search?query=${query}`, config)
             setSearchResult(res.data.chats || []);
         } catch (err) {
             setError(err.response?.data?.detail || "Search failed");
@@ -32,5 +29,41 @@ export const useChatAction = () => {
         }
     }
 
-    return {searchChats, searchResult, isSearching, error};
+    const getOrCreateChats = async (otherUserID) => {
+        try {
+            setError(null);
+            const res = await axios.post(
+                `${API_BASE}/chats/get-or-create`,
+                { other_user_id: otherUserID},
+                config
+            )
+            setActiveChat(res.data);
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to get or create chat");
+        }
+    }
+
+    const getUserDataByChatId = async (chatId) => {
+        try {
+            setError(null);
+            const res = await axios.get(
+                `${API_BASE}/chats/${chatId}/user`,
+                config
+            )
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to get user data");
+        }
+    }
+
+    return {searchChats,
+            getUserDataByChatId,
+            getOrCreateChats,
+            setActiveChat,
+            activeChat,
+            searchResult,
+            isSearching,
+            error,
+            };
 }
