@@ -6,6 +6,7 @@ from messenger.backend.db.session import get_db_session
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy import func
 
 class ChatCRUD:
     @staticmethod
@@ -22,10 +23,10 @@ class ChatCRUD:
             return None
 
     @staticmethod
-    async def create_private_chat(session: AsyncSession, chat_data: ChatCreateRequest, members: list[int]) -> Chat:
+    async def create_private_chat(session: AsyncSession, chat_data: ChatCreateRequest, members: list[int], current_user: User) -> Chat:
         chat = Chat(
             chat_type = "private",
-            name = f"{str(chat_data.user_id)}_{str(chat_data.other_user_id)}",
+            name = f"{str(current_user.id)}_{str(chat_data.other_user_id)}",
         )
         session.add(chat)
         await session.commit()
@@ -44,6 +45,24 @@ class ChatCRUD:
 
     @staticmethod
     async def get_chat_by_user_id(session: AsyncSession, current_user_id: int, other_user_id: int) -> Chat:
-        query = (select(Chat).where(Chat.members.any(ChatMember.user_id == current_user_id)).where(Chat.members.any(ChatMember.user_id == other_user_id)))
+        query = (
+        select(Chat)
+        .join(Chat.members)
+        .where(Chat.chat_type == "private")
+        .where(ChatMember.user_id.in_([current_user_id, other_user_id]))
+        .group_by(Chat.id)
+        .having(func.count(ChatMember.user_id) == 2) 
+    )
+        result = await session.execute(query)
+        return result.scalars().first()
+
+    @staticmethod
+    async def get_user_data_by_chat_id(session: AsyncSession, chat_id: int, current_user_id: int) -> User:
+        query = (
+            select(User)
+            .join(ChatMember, ChatMember.user_id == User.id)
+            .where(ChatMember.chat_id == chat_id)
+            .where(User.id != current_user_id)
+        )
         result = await session.execute(query)
         return result.scalars().first()
