@@ -1,6 +1,6 @@
 from redis import UsernamePasswordCredentialProvider
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 
 from messenger.backend.app.api_v1.schemas.user import UserResponse
@@ -11,6 +11,7 @@ class ChatResponse(BaseModel):
     chat_type: str
     last_message: Optional[str] = None
     last_message_time: Optional[datetime] = None
+    recipient_id: int | None = None
     
     class Config:
         from_attributes = True
