@@ -2,8 +2,11 @@ import {useState} from "react";
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
-const token = localStorage.getItem('access_token');
-const config = {headers: {Authorization: `Bearer ${token}`}}
+
+const getAuthConfig = () => {
+    const token = localStorage.getItem('access_token');
+    return { headers: { Authorization: `Bearer ${token}` } };
+};
 
 export const useChatAction = () => {
     const [searchResult, setSearchResult] = useState([]);
@@ -20,7 +23,7 @@ export const useChatAction = () => {
             return;
         }
         try {
-            const res = await axios.get(`${API_BASE}/chats/search?query=${query}`, config)
+            const res = await axios.get(`${API_BASE}/chats/search?query=${query}`, getAuthConfig())
             setSearchResult(res.data.chats || []);
         } catch (err) {
             setError(err.response?.data?.detail || "Search failed");
@@ -35,7 +38,7 @@ export const useChatAction = () => {
             const res = await axios.post(
                 `${API_BASE}/chats/get-or-create`,
                 { other_user_id: otherUserID},
-                config
+                getAuthConfig()
             )
             setActiveChat(res.data);
             return res.data;
@@ -49,7 +52,7 @@ export const useChatAction = () => {
             setError(null);
             const res = await axios.get(
                 `${API_BASE}/chats/${chatId}/user`,
-                config
+                getAuthConfig()
             )
             return res.data;
         } catch (err) {

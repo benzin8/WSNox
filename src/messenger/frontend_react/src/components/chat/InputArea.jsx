@@ -4,10 +4,18 @@ import { Send } from "lucide-react";
 
 export const InputArea = ({sendMessage, isConnected}) => {
     const [inputText, setInputText] = useState("")
+
+    const handleSubmit = (e) => {
+      e.preventDefault()
+      if (inputText.trim() && isConnected) {
+        sendMessage(inputText)
+        setInputText("")
+      }
+    }
     return (
         <div className="p-6 bg-zinc-900/50 border-t border-zinc-800">
           <form 
-            onSubmit={sendMessage}
+            onSubmit={handleSubmit}
             className="flex items-center gap-3 bg-zinc-800 rounded-2xl p-2 pl-4 border border-zinc-700 focus-within:border-lime-400/50 focus-within:ring-4 focus-within:ring-lime-500/10 transition-all"
           >
             <input 
