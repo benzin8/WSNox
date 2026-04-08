@@ -13,21 +13,30 @@ from messenger.backend.models import User
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 async def get_current_user(
-    tokens: Dict[str, str] = Depends(oauth2_scheme),
+    access_token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db_session)
 ) -> User:
-    print("Tokens: ", jwt.decode(tokens, settings.secret_key, algorithms=[settings.algorithm]))
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Сессия истекла, войдите снова",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(tokens, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(access_token, settings.secret_key, algorithms=[settings.algorithm])
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
-    except:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Срок действия токена истек",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except JWTError as e:
+        print(f"JWT Error: {e}")
+        raise credentials_exception
+    except Exception as e:
+        print(f"Auth Error: {e}")
         raise credentials_exception
     
     result = await db.execute(select(User).where(User.id == user_id))
