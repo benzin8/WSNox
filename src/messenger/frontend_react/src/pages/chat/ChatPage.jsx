@@ -3,91 +3,43 @@ import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { Send, LogOut, User, MessageSquare, Phone, MoreVertical, Search } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
+import { useChatSocket } from '../../hooks/useChatSocket';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
-const WS_BASE = import.meta.env.VITE_WS_BASE_URL;
-
 function ChatPage() {
-  const [messages, setMessages] = useState([]);
+  const token = localStorage.getItem('access_token');
+
   const [inputText, setInputText] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState(null);
   const [chatName, setChatName] = useState('');
 
+  const { messages, setMessages, sendMessage, isConnected } = useChatSocket(token);
   const { searchChats, searchResult, isSearching, error, getOrCreateChats, activeChat, setActiveChat, getUserDataByChatId } = useChatAction();
   const navigate = useNavigate();
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // 1. Get user profile and setup WebSocket
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    console.log("Token: ", token);
-    if (!token) {
-      console.log("No token");
-      navigate('/auth/send-code');
-      return;
-    }
-
-    try {
-      const decoded = jwtDecode(token);
-      setCurrentUser(decoded);
-      
-      const userId = decoded.sub || decoded.user_id; // Check your JWT schema
-      const wsUrl = `${WS_BASE}/chat/${userId}`;
-      const ws = new WebSocket(wsUrl);
-      
-      socketRef.current = ws;
-
-      ws.onopen = () => setIsConnected(true);
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        setMessages((prev) => [...prev, {
-          ...data,
-          type: 'incoming',
-          id: Date.now()
-        }]);
-      };
-      ws.onclose = () => setIsConnected(false);
-
-      return () => ws.close();
-    } catch (err) {
-      console.error('Auth error:', err);
-      navigate('/auth/send-code');
-    }
-  }, [navigate]);
-
-  // 2. Sending logic
-  const sendMessage = useCallback((e) => {
-    e?.preventDefault();
-    if (!inputText.trim() || !isConnected) return;
-    
-    // Assuming a simple payload for now
-    const payload = { 
-      message: inputText.trim(),
-      recipient_id: 1 // Test recipient
-    }; 
-    
-    socketRef.current.send(JSON.stringify(payload));
-    
-    setMessages((prev) => [...prev, { 
-      message: inputText.trim(), 
-      type: 'outgoing', 
-      id: Date.now(),
-      sender: 'You'
-    }]);
-    
-    setInputText('');
-  }, [inputText, isConnected]);
 
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleSendMessage = (text) => {
+    if (!activeChat) return;
+
+    sendMessage(text, activeChat.id, activeChat.recipient_id);
+    console.log("message to", activeChat.recipient_id, text);
+
+    setMessages((prev) => [...prev, {
+            message: text,
+            type: 'outgoing',
+            id: Date.now()
+        }]);
+  }
+  
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -97,7 +49,7 @@ function ChatPage() {
   const handleSelectChat = async (userID) => {
     const chat = await getOrCreateChats(userID)
     if (chat) {
-      setSearchQuery("");
+      setSearchQuery(null);
       const userData = await getUserDataByChatId(chat.id)
       setChatName(userData.username);
     }
@@ -163,13 +115,22 @@ function ChatPage() {
                   <span className="text-[10px] text-zinc-500 uppercase">Online</span> {/* TODO: add online status */}
               </div>
               <p className="text-xs text-zinc-400 truncate">Чем я могу вам помочь сегодня?</p> {/* TODO: add last message */}
+              </div>
             </div>
-          </div>
           </>
           )}
         </div>
       </div>
-      <ChatWindow activeChat={activeChat} messages={messages} sendMessage={sendMessage} isConnected={isConnected} messagesEndRef={messagesEndRef} inputText={inputText} setInputText={setInputText} chatName={chatName} />
+      <ChatWindow activeChat={activeChat}
+       messages={messages}
+       setMessages={setMessages}
+       sendMessage={handleSendMessage}
+       isConnected={isConnected}
+       messagesEndRef={messagesEndRef}
+       inputText={inputText}
+       setInputText={setInputText}
+       chatName={chatName} 
+       />
     </div>
   );
 }

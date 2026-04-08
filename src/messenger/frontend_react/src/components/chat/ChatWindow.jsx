@@ -3,7 +3,7 @@ import { User, Phone, MoreVertical } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 
-export const ChatWindow = ({activeChat, messages, sendMessage, isConnected, messagesEndRef, inputText, setInputText, chatName}) => {
+export const ChatWindow = ({messages, setMessages, activeChat, sendMessage, isConnected, messagesEndRef, inputText, setInputText, chatName}) => {
     if (!activeChat) {
         return (
             <div className="flex-grow flex items-center justify-center bg-zinc-900 text-zinc-500">
@@ -31,7 +31,7 @@ export const ChatWindow = ({activeChat, messages, sendMessage, isConnected, mess
         </header>
 
         {/* Message List */}
-        <MessageList messages={messages} messagesEndRef={messagesEndRef} />
+        <MessageList messages={messages} setMessages={setMessages} messagesEndRef={messagesEndRef} />
 
         {/* Input Area */}
         <InputArea inputText={inputText} setInputText={setInputText} sendMessage={sendMessage} isConnected={isConnected} />
