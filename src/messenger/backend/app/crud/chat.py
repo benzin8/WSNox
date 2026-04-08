@@ -24,25 +24,30 @@ class ChatCRUD:
 
     @staticmethod
     async def create_private_chat(session: AsyncSession, chat_data: ChatCreateRequest, members: list[int], current_user: User) -> Chat:
+        unique_members = set(members)
+
         chat = Chat(
             chat_type = "private",
-            name = f"{str(current_user.id)}_{str(chat_data.other_user_id)}",
+            name=f"private_{min(current_user.id, chat_data.other_user_id)}_{max(current_user.id, chat_data.other_user_id)}",
         )
         session.add(chat)
-        await session.commit()
-        await session.refresh(chat)
+        await session.flush()
 
-        for member in members:
+        for member_id in unique_members:
             chat_member = ChatMember(
                 chat_id = chat.id,
-                user_id = member,
+                user_id = member_id,
                 role = "admin",
             )
             session.add(chat_member)
-        await session.commit()
-        await session.refresh(chat)
+        try:
+            await session.commit()
+            await session.refresh(chat)
+        except Exception as e:
+            await session.rollback()
+            raise e
         return chat
-
+        
     @staticmethod
     async def get_chat_by_user_id(session: AsyncSession, current_user_id: int, other_user_id: int) -> Chat:
         query = (
@@ -63,6 +68,16 @@ class ChatCRUD:
             .join(ChatMember, ChatMember.user_id == User.id)
             .where(ChatMember.chat_id == chat_id)
             .where(User.id != current_user_id)
+        )
+        result = await session.execute(query)
+        return result.scalars().first()
+
+    @staticmethod
+    async def get_other_user_by_chat_id(session: AsyncSession, chat_id: int, current_user_id: int) -> list[ChatMember]:
+        query = (
+            select(ChatMember)
+            .where(ChatMember.chat_id == chat_id)
+            .where(ChatMember.user_id != current_user_id)
         )
         result = await session.execute(query)
         return result.scalars().first()
