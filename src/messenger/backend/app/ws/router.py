@@ -26,8 +26,10 @@ class ConnectionManager:
         redis = get_redis()
         payload = json.dumps({
             "recipient_id": recipient_id,
-            "message": encrypted_message
+            "message": encrypted_message,
+            "sender_id": sender_id
         })
+        print(payload)
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
 
     async def pubsub_listener(self) -> None:
@@ -41,11 +43,17 @@ class ConnectionManager:
                     data = json.loads(message["data"])
                     recipient_id = data.get("recipient_id")
                     text_message = data.get("message")
+                    sender_id = data.get("sender_id")
                     
                     if recipient_id in self.active_connections:
                         try:
-                            decrypted_message = decrypt_message(text_message)
-                            await self.active_connections[recipient_id].send_text(decrypted_message)
+                            decrypted_text = decrypt_message(text_message)
+                            payload = {
+                                "message": decrypted_text,
+                                "sender_id": sender_id,
+                                "recipient_id": recipient_id,
+                            }
+                            await self.active_connections[recipient_id].send_json(payload)
                         except Exception:
                             # if socket is dead, remove it
                             del self.active_connections[recipient_id]
@@ -67,6 +75,7 @@ async def websocket_chat(websocket: WebSocket, user_id: int) -> None:
 
             if recipient_id and text:
                 await manager.send_personal_message(text, recipient_id, user_id)
+
 
     except WebSocketDisconnect:
         manager.disconnect(int(user_id))
