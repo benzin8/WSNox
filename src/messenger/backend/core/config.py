@@ -2,6 +2,8 @@ import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field
 
+from messenger import PROJECT_ROOT
+
 class Settings(BaseSettings):
     db_user: str
     db_pass: str
@@ -29,7 +31,7 @@ class Settings(BaseSettings):
         return "redis://localhost:6379/0"
     
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=os.path.join(PROJECT_ROOT, ".env"),
         extra="ignore" # Ignore extra env vars
     )
 
