@@ -1,11 +1,15 @@
-from fastapi import WebSocket, APIRouter
+from fastapi import WebSocket, APIRouter, Depends
 from fastapi.websockets import WebSocketDisconnect
 from typing import Dict
 import json
 import asyncio
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from messenger.backend.db.session import get_db
 from messenger.backend.core.redis import get_redis
 from messenger.backend.core.crypto import encrypt_message, decrypt_message
+from messenger.backend.app.crud.message import MessageCRUD
 
 REDIS_CHAT_CHANNEL = "chat_messages"
 
@@ -21,15 +25,23 @@ class ConnectionManager:
         if user_id in self.active_connections:
             del self.active_connections[user_id]
 
-    async def send_personal_message(self, message: str, recipient_id: int, sender_id: int) -> None:
-        encrypted_message = encrypt_message(message)
-        redis = get_redis()
+    async def send_personal_message(self, chat_id: int, text: str, recipient_id: int, sender_id: int, db: AsyncSession) -> None:
+        message = await MessageCRUD.create_text_message(
+            db=db,
+            chat_id=chat_id,
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+            text=text
+        )
+
         payload = json.dumps({
             "recipient_id": recipient_id,
-            "message": encrypted_message,
-            "sender_id": sender_id
+            "message": message.encrypted_data,
+            "sender_id": sender_id,
+            "chat_id": chat_id
         })
-        print(payload)
+        
+        redis = get_redis()
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
 
     async def pubsub_listener(self) -> None:
@@ -64,17 +76,24 @@ manager = ConnectionManager()
 ws_router = APIRouter()
 
 @ws_router.websocket("/chat/{user_id}")
-async def websocket_chat(websocket: WebSocket, user_id: int) -> None:
+async def websocket_chat(websocket: WebSocket, user_id: int, db: AsyncSession = Depends(get_db)) -> None:
     await manager.connect(websocket, user_id)
     try:
         while True:
             data = await websocket.receive_text()
             msg_data = json.loads(data)
+            chat_id = msg_data.get('chat_id')
             recipient_id = msg_data.get('recipient_id')
             text = msg_data.get("message")
 
             if recipient_id and text:
-                await manager.send_personal_message(text, recipient_id, user_id)
+                await manager.send_personal_message(
+                    chat_id=chat_id,
+                    text=text,
+                    recipient_id=recipient_id,
+                    sender_id=user_id,
+                    db=db
+                )
 
 
     except WebSocketDisconnect:
