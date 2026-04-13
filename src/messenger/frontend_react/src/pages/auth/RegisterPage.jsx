@@ -30,11 +30,10 @@ export default function RegisterPage() {
                 ...formData
             });
 
-            const { access, refresh } = response.data;
-            localStorage.setItem('access_token', access);
-            localStorage.setItem('refresh_token', refresh);
+            const { access_token, refresh_token } = response.data;
+            localStorage.setItem('access_token', access_token);
+            localStorage.setItem('refresh_token', refresh_token);
             
-            // Trigger storage event for App.jsx
             window.dispatchEvent(new Event('storage'));
             navigate('/chat');
         } catch (err) {
@@ -53,13 +52,13 @@ export default function RegisterPage() {
         <div className="flex min-h-screen items-center justify-center p-4">
             <div className="glass w-full max-w-md rounded-2xl p-8 shadow-2xl">
                 <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-bold tracking-tight text-lime-400">Complete Profile</h1>
-                    <p className="mt-2 text-zinc-400">Almost there! Tell us about yourself.</p>
+                    <h1 className="text-3xl font-bold tracking-tight text-lime-400">Заполните профиль</h1>
+                    <p className="mt-2 text-zinc-400">Почти готово! Расскажите о себе.</p>
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-zinc-300">Full Name</label>
+                        <label className="block text-sm font-medium text-zinc-300">Отображаемое имя</label>
                         <input
                             type="text"
                             className="mt-1 w-full rounded-xl border-zinc-700 bg-zinc-900/50 p-4 text-zinc-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-500/20 transition-all"
@@ -69,7 +68,7 @@ export default function RegisterPage() {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-zinc-300">Username</label>
+                        <label className="block text-sm font-medium text-zinc-300">Юзернейм</label>
                         <input
                             type="text"
                             className="mt-1 w-full rounded-xl border-zinc-700 bg-zinc-900/50 p-4 text-zinc-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-500/20 transition-all"
@@ -79,7 +78,7 @@ export default function RegisterPage() {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-zinc-300">Password</label>
+                        <label className="block text-sm font-medium text-zinc-300">Пароль</label>
                         <input
                             type="password"
                             className="mt-1 w-full rounded-xl border-zinc-700 bg-zinc-900/50 p-4 text-zinc-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-500/20 transition-all"
