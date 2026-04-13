@@ -1,4 +1,4 @@
-from messenger.backend.db.models import Message
+from messenger.backend.models import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
