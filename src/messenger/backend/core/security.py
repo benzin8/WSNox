@@ -33,7 +33,7 @@ def create_token(data: dict, expires_delta: timedelta, is_refresh: bool = False)
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def create_pair_jwt_tokens(user_id: int):
-    access = create_token({"sub": str(user_id)}, timedelta(minutes=30))
+    access = create_token({"sub": str(user_id)}, timedelta(days=30))
     refresh = create_token({"sub": str(user_id)}, timedelta(days=7), is_refresh=True)
     
     return {"access_token": access, "refresh_token": refresh}
