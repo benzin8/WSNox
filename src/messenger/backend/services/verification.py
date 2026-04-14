@@ -7,6 +7,11 @@ async def send_verification_code(phone_number: str) -> str:
     and returns it (in a real app, this should send an SMS).
     """
     redis = get_redis()
+    existing_code = await redis.get(f"verification:{phone_number}")
+    if existing_code:
+        print(f"[DEVELOPMENT ONLY] Verification code for {phone_number}: {existing_code}")
+        return existing_code
+    
     code = f"{random.randint(100000, 999999)}"
     
     # Set key with TTL of 300 seconds (5 minutes)
