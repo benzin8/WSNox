@@ -29,3 +29,6 @@ class User(Base):
         "Message",
         back_populates="recipient",
         foreign_keys="Message.recipient_id")
+
+    def __repr__(self):
+        return f"<User(id={self.id}, username='{self.username}', name='{self.name}')>"

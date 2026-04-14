@@ -19,8 +19,10 @@ class Chat(Base):
     members:Mapped[list["ChatMember"]] = relationship(back_populates="chat", cascade="all, delete-orphan")
     messages:Mapped[list["Message"]] = relationship(back_populates="chat", cascade="all, delete-orphan")
 
-class ChatMember(Base):
+    def __repr__(self):
+        return f"<Chat {self.id} {self.chat_type} {self.name}>"
 
+class ChatMember(Base):
     __tablename__ = "chat_members"
 
     chat_id: Mapped[int] = mapped_column(ForeignKey("chats.id"), primary_key=True)
@@ -29,3 +31,6 @@ class ChatMember(Base):
     joined_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
 
     chat:Mapped["Chat"] = relationship(back_populates="members")
+
+    def __repr__(self):
+        return f"<ChatMember {self.chat_id} {self.user_id} {self.role}>"

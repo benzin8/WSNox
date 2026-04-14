@@ -20,7 +20,6 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def database_url(self) -> str:
-        # Use mysql+aiomysql for async support
         return f"mysql+aiomysql://{self.db_user}:{self.db_pass}@{self.db_host}:{self.db_port}/{self.db_name}"
 
     @computed_field
