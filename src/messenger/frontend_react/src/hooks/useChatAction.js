@@ -23,7 +23,10 @@ export const useChatAction = () => {
             return;
         }
         try {
-            const res = await axios.get(`${API_BASE}/chats/search?query=${query}`, getAuthConfig())
+            const res = await axios.get(
+                `${API_BASE}/chats/search?query=${query}`,
+                getAuthConfig()
+            )
             setSearchResult(res.data.chats || []);
         } catch (err) {
             setError(err.response?.data?.detail || "Search failed");
@@ -60,9 +63,37 @@ export const useChatAction = () => {
         }
     }
 
+    const getMyData = async () => {
+        try {
+            setError(null);
+            const res = await axios.get(
+                `${API_BASE}/chats/me`,
+                getAuthConfig()
+            )
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to get user data");
+        }
+    }
+
+    const getMessagesByChatId = async (chatId) => {
+        try {
+            setError(null);
+            const res = await axios.get(
+                `${API_BASE}/chats/${chatId}/messages`,
+                getAuthConfig()
+            )
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to get messages");
+        }
+    }
+
     return {searchChats,
             getUserDataByChatId,
             getOrCreateChats,
+            getMyData,
+            getMessagesByChatId,
             setActiveChat,
             activeChat,
             searchResult,

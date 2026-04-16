@@ -14,7 +14,7 @@ export const ChatWindow = ({messages, setMessages, activeChat, sendMessage, isCo
     return (
       <div className="flex-grow flex flex-col bg-zinc-900 shadow-2xl">
         {/* Chat Header */}
-        <header className="h-20 border-b border-zinc-800 flex items-center justify-between px-8 bg-zinc-900/80 backdrop-blur-md">
+        <header className="h-20 flex-shrink-0 border-b border-zinc-800 flex items-center justify-between px-8 bg-zinc-900/80 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
               <User size={20} className="text-lime-400" />
