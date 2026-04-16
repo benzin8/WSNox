@@ -26,6 +26,7 @@ export const useChatSocket = (token) => {
 
                 setMessages((prev) => [...prev, {
                     ...data, 
+                    text: data.text,
                     type: data.sender_id === userId ? "outgoing" : "incoming",
                     id: Date.now()
                 }]);
@@ -43,7 +44,7 @@ export const useChatSocket = (token) => {
         if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
             console.log("Sending message:", text, activeChatId, recipientId);
             const payload = {
-                message: text, 
+                text: text, 
                 chat_id: activeChatId,
                 recipient_id: recipientId,
                 timestamp: new Date().toISOString()
