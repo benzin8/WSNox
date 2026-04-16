@@ -28,4 +28,7 @@ class MessageCRUD:
             .limit(100)
         ) # Вывод последних 100 сообщений
         result = await db.execute(query)
-        return result.scalars().all()
+        messages = result.scalars().all()
+        for message in messages:
+            message.text = decrypt_message(message.encrypted_data)
+        return messages[::-1]
