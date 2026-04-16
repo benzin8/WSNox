@@ -22,7 +22,7 @@ export const MessageList = ({messages, messagesEndRef}) => {
                   : 'bg-zinc-800 text-zinc-100 rounded-tl-none border border-zinc-700'
                 }`}
               >
-                {msg.message}
+                {msg.text}
               </div>
             </div>
           ))}
