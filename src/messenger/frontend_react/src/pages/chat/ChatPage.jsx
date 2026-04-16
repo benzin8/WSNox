@@ -9,6 +9,7 @@ import { ChatWindow } from '../../components/chat/ChatWindow';
 
 function ChatPage() {
   const token = localStorage.getItem('access_token');
+  console.log(token);
 
   const [inputText, setInputText] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
@@ -16,7 +17,17 @@ function ChatPage() {
   const [chatName, setChatName] = useState('');
 
   const { messages, setMessages, sendMessage, isConnected } = useChatSocket(token);
-  const { searchChats, searchResult, isSearching, error, getOrCreateChats, activeChat, setActiveChat, getUserDataByChatId } = useChatAction();
+  const { searchChats,
+          searchResult,
+          isSearching,
+          error,
+          getOrCreateChats,
+          activeChat,
+          setActiveChat,
+          getUserDataByChatId,
+          getMyData,
+          getMessagesByChatId
+  } = useChatAction();
   const navigate = useNavigate();
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -27,6 +38,30 @@ function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await getMyData();
+      setCurrentUser(user);
+    };
+
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    if (activeChat?.id && currentUser?.id) {
+      const fetchMessages = async () => {
+        const msgs = await getMessagesByChatId(activeChat.id);
+        const mappedMsgs = msgs.map(m => ({
+          ...m,
+          text: m.text,
+          type: m.sender_id === currentUser.id ? 'outgoing' : 'incoming'
+        }));
+        setMessages(mappedMsgs);
+      }
+      fetchMessages();
+    }
+  }, [activeChat?.id, currentUser?.id]);
+
   const handleSendMessage = (text) => {
     if (!activeChat) return;
 
@@ -34,7 +69,7 @@ function ChatPage() {
     console.log("message to", activeChat.recipient_id, text);
 
     setMessages((prev) => [...prev, {
-            message: text,
+            text: text,
             type: 'outgoing',
             id: Date.now()
         }]);
@@ -62,7 +97,7 @@ function ChatPage() {
         <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold">
-              {currentUser?.username?.[0]?.toUpperCase() || 'U'}
+              {currentUser?.username?.toUpperCase()}
             </div>
             <span className="font-bold text-lg tracking-tight">Чаты</span>
           </div>
