@@ -77,7 +77,7 @@ export default function VerifyCodePage() {
                         disabled={loading}
                         className="w-full rounded-xl bg-lime-400 p-4 font-bold text-zinc-900 hover:bg-lime-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-lime-500/20"
                     >
-                        {loading ? 'Verifying...' : 'Verify'}
+                        {loading ? 'Проверка...' : 'Проверить'}
                     </button>
                     
                     <button 
