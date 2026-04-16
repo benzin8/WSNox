@@ -6,7 +6,7 @@ import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from messenger.backend.db.session import get_db
+from messenger.backend.db.session import get_db_session
 from messenger.backend.core.redis import get_redis
 from messenger.backend.core.crypto import encrypt_message, decrypt_message
 from messenger.backend.app.crud.message import MessageCRUD
@@ -36,7 +36,7 @@ class ConnectionManager:
 
         payload = json.dumps({
             "recipient_id": recipient_id,
-            "message": message.encrypted_data,
+            "encrypted_text": message.encrypted_data,
             "sender_id": sender_id,
             "chat_id": chat_id
         })
@@ -54,14 +54,14 @@ class ConnectionManager:
                 if message["type"] == "message":
                     data = json.loads(message["data"])
                     recipient_id = data.get("recipient_id")
-                    text_message = data.get("message")
+                    encrypted_text = data.get("encrypted_text")
                     sender_id = data.get("sender_id")
                     
                     if recipient_id in self.active_connections:
                         try:
-                            decrypted_text = decrypt_message(text_message)
+                            decrypted_text = decrypt_message(encrypted_text)
                             payload = {
-                                "message": decrypted_text,
+                                "text": decrypted_text,
                                 "sender_id": sender_id,
                                 "recipient_id": recipient_id,
                             }
@@ -76,7 +76,7 @@ manager = ConnectionManager()
 ws_router = APIRouter()
 
 @ws_router.websocket("/chat/{user_id}")
-async def websocket_chat(websocket: WebSocket, user_id: int, db: AsyncSession = Depends(get_db)) -> None:
+async def websocket_chat(websocket: WebSocket, user_id: int, db: AsyncSession = Depends(get_db_session)) -> None:
     await manager.connect(websocket, user_id)
     try:
         while True:
@@ -84,7 +84,7 @@ async def websocket_chat(websocket: WebSocket, user_id: int, db: AsyncSession = 
             msg_data = json.loads(data)
             chat_id = msg_data.get('chat_id')
             recipient_id = msg_data.get('recipient_id')
-            text = msg_data.get("message")
+            text = msg_data.get("text")
 
             if recipient_id and text:
                 await manager.send_personal_message(
