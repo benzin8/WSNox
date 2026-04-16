@@ -25,7 +25,10 @@ async def lifespan(app: FastAPI):
     listener_task.cancel()
     await close_redis()
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    swagger_ui_parameters={"syntaxHighlight": False}
+)
 
 origins = [
     "http://localhost:5173",    # Стандартный порт Vite
