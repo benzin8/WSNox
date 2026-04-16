@@ -50,13 +50,13 @@ export default function LoginPage() {
         <div className="flex min-h-screen items-center justify-center p-4">
             <div className="glass w-full max-w-md rounded-2xl p-8 shadow-2xl">
                 <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-bold tracking-tight text-lime-400">Welcome Back</h1>
-                    <p className="mt-2 text-zinc-400">Enter your password for <strong>{phoneNumber}</strong></p>
+                    <h1 className="text-3xl font-bold tracking-tight text-lime-400">WSNox</h1>
+                    <p className="mt-2 text-zinc-400">Введите ваш пароль для <strong>{phoneNumber}</strong></p>
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-zinc-300">Password</label>
+                        <label className="block text-sm font-medium text-zinc-300">Пароль</label>
                         <input
                             type="password"
                             placeholder="••••••••"

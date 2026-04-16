@@ -53,7 +53,7 @@ export default function RegisterPage() {
             <div className="glass w-full max-w-md rounded-2xl p-8 shadow-2xl">
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl font-bold tracking-tight text-lime-400">Заполните профиль</h1>
-                    <p className="mt-2 text-zinc-400">Почти готово! Расскажите о себе.</p>
+                    <p className="mt-2 text-zinc-400">Почти готово! Последний штрих.</p>
                 </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -99,7 +99,7 @@ export default function RegisterPage() {
                         disabled={loading}
                         className="w-full rounded-xl bg-lime-400 p-4 font-bold text-zinc-900 hover:bg-lime-300 disabled:opacity-50 transition-all active:scale-[0.98] mt-4"
                     >
-                        {loading ? 'Creating Account...' : 'Register'}
+                        {loading ? 'Регистрация...' : 'Зарегистрироваться'}
                     </button>
                 </form>
             </div>
