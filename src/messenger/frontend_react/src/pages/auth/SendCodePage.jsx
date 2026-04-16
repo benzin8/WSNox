@@ -34,7 +34,7 @@ export default function SendCodePage() {
         <div className="flex min-h-screen items-center justify-center p-4">
             <div className="glass w-full max-w-md rounded-2xl p-8 shadow-2xl">
                 <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-bold tracking-tight text-lime-400">SecureChat</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-lime-400">WSNox</h1>
                     <p className="mt-2 text-zinc-400">Введите ваш номер телефона для получения кода подтверждения</p>
                 </div>
                 
@@ -70,12 +70,12 @@ export default function SendCodePage() {
                         disabled={loading}
                         className="w-full rounded-xl bg-lime-400 p-4 font-bold text-zinc-900 hover:bg-lime-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-lime-500/20"
                     >
-                        {loading ? 'Sending...' : 'Send Code'}
+                        {loading ? 'Отправка...' : 'Отправить код'}
                     </button>
                 </form>
                 
                 <div className="mt-8 text-center text-xs text-zinc-500">
-                    By continuing, you agree to our Terms and Privacy Policy.
+                    Продолжая, вы соглашаетесь с Условиями и Политикой конфиденциальности.
                 </div>
             </div>
         </div>
