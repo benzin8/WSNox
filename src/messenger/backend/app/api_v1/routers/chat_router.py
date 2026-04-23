@@ -56,6 +56,7 @@ async def get_chats(db:AsyncSession = Depends(get_db_session), current_user=Depe
     for chat, other_user in result:
         chat_resp = ChatResponse.model_validate(chat)
         chat_resp.recipient = UserResponse.model_validate(other_user)
+        chat_resp.recipient_id = other_user.id
         chats.append(chat_resp)
     return chats
 
