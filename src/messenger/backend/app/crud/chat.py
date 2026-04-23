@@ -5,8 +5,8 @@ from messenger.backend.app.api_v1.schemas.chat import ChatCreateRequest
 from messenger.backend.db.session import get_db_session
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy import func
+from sqlalchemy.orm import aliased
+from sqlalchemy import select, func
 
 class ChatCRUD:
     @staticmethod
@@ -81,3 +81,18 @@ class ChatCRUD:
         )
         result = await session.execute(query)
         return result.scalars().first()
+    
+    @staticmethod
+    async def get_chats(session: AsyncSession, current_user_id: int) -> list[(Chat, User)]:
+        OtherUser = aliased(User)
+        OtherMember = aliased(ChatMember)
+        query = (
+            select(Chat, OtherUser)
+            .join(ChatMember, ChatMember.chat_id == Chat.id)
+            .join(OtherMember, (OtherMember.chat_id == Chat.id) & (OtherMember.user_id != current_user_id))
+            .join(OtherUser, OtherUser.id == OtherMember.user_id)
+            .where(ChatMember.user_id == current_user_id)
+            .order_by(Chat.updated_at.desc())
+        )
+        result = await session.execute(query)
+        return result.all()
