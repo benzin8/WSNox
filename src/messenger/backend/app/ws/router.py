@@ -6,7 +6,7 @@ import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from messenger.backend.db.session import get_db_session
+from messenger.backend.db.session import get_db_session, AsyncSessionLocal
 from messenger.backend.core.redis import get_redis
 from messenger.backend.core.crypto import encrypt_message, decrypt_message
 from messenger.backend.app.crud.message import MessageCRUD
@@ -76,7 +76,7 @@ manager = ConnectionManager()
 ws_router = APIRouter()
 
 @ws_router.websocket("/chat/{user_id}")
-async def websocket_chat(websocket: WebSocket, user_id: int, db: AsyncSession = Depends(get_db_session)) -> None:
+async def websocket_chat(websocket: WebSocket, user_id: int) -> None:
     await manager.connect(websocket, user_id)
     try:
         while True:
@@ -87,13 +87,14 @@ async def websocket_chat(websocket: WebSocket, user_id: int, db: AsyncSession = 
             text = msg_data.get("text")
 
             if recipient_id and text:
-                await manager.send_personal_message(
-                    chat_id=chat_id,
-                    text=text,
-                    recipient_id=recipient_id,
-                    sender_id=user_id,
-                    db=db
-                )
+                async with AsyncSessionLocal() as db:
+                    await manager.send_personal_message(
+                        chat_id=chat_id,
+                        text=text,
+                        recipient_id=recipient_id,
+                        sender_id=user_id,
+                        db=db
+                    )
 
 
     except WebSocketDisconnect:
