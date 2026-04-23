@@ -1,6 +1,7 @@
-from messenger.backend.models import Message
+from messenger.backend.models import Message, Chat
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, update
+from datetime import datetime, timezone
 
 from messenger.backend.core.crypto import encrypt_message, decrypt_message
 
@@ -15,6 +16,11 @@ class MessageCRUD:
             encrypted_data = encrypted_text
         )
         db.add(message)
+        await db.execute(
+            update(Chat)
+            .where(Chat.id == chat_id)
+            .values(updated_at=datetime.now(timezone.utc))
+        )
         await db.commit()
         await db.refresh(message)
         return message
