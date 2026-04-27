@@ -6,6 +6,8 @@ const WS_BASE = import.meta.env.VITE_WS_BASE_URL;
 export const useChatSocket = (token) => {
     const [messages, setMessages] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [lastReceivedMessage, setLastReceivedMessage] = useState(null);
     const socketRef = useRef(null);
 
     useEffect(() => {
@@ -14,6 +16,7 @@ export const useChatSocket = (token) => {
         try {
             const decoded = jwtDecode(token);
             const userId = decoded.sub || decoded.user_id; 
+            setCurrentUser(userId);
             const wsUrl = `${WS_BASE}/chat/${userId}`;
 
             const ws = new WebSocket(wsUrl)
@@ -30,6 +33,7 @@ export const useChatSocket = (token) => {
                     type: data.sender_id === userId ? "outgoing" : "incoming",
                     id: Date.now()
                 }]);
+                setLastReceivedMessage(data);
                 console.log("Message received:", data);
             };
             ws.onclose = () => setIsConnected(false);
@@ -50,8 +54,14 @@ export const useChatSocket = (token) => {
                 timestamp: new Date().toISOString()
             }
             socketRef.current.send(JSON.stringify(payload))
+
+            setLastReceivedMessage({
+                chat_id: activeChatId,
+                text: text,
+                sender_id: currentUser
+            });
         }
     }, [])
 
-    return { messages, setMessages, sendMessage, isConnected };
+    return { messages, setMessages, sendMessage, isConnected, lastReceivedMessage };
 };

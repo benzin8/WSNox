@@ -43,6 +43,10 @@ services:
     depends_on:
       - db
       - redis
+    volumes:
+      - ./src/messenger/backend:/app/src/messenger/backend
+      - ./alembic:/alembic
+      - ./alembic.ini:/alembic.ini
 
 volumes:
   db_data:
