@@ -2,7 +2,7 @@ import React from 'react';
 import { User } from 'lucide-react';
 
 export const ChatList = ({ chats, activeChatId, onSelectChat }) => {
-  // Sort chats by the most recent activity: last_message_time or updated_at
+  // Сортируем чаты по последнему сообщению или времени обновления
   const sortedChats = [...chats].sort((a, b) => {
     const timeA = new Date(a.last_message_time || a.updated_at || 0).getTime();
     const timeB = new Date(b.last_message_time || b.updated_at || 0).getTime();
@@ -24,8 +24,8 @@ export const ChatList = ({ chats, activeChatId, onSelectChat }) => {
     <div className="flex-grow overflow-y-auto p-2 space-y-1 scrollbar-hide">
       {sortedChats.map((chat) => {
         const isSelected = activeChatId === chat.id;
-        const displayName = chat.recipient?.username || chat.name || "Chat";
-        const lastMsg = chat.last_message || "No messages yet";
+        const displayName = chat.recipient?.username || chat.name || "Чат";
+        const lastMsg = chat.last_message || "Нет сообщений";
         const time = chat.last_message_time || chat.updated_at;
         const formattedTime = time 
           ? new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
