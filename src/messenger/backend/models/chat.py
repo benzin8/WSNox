@@ -15,6 +15,10 @@ class Chat(Base):
     chat_type: Mapped[str] = mapped_column(String(20), default="private")
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    )
 
     members:Mapped[list["ChatMember"]] = relationship(back_populates="chat", cascade="all, delete-orphan")
     messages:Mapped[list["Message"]] = relationship(back_populates="chat", cascade="all, delete-orphan")
