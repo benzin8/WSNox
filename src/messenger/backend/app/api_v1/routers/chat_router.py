@@ -49,6 +49,17 @@ async def get_user_data_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_
 async def get_my_data(db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     return UserResponse.model_validate(current_user)
 
+@chat_router.get("/", response_model=list[ChatResponse])
+async def get_chats(db:AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)): 
+    result = await ChatCRUD.get_chats(db, current_user.id)
+    chats = []
+    for chat, other_user in result:
+        chat_resp = ChatResponse.model_validate(chat)
+        chat_resp.recipient = UserResponse.model_validate(other_user)
+        chat_resp.recipient_id = other_user.id
+        chats.append(chat_resp)
+    return chats
+
 @chat_router.get("/{chat_id}/messages", response_model=list[MessageResponse])
 async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     messages = await MessageCRUD.get_messages(db, chat_id)

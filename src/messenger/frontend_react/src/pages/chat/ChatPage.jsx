@@ -6,17 +6,18 @@ import { useChatAction } from '../../hooks/useChatAction';
 import { useChatSocket } from '../../hooks/useChatSocket';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
+import { ChatList } from '../../components/chat/ChatList';
 
 function ChatPage() {
   const token = localStorage.getItem('access_token');
-  console.log(token);
 
+  const [chats, setChats] = useState([]);
   const [inputText, setInputText] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState(null);
   const [chatName, setChatName] = useState('');
 
-  const { messages, setMessages, sendMessage, isConnected } = useChatSocket(token);
+  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage } = useChatSocket(token);
   const { searchChats,
           searchResult,
           isSearching,
@@ -26,7 +27,8 @@ function ChatPage() {
           setActiveChat,
           getUserDataByChatId,
           getMyData,
-          getMessagesByChatId
+          getMessagesByChatId,
+          getAllChats
   } = useChatAction();
   const navigate = useNavigate();
   const socketRef = useRef(null);
@@ -35,17 +37,43 @@ function ChatPage() {
 
   // Auto-scroll
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages]);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchInitialData = async () => {
       const user = await getMyData();
       setCurrentUser(user);
+      
+      const allChats = await getAllChats();
+      setChats(allChats);
     };
 
-    fetchUser();
+    fetchInitialData();
   }, []);
+
+  // Обновление списка чатов при получении нового сообщения
+  useEffect(() => {
+    if (lastReceivedMessage) {
+      setChats(prevChats => {
+        const existingChatIndex = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
+        
+        if (existingChatIndex !== -1) {
+          const updatedChat = {
+            ...prevChats[existingChatIndex],
+            last_message: lastReceivedMessage.text,
+            last_message_time: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          const otherChats = prevChats.filter(c => c.id !== lastReceivedMessage.chat_id);
+          return [updatedChat, ...otherChats];
+        } else {
+          getAllChats().then(updatedChats => setChats(updatedChats));
+          return prevChats;
+        }
+      });
+    }
+  }, [lastReceivedMessage]);
 
   useEffect(() => {
     if (activeChat?.id && currentUser?.id) {
@@ -81,12 +109,21 @@ function ChatPage() {
     navigate('/auth/send-code');
   };
 
-  const handleSelectChat = async (userID) => {
-    const chat = await getOrCreateChats(userID)
-    if (chat) {
-      setSearchQuery(null);
-      const userData = await getUserDataByChatId(chat.id)
-      setChatName(userData.username);
+  // Выбор чата
+  const handleSelectChat = async (selectedChat) => {
+    if (selectedChat.recipient) {
+      setActiveChat(selectedChat);
+      setChatName(selectedChat.recipient.username);
+    } else if (selectedChat.id) {
+      const chat = await getOrCreateChats(selectedChat.id);
+      if (chat) {
+        setActiveChat(chat);
+        setSearchQuery('');
+        const userData = await getUserDataByChatId(chat.id);
+        setChatName(userData.username);
+        const allChats = await getAllChats();
+        setChats(allChats);
+      }
     }
   }
 
@@ -118,41 +155,37 @@ function ChatPage() {
           </div>
         </div>
 
-        <div className="flex-grow overflow-y-auto p-2 space-y-1 scrollbar-hide">
-          {searchQuery?.length > 0 && searchResult?.length > 0 ? (
-            searchResult.map((chat) => (
-              <div key={chat.id} onClick={() => handleSelectChat(chat.id)}
-                className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
-                <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
-                  <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
-                </div>
-                <div className="flex-grow">
-                  <div className="flex justify-between items-baseline">
-                    <h4 className="font-semibold text-zinc-100">{chat.username}</h4>
+        <div className="flex-grow overflow-y-auto">
+          {searchQuery?.length > 0 ? (
+            <div className="p-2 space-y-1">
+              {searchResult?.length > 0 ? (
+                searchResult.map((user) => (
+                  <div key={user.id} onClick={() => handleSelectChat(user)}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
+                    <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
+                      <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
+                    </div>
+                    <div className="flex-grow">
+                      <div className="flex justify-between items-baseline">
+                        <h4 className="font-semibold text-zinc-100">{user.username}</h4>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <>
-            {searchQuery?.length >= 1 && searchResult?.length === 0 && !isSearching && (
-              <div className="p-1 text-center text-zinc-500 text-sm">
-                Чат или пользователь "{searchQuery}" не найден
-              </div>
-            )}
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-800/40 border border-zinc-700/50 cursor-pointer hover:bg-zinc-800 transition-all">
-              <div className="w-12 h-12 rounded-full bg-zinc-700 flex items-center justify-center">
-                <User size={24} className="text-zinc-400" />
-              </div>
-              <div className="flex-grow">
-              <div className="flex justify-between items-baseline">
-                  <h4 className="font-semibold">Бот помошник</h4> {/* TODO: add name */}
-                  <span className="text-[10px] text-zinc-500 uppercase">Online</span> {/* TODO: add online status */}
-              </div>
-              <p className="text-xs text-zinc-400 truncate">Чем я могу вам помочь сегодня?</p> {/* TODO: add last message */}
-              </div>
+                ))
+              ) : (
+                !isSearching && (
+                  <div className="p-4 text-center text-zinc-500 text-sm">
+                    Пользователь "{searchQuery}" не найден
+                  </div>
+                )
+              )}
             </div>
-          </>
+          ) : (
+            <ChatList 
+              chats={chats} 
+              activeChatId={activeChat?.id} 
+              onSelectChat={handleSelectChat} 
+            />
           )}
         </div>
       </div>

@@ -11,7 +11,9 @@ class ChatResponse(BaseModel):
     chat_type: str
     last_message: Optional[str] = None
     last_message_time: Optional[datetime] = None
-    recipient_id: int | None = None
+    updated_at: datetime | None = None
+    recipient_id: Optional[int] = None
+    recipient: Optional[UserResponse] = None
     
     class Config:
         from_attributes = True
