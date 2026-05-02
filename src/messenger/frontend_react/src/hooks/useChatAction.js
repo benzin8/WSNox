@@ -89,11 +89,26 @@ export const useChatAction = () => {
         }
     }
 
+    const getAllChats = async () => {
+        try {
+            setError(null);
+            const res = await axios.get(
+                `${API_BASE}/chats/`,
+                getAuthConfig()
+            )
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to get chats");
+            return [];
+        }
+    }
+
     return {searchChats,
             getUserDataByChatId,
             getOrCreateChats,
             getMyData,
             getMessagesByChatId,
+            getAllChats,
             setActiveChat,
             activeChat,
             searchResult,
