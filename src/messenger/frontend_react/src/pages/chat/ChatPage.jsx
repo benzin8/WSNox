@@ -4,9 +4,12 @@ import { jwtDecode } from 'jwt-decode';
 import { Send, LogOut, User, MessageSquare, Phone, MoreVertical, Search } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
 import { useChatSocket } from '../../hooks/useChatSocket';
+import { useProfile } from '../../hooks/useProfile';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
+import { ProfileModal } from '../../components/profile/ProfileModal';
+import { EditProfileModal } from '../../components/profile/EditProfileModal';
 
 function ChatPage() {
   const token = localStorage.getItem('access_token');
@@ -16,6 +19,10 @@ function ChatPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState(null);
   const [chatName, setChatName] = useState('');
+
+  // Profile modal state: { profile, isOwnProfile } or null when closed
+  const [profileModal, setProfileModal] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage } = useChatSocket(token);
   const { searchChats,
@@ -30,6 +37,7 @@ function ChatPage() {
           getMessagesByChatId,
           getAllChats
   } = useChatAction();
+  const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
   const navigate = useNavigate();
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -44,7 +52,7 @@ function ChatPage() {
     const fetchInitialData = async () => {
       const user = await getMyData();
       setCurrentUser(user);
-      
+
       const allChats = await getAllChats();
       setChats(allChats);
     };
@@ -57,7 +65,7 @@ function ChatPage() {
     if (lastReceivedMessage) {
       setChats(prevChats => {
         const existingChatIndex = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
-        
+
         if (existingChatIndex !== -1) {
           const updatedChat = {
             ...prevChats[existingChatIndex],
@@ -102,7 +110,7 @@ function ChatPage() {
             id: Date.now()
         }]);
   }
-  
+
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -127,14 +135,37 @@ function ChatPage() {
     }
   }
 
+  // Open own profile modal
+  const handleOpenOwnProfile = async () => {
+    const p = await fetchMyProfile();
+    if (p) setProfileModal({ profile: p, isOwnProfile: true });
+  };
+
+  // Open another user's profile modal by their user ID
+  const handleOpenUserProfile = async (userId) => {
+    const p = await fetchUserProfile(userId);
+    if (p) setProfileModal({ profile: p, isOwnProfile: false });
+  };
+
+  // Save changes from EditProfileModal and refresh the modal profile state
+  const handleSaveProfile = async (data) => {
+    const updated = await updateMyProfile(data);
+    if (updated) setProfileModal({ profile: updated, isOwnProfile: true });
+  };
+
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
       {/* Sidebar */}
       <div className="w-80 border-r border-zinc-800 flex flex-col bg-zinc-900/50 backdrop-blur-xl">
         <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold">
-              {currentUser?.username?.toUpperCase()}
+            {/* Clicking the avatar opens own profile */}
+            <div
+              onClick={handleOpenOwnProfile}
+              className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold cursor-pointer hover:bg-lime-300 transition-colors"
+              title="Мой профиль"
+            >
+              {currentUser?.username?.slice(0, 1)?.toUpperCase()}
             </div>
             <span className="font-bold text-lg tracking-tight">Чаты</span>
           </div>
@@ -146,9 +177,9 @@ function ChatPage() {
         <div className="p-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-            <input 
+            <input
               onChange={(e) => {searchChats(e.target.value); setSearchQuery(e.target.value)}}
-              type="text" 
+              type="text"
               placeholder="Search chats..."
               className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-lime-400/50 transition-all"
             />
@@ -181,10 +212,10 @@ function ChatPage() {
               )}
             </div>
           ) : (
-            <ChatList 
-              chats={chats} 
-              activeChatId={activeChat?.id} 
-              onSelectChat={handleSelectChat} 
+            <ChatList
+              chats={chats}
+              activeChatId={activeChat?.id}
+              onSelectChat={handleSelectChat}
             />
           )}
         </div>
@@ -197,8 +228,28 @@ function ChatPage() {
        messagesEndRef={messagesEndRef}
        inputText={inputText}
        setInputText={setInputText}
-       chatName={chatName} 
+       chatName={chatName}
+       onOpenProfile={() => activeChat?.recipient_id && handleOpenUserProfile(activeChat.recipient_id)}
        />
+
+      {/* Profile view modal */}
+      {profileModal && (
+        <ProfileModal
+          profile={profileModal.profile}
+          isOwnProfile={profileModal.isOwnProfile}
+          onClose={() => setProfileModal(null)}
+          onEdit={() => setShowEditModal(true)}
+        />
+      )}
+
+      {/* Edit profile modal — shown on top of ProfileModal */}
+      {showEditModal && profileModal && (
+        <EditProfileModal
+          profile={profileModal.profile}
+          onClose={() => setShowEditModal(false)}
+          onSave={handleSaveProfile}
+        />
+      )}
     </div>
   );
 }
