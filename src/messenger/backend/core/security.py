@@ -1,11 +1,6 @@
 import bcrypt
-import hashlib
-import bcrypt
-from pydantic.networks import import_email_validator
 from datetime import datetime, timedelta, timezone
 from jose import jwt
-from passlib.context import CryptContext
-
 
 from messenger.backend.core.config import settings
 
@@ -14,16 +9,13 @@ SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
 
 
-def hash_password(password:str) -> str:
-   pass_hash = hashlib.sha256(password.encode()).digest()
-   salt = bcrypt.gensalt()
-   hashed = bcrypt.hashpw(pass_hash, salt)
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
-   return hashed.decode('utf-8')
-
-def verify_password(password:str, hashed_password:str) -> bool:
-    pass_hash = hashlib.sha256(password.encode()).digest()
-    return bcrypt.checkpw(pass_hash, hashed_password.encode('utf-8'))
+def verify_password(password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 def create_token(data: dict, expires_delta: timedelta, is_refresh: bool = False):
     to_encode = data.copy()
