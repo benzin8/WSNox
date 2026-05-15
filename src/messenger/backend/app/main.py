@@ -6,6 +6,7 @@ from messenger import PROJECT_ROOT
 from .api_v1.routers import frontend_router
 from .api_v1.routers.auth_router import auth_router
 from .api_v1.routers.chat_router import chat_router
+from .api_v1.routers.profile_router import profile_router
 from .ws.router import ws_router
 from messenger.backend.core.redis import init_redis, close_redis
 
@@ -59,4 +60,5 @@ app.mount("/assets",
 app.include_router(ws_router)
 app.include_router(auth_router)
 app.include_router(chat_router)
+app.include_router(profile_router)
 app.include_router(frontend_router)
