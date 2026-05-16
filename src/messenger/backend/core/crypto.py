@@ -1,8 +1,10 @@
-import os
 import base64
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
+import os
+
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
 from messenger.backend.core.config import settings
 
 KEY = settings.secret_key.encode().ljust(32)[:32]

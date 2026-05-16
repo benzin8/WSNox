@@ -1,15 +1,15 @@
-from fastapi import WebSocket, APIRouter, Depends
-from fastapi.websockets import WebSocketDisconnect
-from typing import Dict
-import json
 import asyncio
+import json
+from typing import Dict
 
+from fastapi import APIRouter, WebSocket
+from fastapi.websockets import WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from messenger.backend.db.session import get_db_session, AsyncSessionLocal
-from messenger.backend.core.redis import get_redis
-from messenger.backend.core.crypto import encrypt_message, decrypt_message
 from messenger.backend.app.crud.message import MessageCRUD
+from messenger.backend.core.crypto import decrypt_message
+from messenger.backend.core.redis import get_redis
+from messenger.backend.db.session import AsyncSessionLocal
 
 REDIS_CHAT_CHANNEL = "chat_messages"
 
