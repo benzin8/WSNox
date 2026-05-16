@@ -1,16 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from messenger.backend.core.redis import get_redis
-from messenger.backend.db.session import get_db_session
-
-from messenger.backend.app.api_v1.schemas.user import UserCreate, UserLogin, UserResponse, AuthResponse
-from messenger.backend.app.api_v1.schemas.user import PhoneVerify, PhoneNumberRequest
-
-from messenger.backend.services.verification import send_verification_code, verify_code
+from messenger.backend.app.api_v1.schemas.user import (
+    AuthResponse,
+    PhoneNumberRequest,
+    PhoneVerify,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+)
 from messenger.backend.app.crud.user import UserCRUD
-from messenger.backend.core.security import verify_password, create_pair_jwt_tokens
+from messenger.backend.core.redis import get_redis
+from messenger.backend.core.security import create_pair_jwt_tokens, verify_password
+from messenger.backend.db.session import get_db_session
+from messenger.backend.services.verification import send_verification_code, verify_code
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 

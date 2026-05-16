@@ -1,16 +1,14 @@
 services:
   db:
     image: mysql:8.0
-    env_file: .env
     container_name: messenger_db
     restart: always
+    env_file: .env
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASS}
-    ports:
-      - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
 
@@ -18,21 +16,19 @@ services:
     image: redis:7-alpine
     container_name: messenger_redis
     restart: always
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
 
   backend:
-    build: .
+    image: ghcr.io/benzin8/wsnox:latest
     container_name: messenger_backend
     restart: always
     env_file: .env
     ports:
       - "8000:8000"
     environment:
-      - DEBUG=true
       - DOCKER_MODE=true
+      - DEBUG=false
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_HOST=db
@@ -44,10 +40,6 @@ services:
     depends_on:
       - db
       - redis
-    volumes:
-      - ./src/messenger/backend:/app/src/messenger/backend
-      - ./alembic:/alembic
-      - ./alembic.ini:/alembic.ini
 
 volumes:
   db_data:

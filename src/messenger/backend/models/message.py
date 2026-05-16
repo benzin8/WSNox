@@ -1,13 +1,14 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
+
+from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from messenger.backend.db import Base
 
-from sqlalchemy import Text, String, ForeignKey
-from sqlalchemy.orm import relationship, Mapped, mapped_column
-
 if TYPE_CHECKING:
-    from .user import User
     from .chat import Chat
+    from .user import User
 
 class Message(Base):
     __tablename__ = "message"

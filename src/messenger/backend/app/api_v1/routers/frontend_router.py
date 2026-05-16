@@ -1,8 +1,8 @@
+
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
+
 from messenger import FRONTEND_PUBLIC_DIR
-import os
 
 frontend_router = APIRouter()
 

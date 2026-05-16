@@ -1,7 +1,9 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from typing import Optional, List
 from datetime import datetime
-    
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
 class ProfileBase(BaseModel):
     display_name: Optional[str] = Field(None, max_length=32)
     bio: Optional[str] = Field(None, max_length=256)
@@ -60,3 +62,15 @@ class UserRead(UserBase):
 
 class UserUpdate(UserBase):
     pass
+
+class UserProfileResponse(BaseModel):
+    """Combined response for user + profile data returned by profile endpoints."""
+    user_id: int
+    username: str
+    name: str
+    display_name: Optional[str] = None
+    bio: Optional[str] = None
+    status: str = "Offline"
+    profile_photos: List[str] = []
+
+    model_config = ConfigDict(from_attributes=True)

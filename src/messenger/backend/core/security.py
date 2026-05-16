@@ -1,9 +1,9 @@
-import bcrypt
 from datetime import datetime, timedelta, timezone
+
+import bcrypt
 from jose import jwt
 
 from messenger.backend.core.config import settings
-
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
