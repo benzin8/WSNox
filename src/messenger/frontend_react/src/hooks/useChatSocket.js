@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 
-const WS_BASE = import.meta.env.VITE_WS_BASE_URL;
+const WS_BASE = import.meta.env.VITE_WS_BASE_URL ||
+    `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
 
 export const useChatSocket = (token) => {
     const [messages, setMessages] = useState([]);
