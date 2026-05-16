@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     db_user: str
     db_pass: str
     db_host: str = "127.0.0.1"
-    db_port: int = 3306
+    db_port: int = 5432
     db_name: str
     
     secret_key: str
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def database_url(self) -> str:
-        return f"mysql+aiomysql://{self.db_user}:{self.db_pass}@{self.db_host}:{self.db_port}/{self.db_name}"
+        return f"postgresql+psycopg://{self.db_user}:{self.db_pass}@{self.db_host}:{self.db_port}/{self.db_name}"
 
     @computed_field
     @property
