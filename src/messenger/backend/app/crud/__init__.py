@@ -1,1 +1,3 @@
-from .profile import ProfileCRUD as ProfileCRUD
+from .profile import ProfileCRUD
+
+__all__ = ["ProfileCRUD"]
