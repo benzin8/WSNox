@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from messenger.backend.db.session import get_db_session
 from messenger.backend.app.api_v1.auth.dependencies import get_current_user
 from messenger.backend.app.api_v1.schemas.user import ProfileUpdate, UserProfileResponse
 from messenger.backend.app.crud.profile import ProfileCRUD
+from messenger.backend.db.session import get_db_session
 
 profile_router = APIRouter(prefix="/profiles", tags=["profiles"])
 

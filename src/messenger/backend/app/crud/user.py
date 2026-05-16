@@ -1,12 +1,12 @@
-from messenger.backend.models import User
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from messenger.backend.app.api_v1.schemas.user import UserCreate
 from messenger.backend.app.crud.profile import ProfileCRUD
-
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
-
 from messenger.backend.core.security import hash_password
+from messenger.backend.models import User
+
 
 class UserCRUD:
     @staticmethod

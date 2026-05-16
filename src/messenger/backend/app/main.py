@@ -1,14 +1,18 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 from messenger import PROJECT_ROOT
+from messenger.backend.core.redis import close_redis, init_redis
+
 from .api_v1.routers import frontend_router
 from .api_v1.routers.auth_router import auth_router
 from .api_v1.routers.chat_router import chat_router
 from .api_v1.routers.profile_router import profile_router
 from .ws.router import ws_router
-from messenger.backend.core.redis import init_redis, close_redis
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,8 +20,9 @@ async def lifespan(app: FastAPI):
     await init_redis()
     
     # Старт Pub/Sub слушателя для WebSockets
-    from .ws.router import manager
     import asyncio
+
+    from .ws.router import manager
     listener_task = asyncio.create_task(manager.pubsub_listener())
     
     yield

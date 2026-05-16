@@ -1,7 +1,9 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from typing import Optional, List
 from datetime import datetime
-    
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
 class ProfileBase(BaseModel):
     display_name: Optional[str] = Field(None, max_length=32)
     bio: Optional[str] = Field(None, max_length=256)

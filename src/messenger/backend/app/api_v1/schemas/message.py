@@ -1,6 +1,7 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, List, Any
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
 
 class MessageBase(BaseModel):
     chat_id: int

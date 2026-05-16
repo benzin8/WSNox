@@ -1,18 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException
+import logging
+
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from messenger.backend.db.session import get_db_session
-from messenger.backend.app.api_v1.auth.dependencies import get_current_user, bearer_scheme
-
-from messenger.backend.app.api_v1.schemas.chat import UserSearchResponse, ChatCreateRequest, ChatResponse
-from messenger.backend.app.api_v1.schemas.user import UserResponse
-
+from messenger.backend.app.api_v1.auth.dependencies import get_current_user
+from messenger.backend.app.api_v1.schemas.chat import (
+    ChatCreateRequest,
+    ChatResponse,
+    UserSearchResponse,
+)
 from messenger.backend.app.api_v1.schemas.message import MessageResponse
-
+from messenger.backend.app.api_v1.schemas.user import UserResponse
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
+from messenger.backend.db.session import get_db_session
 
-import logging
 logging.basicConfig(level=logging.INFO)
 
 chat_router = APIRouter(prefix="/chats", tags=["chats"])

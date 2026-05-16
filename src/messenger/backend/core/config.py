@@ -1,8 +1,10 @@
 import os
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from pydantic import computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from messenger import PROJECT_ROOT
+
 
 class Settings(BaseSettings):
     db_user: str
