@@ -83,6 +83,15 @@ class ChatCRUD:
         return result.scalars().first()
     
     @staticmethod
+    async def is_chat_member(session: AsyncSession, chat_id: int, user_id: int) -> bool:
+        query = select(ChatMember).where(
+            ChatMember.chat_id == chat_id,
+            ChatMember.user_id == user_id,
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none() is not None
+
+    @staticmethod
     async def get_chats(session: AsyncSession, current_user_id: int) -> list[(Chat, User)]:
         OtherUser = aliased(User)
         OtherMember = aliased(ChatMember)
