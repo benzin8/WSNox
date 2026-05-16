@@ -1,1 +1,1 @@
-from .profile import ProfileCRUD
+from .profile import ProfileCRUD as ProfileCRUD
