@@ -1,5 +1,7 @@
 import random
+
 from messenger.backend.core.redis import get_redis
+
 
 async def send_verification_code(phone_number: str) -> str:
     """

@@ -3,7 +3,11 @@ import { User, Phone, MoreVertical } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 
-export const ChatWindow = ({messages, setMessages, activeChat, sendMessage, isConnected, messagesEndRef, inputText, setInputText, chatName}) => {
+export const ChatWindow = ({
+    messages, setMessages, activeChat, sendMessage,
+    isConnected, messagesEndRef, inputText, setInputText,
+    chatName, onOpenProfile
+}) => {
     if (!activeChat) {
         return (
             <div className="flex-grow flex items-center justify-center bg-zinc-900 text-zinc-500">
@@ -20,7 +24,14 @@ export const ChatWindow = ({messages, setMessages, activeChat, sendMessage, isCo
               <User size={20} className="text-lime-400" />
             </div>
             <div>
-              <h3 className="font-bold leading-tight">{chatName}</h3>
+              {/* Clicking the name opens the other user's profile */}
+              <h3
+                onClick={onOpenProfile}
+                className="font-bold leading-tight cursor-pointer hover:text-lime-400 transition-colors"
+                title="Открыть профиль"
+              >
+                {chatName}
+              </h3>
               <p className="text-xs text-lime-400 font-medium">{isConnected ? "В сети" : "Офлайн"}</p>
             </div>
           </div>
@@ -30,10 +41,7 @@ export const ChatWindow = ({messages, setMessages, activeChat, sendMessage, isCo
           </div>
         </header>
 
-        {/* Message List */}
         <MessageList messages={messages} setMessages={setMessages} messagesEndRef={messagesEndRef} />
-
-        {/* Input Area */}
         <InputArea inputText={inputText} setInputText={setInputText} sendMessage={sendMessage} isConnected={isConnected} />
       </div>
     );
