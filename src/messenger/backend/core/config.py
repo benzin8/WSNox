@@ -27,9 +27,7 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def redis_host(self) -> str:
-        if self.DOCKER_MODE:
-            return "redis://redis:6379/0"
-        return "redis://localhost:6379/0"
+        return self.redis_url
     
     model_config = SettingsConfigDict(
         env_file=os.path.join(PROJECT_ROOT, ".env"),
