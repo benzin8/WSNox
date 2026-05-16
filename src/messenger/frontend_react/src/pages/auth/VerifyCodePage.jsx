@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function VerifyCodePage() {
     const location = useLocation();

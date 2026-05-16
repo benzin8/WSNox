@@ -22,9 +22,10 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(access_token, settings.secret_key, algorithms=[settings.algorithm])
-        user_id: str = payload.get("sub")
+        user_id = payload.get("sub")
         if user_id is None:
             raise credentials_exception
+        user_id = int(user_id)
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

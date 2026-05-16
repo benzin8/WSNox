@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PatternFormat } from 'react-number-format';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function SendCodePage() {
     const [phoneNumber, setPhoneNumber] = useState('');
