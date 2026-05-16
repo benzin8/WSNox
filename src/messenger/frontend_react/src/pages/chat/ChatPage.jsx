@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import { Send, LogOut, User, MessageSquare, Phone, MoreVertical, Search } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
 import { useChatSocket } from '../../hooks/useChatSocket';
@@ -28,7 +27,6 @@ function ChatPage() {
   const { searchChats,
           searchResult,
           isSearching,
-          error,
           getOrCreateChats,
           activeChat,
           setActiveChat,
@@ -39,7 +37,6 @@ function ChatPage() {
   } = useChatAction();
   const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
   const navigate = useNavigate();
-  const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
 
@@ -63,6 +60,7 @@ function ChatPage() {
   // Обновление списка чатов при получении нового сообщения
   useEffect(() => {
     if (lastReceivedMessage) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChats(prevChats => {
         const existingChatIndex = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
 
