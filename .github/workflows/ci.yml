@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  lint-python:
+    name: Lint Python (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check src/
+
+  lint-js:
+    name: Lint JS (eslint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: src/messenger/frontend_react/package-lock.json
+      - run: npm ci
+        working-directory: src/messenger/frontend_react
+      - run: npm run lint
+        working-directory: src/messenger/frontend_react
+
+  test:
+    name: Test (pytest)
+    runs-on: ubuntu-latest
+    env:
+      DB_USER: testuser
+      DB_PASS: testpass
+      DB_HOST: "127.0.0.1"
+      DB_PORT: "3306"
+      DB_NAME: testdb
+      SECRET_KEY: test-secret-key-for-ci-only
+      ALGORITHM: HS256
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install poetry
+      - run: poetry install --no-interaction
+      - run: poetry run pytest tests/ -v
