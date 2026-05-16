@@ -1,19 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.db.session import get_db_session
-from messenger.backend.app.api_v1.auth.dependencies import get_current_user, bearer_scheme
+from messenger.backend.app.api_v1.auth.dependencies import get_current_user
 
 from messenger.backend.app.api_v1.schemas.chat import UserSearchResponse, ChatCreateRequest, ChatResponse
 from messenger.backend.app.api_v1.schemas.user import UserResponse
-
 from messenger.backend.app.api_v1.schemas.message import MessageResponse
 
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
-
-import logging
-logging.basicConfig(level=logging.INFO)
 
 chat_router = APIRouter(prefix="/chats", tags=["chats"])
 
@@ -42,7 +38,11 @@ async def get_or_create_chat(request: ChatCreateRequest, db: AsyncSession = Depe
 
 @chat_router.get("/{chat_id}/user", response_model=UserResponse)
 async def get_user_data_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
+    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     user = await ChatCRUD.get_user_data_by_chat_id(db, chat_id, current_user.id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
     return UserResponse.model_validate(user)
 
 @chat_router.get("/me", response_model=UserResponse)
@@ -62,5 +62,7 @@ async def get_chats(db:AsyncSession = Depends(get_db_session), current_user=Depe
 
 @chat_router.get("/{chat_id}/messages", response_model=list[MessageResponse])
 async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
+    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     messages = await MessageCRUD.get_messages(db, chat_id)
     return [MessageResponse.model_validate(message) for message in messages]
