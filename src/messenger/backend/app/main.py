@@ -57,10 +57,6 @@ ASSETS_DIR = FRONTEND_PUBLIC_DIR / "assets"
 if ASSETS_DIR.exists():
     app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
 
-app.mount("/assets",
-        StaticFiles(directory=FRONTEND_PUBLIC_DIR / "assets"),
-        name="assets")
-
 
 app.include_router(ws_router)
 app.include_router(auth_router)
