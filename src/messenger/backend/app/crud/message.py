@@ -1,9 +1,11 @@
-from messenger.backend.models import Message, Chat
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
 from datetime import datetime, timezone
 
-from messenger.backend.core.crypto import encrypt_message, decrypt_message
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from messenger.backend.core.crypto import decrypt_message, encrypt_message
+from messenger.backend.models import Chat, Message
+
 
 class MessageCRUD:
     @staticmethod

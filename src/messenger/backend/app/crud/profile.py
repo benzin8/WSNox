@@ -1,10 +1,10 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
-from sqlalchemy import select
 
+from messenger.backend.app.api_v1.schemas.user import ProfileUpdate
 from messenger.backend.models.profile import Profile
 from messenger.backend.models.user import User
-from messenger.backend.app.api_v1.schemas.user import ProfileUpdate
 
 
 class ProfileCRUD:

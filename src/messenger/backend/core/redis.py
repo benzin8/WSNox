@@ -1,4 +1,5 @@
 import redis.asyncio as redis
+
 from messenger.backend.core.config import settings
 
 # Global Redis client instance

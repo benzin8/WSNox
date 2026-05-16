@@ -1,9 +1,10 @@
-from redis import UsernamePasswordCredentialProvider
-from pydantic import BaseModel
-from typing import Optional, List, Any
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel
 
 from messenger.backend.app.api_v1.schemas.user import UserResponse
+
 
 class ChatResponse(BaseModel):
     id: int

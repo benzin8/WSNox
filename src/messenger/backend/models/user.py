@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
-from typing import Optional, TYPE_CHECKING
-from messenger.backend.db import Base
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import  String, DateTime
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+from sqlalchemy import DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from messenger.backend.db import Base
 
 if TYPE_CHECKING:
     from .message import Message

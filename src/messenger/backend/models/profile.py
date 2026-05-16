@@ -1,7 +1,9 @@
+from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from messenger.backend.db import Base
 from messenger.backend.models.user import User
-from sqlalchemy import Text, String, JSON, ForeignKey
-from sqlalchemy.orm import relationship, Mapped, mapped_column
+
 
 class Profile(Base):
     __tablename__ = "profiles"
