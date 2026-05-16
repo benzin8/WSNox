@@ -1,12 +1,11 @@
-from messenger.backend.models.chat import Chat, ChatMember
-from messenger.backend.models.user import User
-from messenger.backend.app.api_v1.schemas.chat import ChatCreateRequest
-
-from messenger.backend.db.session import get_db_session
-
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
-from sqlalchemy import select, func
+
+from messenger.backend.app.api_v1.schemas.chat import ChatCreateRequest
+from messenger.backend.models.chat import Chat, ChatMember
+from messenger.backend.models.user import User
+
 
 class ChatCRUD:
     @staticmethod
