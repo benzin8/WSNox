@@ -47,6 +47,7 @@ services:
       - ./alembic:/alembic
       - ./alembic.ini:/alembic.ini
 
+
 volumes:
   db_data:
   redis_data:
