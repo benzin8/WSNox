@@ -6,11 +6,10 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
+      '/auth': { target: 'http://localhost:8000', changeOrigin: true },
+      '/chats': { target: 'http://localhost:8000', changeOrigin: true },
+      '/profiles': { target: 'http://localhost:8000', changeOrigin: true },
+      '/chat': { target: 'ws://localhost:8000', ws: true },
     },
   },
   plugins: [

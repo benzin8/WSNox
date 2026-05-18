@@ -56,7 +56,8 @@ class ConnectionManager:
                     recipient_id = data.get("recipient_id")
                     encrypted_text = data.get("encrypted_text")
                     sender_id = data.get("sender_id")
-                    
+                    chat_id = data.get("chat_id")
+
                     if recipient_id in self.active_connections:
                         try:
                             decrypted_text = decrypt_message(encrypted_text)
@@ -64,6 +65,7 @@ class ConnectionManager:
                                 "text": decrypted_text,
                                 "sender_id": sender_id,
                                 "recipient_id": recipient_id,
+                                "chat_id": chat_id,
                             }
                             await self.active_connections[recipient_id].send_json(payload)
                         except Exception:
