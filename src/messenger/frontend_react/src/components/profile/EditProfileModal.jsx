@@ -115,24 +115,22 @@ export const EditProfileModal = ({ profile, onClose, onSave, onSendPhoneCode, on
                         <div className="text-sm text-lime-400 font-medium">Номер подтверждён!</div>
                     ) : (
                         <>
-                            <div className="flex gap-2">
-                                <input
-                                    value={phoneNumber}
-                                    onChange={(e) => setPhoneNumber(e.target.value)}
-                                    placeholder="+79001234567"
-                                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
-                                    disabled={phoneStep === "code_sent"}
-                                />
-                                {phoneStep === "idle" && (
-                                    <button
-                                        onClick={handleSendPhoneCode}
-                                        disabled={phoneSending || !phoneNumber}
-                                        className="text-xs font-semibold px-3 py-2 bg-zinc-700 text-zinc-200 rounded-xl hover:bg-zinc-600 disabled:opacity-50 transition-colors whitespace-nowrap"
-                                    >
-                                        {phoneSending ? "..." : "Получить код"}
-                                    </button>
-                                )}
-                            </div>
+                            <input
+                                value={phoneNumber}
+                                onChange={(e) => setPhoneNumber(e.target.value)}
+                                placeholder="+79001234567"
+                                className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                                disabled={phoneStep === "code_sent"}
+                            />
+                            {phoneStep === "idle" && (
+                                <button
+                                    onClick={handleSendPhoneCode}
+                                    disabled={phoneSending || !phoneNumber}
+                                    className="w-full text-xs font-semibold px-3 py-2 bg-zinc-700 text-zinc-200 rounded-xl hover:bg-zinc-600 disabled:opacity-50 transition-colors"
+                                >
+                                    {phoneSending ? "Отправка..." : "Получить код"}
+                                </button>
+                            )}
 
                             {phoneStep === "code_sent" && (
                                 <div className="flex gap-2">
