@@ -98,13 +98,24 @@ GitHub Actions (`.github/workflows/ci.yml`):
 
 Запускается на все ветки/PR. Деплой — вручную через `docker compose` + туннель.
 
+## Реализованные фичи
+
+- Email-аутентификация + верификация кода (Yandex SMTP)
+- WebSocket чат (Redis pub/sub), сообщения шифруются в БД
+- Профили: display_name, bio, status; редактирование с вкладками
+- Поиск пользователей по username
+- Список чатов с последним сообщением и счётчиком непрочитанных
+- Мобильная адаптация: Telegram-style слайд между списком и чатом (`<768px`)
+- CI/CD: GitHub Actions → GHCR → SSH deploy
+
 ## Документация
 
 ```
 docs/
-  deployment/deploy.md          # runbook: логи, ручной деплой, откат
-  features/profiles.md          # API профилей пользователей
-  troubleshooting/cors.md       # CORS и относительные URL — частая проблема
+  deployment/deploy.md              # runbook: логи, ручной деплой, откат
+  features/profiles.md              # API профилей пользователей
+  troubleshooting/cors.md           # CORS и относительные URL — частая проблема
   troubleshooting/security-fixes.md
-  troubleshooting/fixes-round2.md
+  troubleshooting/fixes-round2.md   # static mount, --reload, IDOR, тесты
+  troubleshooting/fixes-round3.md   # auth race, vite proxy, mobile, last message
 ```
