@@ -31,7 +31,7 @@ export default function RegisterPage() {
             window.dispatchEvent(new Event('storage'));
             navigate('/chat');
         } catch (err) {
-            if (err.response?.data?.detail === 'Phone number not verified') {
+            if (err.response?.data?.detail === 'Email not verified') {
                 navigate('/auth/send-code', { state: { email } });
                 return;
             }
