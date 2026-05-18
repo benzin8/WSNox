@@ -13,6 +13,7 @@ from messenger.backend.app.api_v1.schemas.message import MessageResponse
 from messenger.backend.app.api_v1.schemas.user import UserResponse
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
+from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.db.session import get_db_session
 
 logging.basicConfig(level=logging.INFO)
@@ -56,13 +57,20 @@ async def get_my_data(db: AsyncSession = Depends(get_db_session), current_user=D
     return UserResponse.model_validate(current_user)
 
 @chat_router.get("/", response_model=list[ChatResponse])
-async def get_chats(db:AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)): 
+async def get_chats(db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     result = await ChatCRUD.get_chats(db, current_user.id)
     chats = []
-    for chat, other_user in result:
+    for chat, other_user, encrypted_data, last_msg_time, unread_cnt in result:
         chat_resp = ChatResponse.model_validate(chat)
         chat_resp.recipient = UserResponse.model_validate(other_user)
         chat_resp.recipient_id = other_user.id
+        if encrypted_data:
+            try:
+                chat_resp.last_message = decrypt_message(encrypted_data)
+            except Exception:
+                chat_resp.last_message = None
+        chat_resp.last_message_time = last_msg_time
+        chat_resp.unread_count = unread_cnt or 0
         chats.append(chat_resp)
     return chats
 
@@ -70,5 +78,6 @@ async def get_chats(db:AsyncSession = Depends(get_db_session), current_user=Depe
 async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
+    await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
     messages = await MessageCRUD.get_messages(db, chat_id)
     return [MessageResponse.model_validate(message) for message in messages]

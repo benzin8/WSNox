@@ -4,6 +4,7 @@ from sqlalchemy.orm import aliased
 
 from messenger.backend.app.api_v1.schemas.chat import ChatCreateRequest
 from messenger.backend.models.chat import Chat, ChatMember
+from messenger.backend.models.message import Message
 from messenger.backend.models.user import User
 
 
@@ -91,16 +92,49 @@ class ChatCRUD:
         return result.scalar_one_or_none() is not None
 
     @staticmethod
-    async def get_chats(session: AsyncSession, current_user_id: int) -> list[(Chat, User)]:
+    async def get_chats(session: AsyncSession, current_user_id: int):
         OtherUser = aliased(User)
         OtherMember = aliased(ChatMember)
+
+        msg_ranked = (
+            select(
+                Message.chat_id,
+                Message.encrypted_data,
+                Message.created_at,
+                func.row_number().over(
+                    partition_by=Message.chat_id,
+                    order_by=Message.created_at.desc(),
+                ).label("rn"),
+            )
+        ).subquery()
+
+        last_msg = select(msg_ranked).where(msg_ranked.c.rn == 1).subquery()
+
+        unread_sub = (
+            select(
+                Message.chat_id,
+                func.count(Message.id).label("cnt"),
+            )
+            .where(Message.recipient_id == current_user_id)
+            .where(Message.is_read == False)  # noqa: E712
+            .group_by(Message.chat_id)
+        ).subquery()
+
         query = (
-            select(Chat, OtherUser)
+            select(
+                Chat,
+                OtherUser,
+                last_msg.c.encrypted_data,
+                last_msg.c.created_at.label("last_msg_time"),
+                unread_sub.c.cnt,
+            )
             .join(ChatMember, ChatMember.chat_id == Chat.id)
             .join(OtherMember, (OtherMember.chat_id == Chat.id) & (OtherMember.user_id != current_user_id))
             .join(OtherUser, OtherUser.id == OtherMember.user_id)
+            .outerjoin(last_msg, last_msg.c.chat_id == Chat.id)
+            .outerjoin(unread_sub, unread_sub.c.chat_id == Chat.id)
             .where(ChatMember.user_id == current_user_id)
-            .order_by(Chat.updated_at.desc())
+            .order_by(func.coalesce(last_msg.c.created_at, Chat.updated_at).desc())
         )
         result = await session.execute(query)
         return result.all()

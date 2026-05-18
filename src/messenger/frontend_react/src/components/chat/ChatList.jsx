@@ -66,11 +66,18 @@ export const ChatList = ({ chats, activeChatId, onSelectChat }) => {
                   {formattedTime}
                 </span>
               </div>
-              <p className={`text-xs truncate leading-relaxed transition-colors duration-300 ${
-                isSelected ? 'text-zinc-300' : 'text-zinc-400 group-hover:text-zinc-300'
-              }`}>
-                {lastMsg}
-              </p>
+              <div className="flex items-center justify-between gap-1">
+                <p className={`text-xs truncate leading-relaxed transition-colors duration-300 ${
+                  isSelected ? 'text-zinc-300' : 'text-zinc-400 group-hover:text-zinc-300'
+                }`}>
+                  {lastMsg}
+                </p>
+                {chat.unread_count > 0 && (
+                  <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-lime-400 flex items-center justify-center text-[10px] font-bold text-zinc-900">
+                    {chat.unread_count > 99 ? '99+' : chat.unread_count}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         );
