@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -10,9 +10,12 @@ export default function SendCodePage() {
     const [email, setEmail] = useState(location.state?.email || '');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const isSubmitting = useRef(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting.current) return;
+        isSubmitting.current = true;
         setLoading(true);
         setError('');
 
@@ -23,6 +26,7 @@ export default function SendCodePage() {
             setError(err.response?.data?.detail || 'Failed to send code');
         } finally {
             setLoading(false);
+            isSubmitting.current = false;
         }
     };
 
