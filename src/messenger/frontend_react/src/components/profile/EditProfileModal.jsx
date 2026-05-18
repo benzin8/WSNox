@@ -3,24 +3,50 @@ import { X, Save } from "lucide-react";
 
 const STATUS_OPTIONS = ["Online", "Offline", "Не беспокоить", "Недоступен"];
 
-/**
- * EditProfileModal — form to update own profile.
- * Props:
- *   profile  — current UserProfileResponse (pre-fills the form)
- *   onClose  — called on cancel / overlay click
- *   onSave   — async (data) => updatedProfile; called with { display_name, bio, status }
- */
-export const EditProfileModal = ({ profile, onClose, onSave }) => {
+export const EditProfileModal = ({ profile, onClose, onSave, onSendPhoneCode, onVerifyPhoneCode }) => {
     const [displayName, setDisplayName] = useState(profile?.display_name || "");
     const [bio, setBio] = useState(profile?.bio || "");
     const [status, setStatus] = useState(profile?.status || "Online");
     const [isSaving, setIsSaving] = useState(false);
+
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [phoneCode, setPhoneCode] = useState("");
+    const [phoneStep, setPhoneStep] = useState("idle"); // idle | code_sent | verified
+    const [phoneError, setPhoneError] = useState("");
+    const [phoneSending, setPhoneSending] = useState(false);
+    const [phoneVerifying, setPhoneVerifying] = useState(false);
 
     const handleSave = async () => {
         setIsSaving(true);
         await onSave({ display_name: displayName, bio, status });
         setIsSaving(false);
         onClose();
+    };
+
+    const handleSendPhoneCode = async () => {
+        setPhoneError("");
+        setPhoneSending(true);
+        try {
+            await onSendPhoneCode(phoneNumber);
+            setPhoneStep("code_sent");
+        } catch (err) {
+            setPhoneError(err);
+        } finally {
+            setPhoneSending(false);
+        }
+    };
+
+    const handleVerifyPhoneCode = async () => {
+        setPhoneError("");
+        setPhoneVerifying(true);
+        try {
+            await onVerifyPhoneCode(phoneNumber, phoneCode);
+            setPhoneStep("verified");
+        } catch (err) {
+            setPhoneError(err);
+        } finally {
+            setPhoneVerifying(false);
+        }
     };
 
     return (
@@ -77,6 +103,61 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                             <option key={s} value={s}>{s}</option>
                         ))}
                     </select>
+                </div>
+
+                {/* Phone number section */}
+                <div className="flex flex-col gap-2 border-t border-zinc-700 pt-4">
+                    <label className="text-xs text-zinc-400 font-medium">
+                        Номер телефона {profile?.phone_number && <span className="text-lime-400">({profile.phone_number})</span>}
+                    </label>
+
+                    {phoneStep === "verified" ? (
+                        <div className="text-sm text-lime-400 font-medium">Номер подтверждён!</div>
+                    ) : (
+                        <>
+                            <div className="flex gap-2">
+                                <input
+                                    value={phoneNumber}
+                                    onChange={(e) => setPhoneNumber(e.target.value)}
+                                    placeholder="+79001234567"
+                                    className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                                    disabled={phoneStep === "code_sent"}
+                                />
+                                {phoneStep === "idle" && (
+                                    <button
+                                        onClick={handleSendPhoneCode}
+                                        disabled={phoneSending || !phoneNumber}
+                                        className="text-xs font-semibold px-3 py-2 bg-zinc-700 text-zinc-200 rounded-xl hover:bg-zinc-600 disabled:opacity-50 transition-colors whitespace-nowrap"
+                                    >
+                                        {phoneSending ? "..." : "Получить код"}
+                                    </button>
+                                )}
+                            </div>
+
+                            {phoneStep === "code_sent" && (
+                                <div className="flex gap-2">
+                                    <input
+                                        value={phoneCode}
+                                        onChange={(e) => setPhoneCode(e.target.value)}
+                                        placeholder="123456"
+                                        maxLength={6}
+                                        className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 text-center tracking-widest font-bold focus:outline-none focus:border-lime-400/60 transition-all"
+                                    />
+                                    <button
+                                        onClick={handleVerifyPhoneCode}
+                                        disabled={phoneVerifying || phoneCode.length < 4}
+                                        className="text-xs font-semibold px-3 py-2 bg-lime-400 text-zinc-900 rounded-xl hover:bg-lime-300 disabled:opacity-50 transition-colors"
+                                    >
+                                        {phoneVerifying ? "..." : "Подтвердить"}
+                                    </button>
+                                </div>
+                            )}
+
+                            {phoneError && (
+                                <p className="text-xs text-red-400">{phoneError}</p>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 {/* Action buttons */}

@@ -49,5 +49,23 @@ export const useProfile = () => {
         }
     };
 
-    return { isLoading, fetchMyProfile, fetchUserProfile, updateMyProfile };
+    const sendPhoneCode = async (phoneNumber) => {
+        try {
+            await axios.post(`${API_BASE}/profiles/phone/send-code`, { phone_number: phoneNumber }, getAuthConfig());
+            return true;
+        } catch (err) {
+            throw err.response?.data?.detail || 'Failed to send code';
+        }
+    };
+
+    const verifyPhoneCode = async (phoneNumber, code) => {
+        try {
+            const res = await axios.post(`${API_BASE}/profiles/phone/verify`, { phone_number: phoneNumber, code }, getAuthConfig());
+            return res.data;
+        } catch (err) {
+            throw err.response?.data?.detail || 'Invalid code';
+        }
+    };
+
+    return { isLoading, fetchMyProfile, fetchUserProfile, updateMyProfile, sendPhoneCode, verifyPhoneCode };
 };

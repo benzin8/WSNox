@@ -1,10 +1,14 @@
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.api_v1.auth.dependencies import get_current_user
-from messenger.backend.app.api_v1.schemas.user import ProfileUpdate, UserProfileResponse
+from messenger.backend.app.api_v1.schemas.user import PhoneCodeVerify, PhoneRequest, ProfileUpdate, UserProfileResponse
 from messenger.backend.app.crud.profile import ProfileCRUD
+from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
+from messenger.backend.models.user import User
 
 profile_router = APIRouter(prefix="/profiles", tags=["profiles"])
 
@@ -49,6 +53,46 @@ async def update_my_profile(
 
     user = await ProfileCRUD.get_user_with_profile(db, current_user.id)
     return _build_response(user)
+
+
+@profile_router.post("/phone/send-code")
+async def send_phone_code(
+    data: PhoneRequest,
+    current_user=Depends(get_current_user),
+):
+    redis = get_redis()
+    key = f"phone_verify:{current_user.id}:{data.phone_number}"
+    existing = await redis.get(key)
+    if existing:
+        code = existing
+    else:
+        code = str(secrets.randbelow(900000) + 100000)
+        await redis.setex(key, 300, code)
+    print(f"[DEV] Phone verification code for {data.phone_number}: {code}")
+    return {"message": True}
+
+
+@profile_router.post("/phone/verify", response_model=UserProfileResponse)
+async def verify_phone_code(
+    data: PhoneCodeVerify,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    redis = get_redis()
+    key = f"phone_verify:{current_user.id}:{data.phone_number}"
+    stored_code = await redis.get(key)
+    if not stored_code or stored_code != data.code:
+        raise HTTPException(status_code=400, detail="Invalid code")
+
+    await redis.delete(key)
+
+    user = await db.get(User, current_user.id)
+    if user:
+        user.phone_number = data.phone_number
+        await db.commit()
+
+    user_with_profile = await ProfileCRUD.get_user_with_profile(db, current_user.id)
+    return _build_response(user_with_profile)
 
 
 @profile_router.get("/{user_id}", response_model=UserProfileResponse)
