@@ -38,8 +38,7 @@ export default function RegisterPage() {
             navigate('/chat');
         } catch (err) {
             if (err.response?.data?.detail === 'Phone number not verified') {
-                await axios.post(`${API_BASE}/auth/send-code`, { phone_number: phoneNumber });
-                navigate('/auth/verify', { state: { phone_number: phoneNumber } });
+                navigate('/auth/send-code', { state: { phone_number: phoneNumber } });
                 return;
             }
             setError(err.response?.data?.detail || 'Registration failed');
