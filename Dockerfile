@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install "poetry==$POETRY_VERSION"
+RUN pip install --upgrade pip && pip install "poetry==$POETRY_VERSION"
 
 # Copy dependency files
 COPY pyproject.toml poetry.lock* ./

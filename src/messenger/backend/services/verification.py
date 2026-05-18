@@ -1,4 +1,4 @@
-import random
+import secrets
 
 from messenger.backend.core.redis import get_redis
 
@@ -14,7 +14,7 @@ async def send_verification_code(phone_number: str) -> str:
         print(f"[DEVELOPMENT ONLY] Verification code for {phone_number}: {existing_code}")
         return existing_code
     
-    code = f"{random.randint(100000, 999999)}"
+    code = str(secrets.randbelow(900000) + 100000)
     
     # Set key with TTL of 300 seconds (5 minutes)
     key = f"verification:{phone_number}"
