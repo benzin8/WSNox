@@ -14,34 +14,34 @@ class ProfileRead(ProfileBase):
     model_config = ConfigDict(from_attributes=True)
 
 class ProfileUpdate(ProfileBase):
-    pass
+    phone_number: Optional[str] = Field(None, max_length=20)
 
-class PhoneNumberRequest(BaseModel):
-    phone_number: str = Field(..., pattern=r"^\+?[1-9]\d{1,14}$")
+class EmailRequest(BaseModel):
+    email: EmailStr
 
-class PhoneVerify(BaseModel):
-    phone_number: str
+class EmailVerify(BaseModel):
+    email: EmailStr
     code: str = Field(..., min_length=4, max_length=6)
 
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=32)
     name: str = Field(..., min_length=2, max_length=32)
-    email: Optional[EmailStr] = None
+    email: EmailStr
     phone_number: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
 
 class UserLogin(BaseModel):
-    phone_number: str
+    email: EmailStr
     password: str
 
 class UserResponse(BaseModel):
     id: int
     name: str
     username: str
-    phone_number: str
-    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
+    email: EmailStr
     created_at: datetime
 
     class Config:
@@ -52,7 +52,6 @@ class AuthResponse(BaseModel):
     user: UserResponse
     access_token: str
     refresh_token: str
-    
 
 class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
@@ -64,10 +63,10 @@ class UserUpdate(UserBase):
     pass
 
 class UserProfileResponse(BaseModel):
-    """Combined response for user + profile data returned by profile endpoints."""
     user_id: int
     username: str
     name: str
+    phone_number: Optional[str] = None
     display_name: Optional[str] = None
     bio: Optional[str] = None
     status: str = "Offline"
