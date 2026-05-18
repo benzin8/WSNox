@@ -15,7 +15,8 @@ class ChatResponse(BaseModel):
     updated_at: datetime | None = None
     recipient_id: Optional[int] = None
     recipient: Optional[UserResponse] = None
-    
+    unread_count: int = 0
+
     class Config:
         from_attributes = True
 

@@ -34,9 +34,20 @@ class MessageCRUD:
             .where(Message.chat_id == chat_id)
             .order_by(Message.created_at.desc())
             .limit(100)
-        ) # Вывод последних 100 сообщений
+        )
         result = await db.execute(query)
         messages = result.scalars().all()
         for message in messages:
             message.text = decrypt_message(message.encrypted_data)
         return messages[::-1]
+
+    @staticmethod
+    async def mark_as_read(db: AsyncSession, chat_id: int, user_id: int) -> None:
+        await db.execute(
+            update(Message)
+            .where(Message.chat_id == chat_id)
+            .where(Message.recipient_id == user_id)
+            .where(Message.is_read == False)  # noqa: E712
+            .values(is_read=True)
+        )
+        await db.commit()
