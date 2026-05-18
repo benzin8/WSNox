@@ -51,7 +51,7 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db_session))
     redis = get_redis()
     verified = await redis.get(f"verified_for_reg:{data.email}")
     if not verified:
-        raise HTTPException(status_code=400, detail="Phone number not verified")
+        raise HTTPException(status_code=400, detail="Email not verified")
 
     user = await UserCRUD.create_user(db, data, data.password)
     if not user:
@@ -73,7 +73,7 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db_session)):
     redis = get_redis()
     verified = await redis.get(f"verified_for_login:{data.email}")
     if not verified:
-        raise HTTPException(status_code=400, detail="Phone number not verified")
+        raise HTTPException(status_code=400, detail="Email not verified")
 
     user = await UserCRUD.login_user(db, data.email, data.password)
     if not user or not verify_password(data.password, user.hashed_password):
