@@ -7,14 +7,9 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 export default function RegisterPage() {
     const location = useLocation();
     const navigate = useNavigate();
-    const phoneNumber = location.state?.phone_number || '';
-    const code = location.state?.code || '';
+    const email = location.state?.email || '';
 
-    const [formData, setFormData] = useState({
-        name: '',
-        username: '',
-        password: '',
-    });
+    const [formData, setFormData] = useState({ name: '', username: '', password: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -25,20 +20,19 @@ export default function RegisterPage() {
 
         try {
             const response = await axios.post(`${API_BASE}/auth/register`, {
-                phone_number: phoneNumber,
-                code: code,
+                email,
                 ...formData
             });
 
             const { access_token, refresh_token } = response.data;
             localStorage.setItem('access_token', access_token);
             localStorage.setItem('refresh_token', refresh_token);
-            
+
             window.dispatchEvent(new Event('storage'));
             navigate('/chat');
         } catch (err) {
             if (err.response?.data?.detail === 'Phone number not verified') {
-                navigate('/auth/send-code', { state: { phone_number: phoneNumber } });
+                navigate('/auth/send-code', { state: { email } });
                 return;
             }
             setError(err.response?.data?.detail || 'Registration failed');
@@ -47,8 +41,7 @@ export default function RegisterPage() {
         }
     };
 
-    if (!phoneNumber || !code) {
-        console.log("No phone number or code");
+    if (!email) {
         return <Navigate to="/auth/send-code" replace />;
     }
 
@@ -59,7 +52,7 @@ export default function RegisterPage() {
                     <h1 className="text-3xl font-bold tracking-tight text-lime-400">Заполните профиль</h1>
                     <p className="mt-2 text-zinc-400">Почти готово! Последний штрих.</p>
                 </div>
-                
+
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-zinc-300">Отображаемое имя</label>
