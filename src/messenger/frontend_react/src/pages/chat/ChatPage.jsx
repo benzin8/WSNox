@@ -23,6 +23,7 @@ function ChatPage() {
   const [profileModal, setProfileModal] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPhoneBanner, setShowPhoneBanner] = useState(false);
+  const [mobileView, setMobileView] = useState('list');
 
   const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage } = useChatSocket(token);
   const { searchChats,
@@ -133,6 +134,7 @@ function ChatPage() {
     if (selectedChat.recipient) {
       setActiveChat(selectedChat);
       setChatName(selectedChat.recipient.username);
+      setMobileView('chat');
     } else if (selectedChat.id) {
       const chat = await getOrCreateChats(selectedChat.id);
       if (chat) {
@@ -142,6 +144,7 @@ function ChatPage() {
         setChatName(userData.username);
         const allChats = await getAllChats();
         setChats(allChats);
+        setMobileView('chat');
       }
     }
   }
@@ -187,9 +190,9 @@ function ChatPage() {
           </div>
         </div>
       )}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="relative flex-1 overflow-hidden md:flex">
         {/* Sidebar */}
-        <div className="w-80 border-r border-zinc-800 flex flex-col bg-zinc-900/50 backdrop-blur-xl">
+        <div className={`absolute inset-y-0 left-0 w-full flex flex-col bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 z-10 transition-transform duration-200 ease-in-out md:relative md:inset-auto md:w-80 md:translate-x-0 ${mobileView === 'list' ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* Clicking the avatar opens own profile */}
@@ -253,17 +256,20 @@ function ChatPage() {
             )}
           </div>
         </div>
-        <ChatWindow activeChat={activeChat}
-         messages={messages}
-         setMessages={setMessages}
-         sendMessage={handleSendMessage}
-         isConnected={isConnected}
-         messagesEndRef={messagesEndRef}
-         inputText={inputText}
-         setInputText={setInputText}
-         chatName={chatName}
-         onOpenProfile={() => activeChat?.recipient_id && handleOpenUserProfile(activeChat.recipient_id)}
-         />
+        <div className={`absolute inset-y-0 left-0 w-full flex flex-col transition-transform duration-200 ease-in-out md:relative md:inset-auto md:flex-1 md:translate-x-0 ${mobileView === 'chat' ? 'translate-x-0' : 'translate-x-full'}`}>
+          <ChatWindow activeChat={activeChat}
+           messages={messages}
+           setMessages={setMessages}
+           sendMessage={handleSendMessage}
+           isConnected={isConnected}
+           messagesEndRef={messagesEndRef}
+           inputText={inputText}
+           setInputText={setInputText}
+           chatName={chatName}
+           onOpenProfile={() => activeChat?.recipient_id && handleOpenUserProfile(activeChat.recipient_id)}
+           onBack={() => setMobileView('list')}
+           />
+        </div>
 
         {/* Profile view modal */}
         {profileModal && (
