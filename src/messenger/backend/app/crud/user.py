@@ -21,9 +21,8 @@ class UserCRUD:
                 hashed_password=hashed_password,
             )
             session.add(user)
-            await session.flush()  # get user.id before creating profile
+            await session.flush()
 
-            # Every new user gets a default profile automatically
             await ProfileCRUD.create_default_profile(session, user.id, user_data.name)
 
             await session.commit()
@@ -34,19 +33,13 @@ class UserCRUD:
             return None
 
     @staticmethod
-    async def get_user_by_phone(session: AsyncSession, phone_number: str) -> User | None:
-        query = (
-            select(User)
-            .where(User.phone_number == phone_number)
-        )
+    async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
+        query = select(User).where(User.email == email)
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def login_user(session: AsyncSession, phone_number: str, password: str) -> User:
-        query = (
-            select(User)
-            .where(User.phone_number == phone_number)
-        )
+    async def login_user(session: AsyncSession, email: str, password: str) -> User | None:
+        query = select(User).where(User.email == email)
         result = await session.execute(query)
         return result.scalar_one_or_none()
