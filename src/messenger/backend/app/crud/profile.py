@@ -42,7 +42,8 @@ class ProfileCRUD:
         if not profile:
             return None
 
-        for field, value in data.model_dump(exclude_unset=True).items():
+        profile_fields = {k: v for k, v in data.model_dump(exclude_unset=True).items() if k != "phone_number"}
+        for field, value in profile_fields.items():
             setattr(profile, field, value)
 
         if data.phone_number is not None:
