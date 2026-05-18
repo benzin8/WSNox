@@ -110,12 +110,11 @@ GitHub Actions (`.github/workflows/ci.yml`):
 
 ## Документация
 
-```
-docs/
-  deployment/deploy.md              # runbook: логи, ручной деплой, откат
-  features/profiles.md              # API профилей пользователей
-  troubleshooting/cors.md           # CORS и относительные URL — частая проблема
-  troubleshooting/security-fixes.md
-  troubleshooting/fixes-round2.md   # static mount, --reload, IDOR, тесты
-  troubleshooting/fixes-round3.md   # auth race, vite proxy, mobile, last message
-```
+| Файл | Описание |
+|------|----------|
+| [deployment/deploy.md](docs/deployment/deploy.md) | Runbook: логи, ручной деплой, откат |
+| [features/profiles.md](docs/features/profiles.md) | API профилей пользователей |
+| [troubleshooting/cors.md](docs/troubleshooting/cors.md) | CORS и относительные URL |
+| [troubleshooting/security-fixes.md](docs/troubleshooting/security-fixes.md) | Исправления безопасности (IV, bcrypt) |
+| [troubleshooting/fixes-round2.md](docs/troubleshooting/fixes-round2.md) | Static mount, --reload, IDOR, тесты |
+| [troubleshooting/fixes-round3.md](docs/troubleshooting/fixes-round3.md) | Auth race, Vite proxy, мобильная адаптация, last message |
