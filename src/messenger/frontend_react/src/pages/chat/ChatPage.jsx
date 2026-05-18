@@ -22,6 +22,7 @@ function ChatPage() {
   // Profile modal state: { profile, isOwnProfile } or null when closed
   const [profileModal, setProfileModal] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showPhoneBanner, setShowPhoneBanner] = useState(false);
 
   const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage } = useChatSocket(token);
   const { searchChats,
@@ -56,6 +57,13 @@ function ChatPage() {
 
     fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    if (currentUser && !currentUser.phone_number) {
+      const dismissed = localStorage.getItem('phone_banner_dismissed');
+      if (!dismissed) setShowPhoneBanner(true);
+    }
+  }, [currentUser]);
 
   // Обновление списка чатов при получении нового сообщения
   useEffect(() => {
@@ -115,6 +123,11 @@ function ChatPage() {
     navigate('/auth/send-code');
   };
 
+  const handleDismissBanner = () => {
+    localStorage.setItem('phone_banner_dismissed', 'true');
+    setShowPhoneBanner(false);
+  };
+
   // Выбор чата
   const handleSelectChat = async (selectedChat) => {
     if (selectedChat.recipient) {
@@ -152,102 +165,125 @@ function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
-      {/* Sidebar */}
-      <div className="w-80 border-r border-zinc-800 flex flex-col bg-zinc-900/50 backdrop-blur-xl">
-        <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
+    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
+      {showPhoneBanner && (
+        <div className="flex items-center justify-between px-6 py-2 bg-lime-400/10 border-b border-lime-400/30 shrink-0">
+          <span className="text-lime-400 font-semibold text-sm">
+            Добавьте номер телефона для дополнительной безопасности
+          </span>
           <div className="flex items-center gap-3">
-            {/* Clicking the avatar opens own profile */}
-            <div
+            <button
               onClick={handleOpenOwnProfile}
-              className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold cursor-pointer hover:bg-lime-300 transition-colors"
-              title="Мой профиль"
+              className="text-sm font-bold text-zinc-900 bg-lime-400 px-3 py-1 rounded-lg hover:bg-lime-300 transition-colors"
             >
-              {currentUser?.username?.slice(0, 1)?.toUpperCase()}
+              Добавить
+            </button>
+            <button
+              onClick={handleDismissBanner}
+              className="text-zinc-400 hover:text-zinc-200 transition-colors text-lg leading-none"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <div className="w-80 border-r border-zinc-800 flex flex-col bg-zinc-900/50 backdrop-blur-xl">
+          <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Clicking the avatar opens own profile */}
+              <div
+                onClick={handleOpenOwnProfile}
+                className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold cursor-pointer hover:bg-lime-300 transition-colors"
+                title="Мой профиль"
+              >
+                {currentUser?.username?.slice(0, 1)?.toUpperCase()}
+              </div>
+              <span className="font-bold text-lg tracking-tight">Чаты</span>
             </div>
-            <span className="font-bold text-lg tracking-tight">Чаты</span>
+            <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">
+              <LogOut size={20} />
+            </button>
           </div>
-          <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">
-            <LogOut size={20} />
-          </button>
-        </div>
 
-        <div className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-            <input
-              onChange={(e) => {searchChats(e.target.value); setSearchQuery(e.target.value)}}
-              type="text"
-              placeholder="Search chats..."
-              className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-lime-400/50 transition-all"
-            />
+          <div className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+              <input
+                onChange={(e) => {searchChats(e.target.value); setSearchQuery(e.target.value)}}
+                type="text"
+                placeholder="Search chats..."
+                className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-lime-400/50 transition-all"
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="flex-grow overflow-y-auto">
-          {searchQuery?.length > 0 ? (
-            <div className="p-2 space-y-1">
-              {searchResult?.length > 0 ? (
-                searchResult.map((user) => (
-                  <div key={user.id} onClick={() => handleSelectChat(user)}
-                    className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
-                    <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
-                      <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
-                    </div>
-                    <div className="flex-grow">
-                      <div className="flex justify-between items-baseline">
-                        <h4 className="font-semibold text-zinc-100">{user.username}</h4>
+          <div className="flex-grow overflow-y-auto">
+            {searchQuery?.length > 0 ? (
+              <div className="p-2 space-y-1">
+                {searchResult?.length > 0 ? (
+                  searchResult.map((user) => (
+                    <div key={user.id} onClick={() => handleSelectChat(user)}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
+                      <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
+                        <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
+                      </div>
+                      <div className="flex-grow">
+                        <div className="flex justify-between items-baseline">
+                          <h4 className="font-semibold text-zinc-100">{user.username}</h4>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              ) : (
-                !isSearching && (
-                  <div className="p-4 text-center text-zinc-500 text-sm">
-                    Пользователь "{searchQuery}" не найден
-                  </div>
-                )
-              )}
-            </div>
-          ) : (
-            <ChatList
-              chats={chats}
-              activeChatId={activeChat?.id}
-              onSelectChat={handleSelectChat}
-            />
-          )}
+                  ))
+                ) : (
+                  !isSearching && (
+                    <div className="p-4 text-center text-zinc-500 text-sm">
+                      Пользователь "{searchQuery}" не найден
+                    </div>
+                  )
+                )}
+              </div>
+            ) : (
+              <ChatList
+                chats={chats}
+                activeChatId={activeChat?.id}
+                onSelectChat={handleSelectChat}
+              />
+            )}
+          </div>
         </div>
+        <ChatWindow activeChat={activeChat}
+         messages={messages}
+         setMessages={setMessages}
+         sendMessage={handleSendMessage}
+         isConnected={isConnected}
+         messagesEndRef={messagesEndRef}
+         inputText={inputText}
+         setInputText={setInputText}
+         chatName={chatName}
+         onOpenProfile={() => activeChat?.recipient_id && handleOpenUserProfile(activeChat.recipient_id)}
+         />
+
+        {/* Profile view modal */}
+        {profileModal && (
+          <ProfileModal
+            profile={profileModal.profile}
+            isOwnProfile={profileModal.isOwnProfile}
+            onClose={() => setProfileModal(null)}
+            onEdit={() => setShowEditModal(true)}
+          />
+        )}
+
+        {/* Edit profile modal — shown on top of ProfileModal */}
+        {showEditModal && profileModal && (
+          <EditProfileModal
+            profile={profileModal.profile}
+            onClose={() => setShowEditModal(false)}
+            onSave={handleSaveProfile}
+          />
+        )}
       </div>
-      <ChatWindow activeChat={activeChat}
-       messages={messages}
-       setMessages={setMessages}
-       sendMessage={handleSendMessage}
-       isConnected={isConnected}
-       messagesEndRef={messagesEndRef}
-       inputText={inputText}
-       setInputText={setInputText}
-       chatName={chatName}
-       onOpenProfile={() => activeChat?.recipient_id && handleOpenUserProfile(activeChat.recipient_id)}
-       />
-
-      {/* Profile view modal */}
-      {profileModal && (
-        <ProfileModal
-          profile={profileModal.profile}
-          isOwnProfile={profileModal.isOwnProfile}
-          onClose={() => setProfileModal(null)}
-          onEdit={() => setShowEditModal(true)}
-        />
-      )}
-
-      {/* Edit profile modal — shown on top of ProfileModal */}
-      {showEditModal && profileModal && (
-        <EditProfileModal
-          profile={profileModal.profile}
-          onClose={() => setShowEditModal(false)}
-          onSave={handleSaveProfile}
-        />
-      )}
     </div>
   );
 }
