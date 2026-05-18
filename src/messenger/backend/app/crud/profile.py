@@ -45,6 +45,11 @@ class ProfileCRUD:
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(profile, field, value)
 
+        if data.phone_number is not None:
+            user_obj = await session.get(User, user_id)
+            if user_obj:
+                user_obj.phone_number = data.phone_number
+
         await session.commit()
         await session.refresh(profile)
         return profile
