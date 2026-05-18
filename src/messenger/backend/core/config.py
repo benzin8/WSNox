@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     algorithm: str
     redis_url: str
 
+    smtp_host: str = "smtp.yandex.ru"
+    smtp_port: int = 465
+    smtp_user: str
+    smtp_password: str
+
     DOCKER_MODE: bool = os.getenv("DOCKER_MODE", "false").lower() == "true"
 
     @computed_field
