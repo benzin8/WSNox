@@ -6,10 +6,20 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   server: {
     proxy: {
-      '/auth': { target: 'http://localhost:8000', changeOrigin: true },
+      // Auth API calls are always POST — bypass GET (page navigation) to index.html
+      '/auth': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        bypass: (req) => { if (req.method === 'GET') return '/index.html'; },
+      },
       '/chats': { target: 'http://localhost:8000', changeOrigin: true },
       '/profiles': { target: 'http://localhost:8000', changeOrigin: true },
-      '/chat': { target: 'ws://localhost:8000', ws: true },
+      // /chat is both the React page and the WS endpoint — only proxy WebSocket upgrades
+      '/chat': {
+        target: 'ws://localhost:8000',
+        ws: true,
+        bypass: (req) => { if (req.headers.upgrade !== 'websocket') return '/index.html'; },
+      },
     },
   },
   plugins: [
