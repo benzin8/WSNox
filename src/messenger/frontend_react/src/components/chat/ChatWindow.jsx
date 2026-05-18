@@ -1,12 +1,12 @@
 import React from "react";
-import { User, Phone, MoreVertical } from 'lucide-react';
+import { User, Phone, MoreVertical, ChevronLeft } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 
 export const ChatWindow = ({
     messages, setMessages, activeChat, sendMessage,
     isConnected, messagesEndRef, inputText, setInputText,
-    chatName, onOpenProfile
+    chatName, onOpenProfile, onBack
 }) => {
     if (!activeChat) {
         return (
@@ -20,6 +20,12 @@ export const ChatWindow = ({
         {/* Chat Header */}
         <header className="h-20 flex-shrink-0 border-b border-zinc-800 flex items-center justify-between px-8 bg-zinc-900/80 backdrop-blur-md">
           <div className="flex items-center gap-4">
+            <button
+              onClick={onBack}
+              className="md:hidden text-zinc-400 hover:text-lime-400 transition-colors"
+            >
+              <ChevronLeft size={24} />
+            </button>
             <div className="w-10 h-10 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
               <User size={20} className="text-lime-400" />
             </div>
