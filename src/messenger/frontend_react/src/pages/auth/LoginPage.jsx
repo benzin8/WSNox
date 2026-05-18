@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -12,9 +12,12 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const isSubmitting = useRef(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting.current) return;
+        isSubmitting.current = true;
         setLoading(true);
         setError('');
 
@@ -37,6 +40,7 @@ export default function LoginPage() {
             setError(err.response?.data?.detail || 'Login failed');
         } finally {
             setLoading(false);
+            isSubmitting.current = false;
         }
     };
 

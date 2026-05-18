@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -12,9 +12,12 @@ export default function RegisterPage() {
     const [formData, setFormData] = useState({ name: '', username: '', password: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const isSubmitting = useRef(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting.current) return;
+        isSubmitting.current = true;
         setLoading(true);
         setError('');
 
@@ -38,6 +41,7 @@ export default function RegisterPage() {
             setError(err.response?.data?.detail || 'Registration failed');
         } finally {
             setLoading(false);
+            isSubmitting.current = false;
         }
     };
 

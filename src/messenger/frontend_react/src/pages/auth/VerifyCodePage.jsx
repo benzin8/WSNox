@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -12,16 +12,19 @@ export default function VerifyCodePage() {
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const isSubmitting = useRef(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting.current) return;
+        isSubmitting.current = true;
         setLoading(true);
         setError('');
 
         try {
             const response = await axios.post(`${API_BASE}/auth/verify-code`, {
                 email,
-                code
+                code: code.trim()
             });
 
             if (response.data.status === 'register') {
@@ -33,6 +36,7 @@ export default function VerifyCodePage() {
             setError(err.response?.data?.detail || 'Invalid verification code');
         } finally {
             setLoading(false);
+            isSubmitting.current = false;
         }
     };
 
@@ -56,6 +60,8 @@ export default function VerifyCodePage() {
                         <input
                             id="code"
                             type="text"
+                            inputMode="numeric"
+                            maxLength={6}
                             placeholder="123456"
                             className="mt-2 w-full rounded-xl border-zinc-700 bg-zinc-900/50 p-4 text-center tracking-[0.5em] text-2xl font-bold text-lime-400 placeholder:text-zinc-700 placeholder:tracking-normal focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-500/20 transition-all"
                             value={code}
