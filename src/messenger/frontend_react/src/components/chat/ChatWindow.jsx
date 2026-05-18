@@ -21,7 +21,7 @@ export const ChatWindow = ({
         <header className="h-20 flex-shrink-0 border-b border-zinc-800 flex items-center justify-between px-8 bg-zinc-900/80 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <button
-              onClick={onBack}
+              onClick={() => onBack?.()}
               className="md:hidden text-zinc-400 hover:text-lime-400 transition-colors"
             >
               <ChevronLeft size={24} />
