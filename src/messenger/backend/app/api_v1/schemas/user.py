@@ -16,6 +16,13 @@ class ProfileRead(ProfileBase):
 class ProfileUpdate(ProfileBase):
     phone_number: Optional[str] = Field(None, max_length=20)
 
+class PhoneRequest(BaseModel):
+    phone_number: str = Field(..., pattern=r"^\+?[1-9]\d{1,14}$")
+
+class PhoneCodeVerify(BaseModel):
+    phone_number: str
+    code: str = Field(..., min_length=4, max_length=6)
+
 class EmailRequest(BaseModel):
     email: EmailStr
 

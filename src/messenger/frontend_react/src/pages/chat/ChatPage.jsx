@@ -36,7 +36,7 @@ function ChatPage() {
           getMessagesByChatId,
           getAllChats
   } = useChatAction();
-  const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
+  const { fetchMyProfile, fetchUserProfile, updateMyProfile, sendPhoneCode, verifyPhoneCode } = useProfile();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
 
@@ -281,6 +281,12 @@ function ChatPage() {
             profile={profileModal.profile}
             onClose={() => setShowEditModal(false)}
             onSave={handleSaveProfile}
+            onSendPhoneCode={sendPhoneCode}
+            onVerifyPhoneCode={async (phone, code) => {
+              const updated = await verifyPhoneCode(phone, code);
+              if (updated) setProfileModal({ profile: updated, isOwnProfile: true });
+              return updated;
+            }}
           />
         )}
       </div>
