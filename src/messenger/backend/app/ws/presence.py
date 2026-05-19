@@ -62,3 +62,34 @@ async def publish_presence_event(redis: "Redis", user_id: int, online: bool) -> 
     """Publish a state-transition event to the presence pub/sub channel."""
     payload = json.dumps({"user_id": user_id, "online": online})
     await redis.publish(PRESENCE_EVENTS_CHANNEL, payload)
+
+
+async def sweep_once(redis: "Redis", manager: "ConnectionManager") -> None:
+    """Single pass: broadcast offline for users in active_connections whose
+    Redis key has expired, and reset state when the key reappears.
+
+    Does NOT close sockets — they may still be alive (just a hidden tab).
+    Dead-socket cleanup happens lazily on next send_json failure.
+    """
+    for user_id in list(manager.active_connections.keys()):
+        alive = await is_present(redis, user_id)
+        if not alive:
+            if user_id not in manager.offline_broadcasted:
+                await publish_presence_event(redis, user_id, online=False)
+                manager.offline_broadcasted.add(user_id)
+        else:
+            manager.offline_broadcasted.discard(user_id)
+
+
+async def sweep_forever(manager: "ConnectionManager") -> None:
+    """Background task: run sweep_once every SWEEPER_INTERVAL_SECONDS."""
+    redis = get_redis()
+    try:
+        while True:
+            await asyncio.sleep(SWEEPER_INTERVAL_SECONDS)
+            try:
+                await sweep_once(redis, manager)
+            except Exception:  # noqa: BLE001
+                logger.exception("sweep_once failed")
+    except asyncio.CancelledError:
+        return
