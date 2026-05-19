@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
+import { parseApiError } from '../../utils/parseApiError';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -33,7 +34,7 @@ export default function VerifyCodePage() {
                 navigate('/auth/login', { state: { email } });
             }
         } catch (err) {
-            setError(err.response?.data?.detail || 'Invalid verification code');
+            setError(parseApiError(err, 'Invalid verification code'));
         } finally {
             setLoading(false);
             isSubmitting.current = false;

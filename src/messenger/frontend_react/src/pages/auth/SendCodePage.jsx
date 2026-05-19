@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { parseApiError } from '../../utils/parseApiError';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -23,7 +24,7 @@ export default function SendCodePage() {
             await axios.post(`${API_BASE}/auth/send-code`, { email });
             navigate('/auth/verify', { state: { email } });
         } catch (err) {
-            setError(err.response?.data?.detail || 'Failed to send code');
+            setError(parseApiError(err, 'Failed to send code'));
         } finally {
             setLoading(false);
             isSubmitting.current = false;
