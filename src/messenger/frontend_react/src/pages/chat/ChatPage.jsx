@@ -108,8 +108,7 @@ function ChatPage() {
   const handleSendMessage = (text) => {
     if (!activeChat) return;
 
-    sendMessage(text, activeChat.id, activeChat.recipient_id);
-    console.log("message to", activeChat.recipient_id, text);
+    sendMessage(text, activeChat.id);
 
     setMessages((prev) => [...prev, {
             text: text,
