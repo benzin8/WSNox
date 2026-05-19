@@ -11,7 +11,7 @@ class Profile(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
     display_name: Mapped[str] = mapped_column(String(100))
     bio: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(50), default="Offline")
+    presence_preference: Mapped[str | None] = mapped_column(String(20), nullable=True, default=None)
     profile_photos: Mapped[list] = mapped_column(JSON, default=list)
 
     user: Mapped["User"] = relationship(back_populates="profile")
