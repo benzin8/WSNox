@@ -10,18 +10,37 @@ from messenger.backend.models import User
 
 bearer_scheme = HTTPBearer()
 
+
+async def get_user_from_token(token: str, db: AsyncSession) -> User | None:
+    """Decode a JWT and return the matching User, or None on any failure.
+
+    Used by both the HTTP `get_current_user` dependency and the WebSocket
+    handler, which can't depend on FastAPI's HTTPBearer flow.
+    """
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+        user_id = int(user_id)
+    except (JWTError, ValueError, TypeError):
+        return None
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    return result.scalar_one_or_none()
+
+
 async def get_current_user(
     auth: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db_session)
 ) -> User:
-    access_token = auth.credentials
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Сессия истекла, войдите снова",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(access_token, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(auth.credentials, settings.secret_key, algorithms=[settings.algorithm])
         user_id = payload.get("sub")
         if user_id is None:
             raise credentials_exception
@@ -32,13 +51,11 @@ async def get_current_user(
             detail="Срок действия токена истек",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except JWTError as e:
-        print(f"JWT Error: {e}")
+    except JWTError:
         raise credentials_exception
-    except Exception as e:
-        print(f"Auth Error: {e}")
+    except Exception:
         raise credentials_exception
-    
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 

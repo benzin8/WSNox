@@ -15,50 +15,54 @@ export const useChatSocket = (token) => {
         if (!token) return;
 
         try {
+            // Decoded only for display (matching outgoing/incoming).
+            // The server never trusts this value — it derives user_id from the JWT itself.
             const decoded = jwtDecode(token);
-            const userId = decoded.sub || decoded.user_id;
-            currentUserRef.current = userId;
-            const wsUrl = `${WS_BASE}/chat/${userId}`;
+            currentUserRef.current = decoded.sub || decoded.user_id;
 
-            const ws = new WebSocket(wsUrl)
-            socketRef.current = ws
+            const ws = new WebSocket(`${WS_BASE}/chat`);
+            socketRef.current = ws;
 
-            ws.onopen = () => setIsConnected(true);
+            ws.onopen = () => {
+                ws.send(JSON.stringify({ type: "auth", token }));
+            };
 
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
 
+                if (data.type === "auth_ok") {
+                    setIsConnected(true);
+                    return;
+                }
+
                 setMessages((prev) => [...prev, {
-                    ...data, 
+                    ...data,
                     text: data.text,
                     type: data.sender_id === currentUserRef.current ? "outgoing" : "incoming",
                     id: Date.now()
                 }]);
                 setLastReceivedMessage(data);
-                console.log("Message received:", data);
             };
             ws.onclose = () => setIsConnected(false);
-            
+
             return () => ws.close();
         } catch (err) {
             console.error('Socket connection error:', err);
         }
     }, [token]);
 
-    const sendMessage = (text, activeChatId, recipientId) => {
+    const sendMessage = (text, activeChatId) => {
         if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            console.log("Sending message:", text, activeChatId, recipientId);
             const payload = {
-                text: text,
+                text,
                 chat_id: activeChatId,
-                recipient_id: recipientId,
                 timestamp: new Date().toISOString()
             };
             socketRef.current.send(JSON.stringify(payload));
 
             setLastReceivedMessage({
                 chat_id: activeChatId,
-                text: text,
+                text,
                 sender_id: currentUserRef.current
             });
         }

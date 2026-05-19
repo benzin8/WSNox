@@ -6,19 +6,25 @@ from fastapi import APIRouter, WebSocket
 from fastapi.websockets import WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from messenger.backend.app.api_v1.auth.dependencies import get_user_from_token
+from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import AsyncSessionLocal
 
 REDIS_CHAT_CHANNEL = "chat_messages"
+AUTH_TIMEOUT_SECONDS = 10
+
+# WebSocket close codes
+WS_AUTH_FAILED = 4401  # custom 4xxx code, equivalent to HTTP 401
+
 
 class ConnectionManager:
     def __init__(self) -> None:
         self.active_connections: Dict[int, WebSocket] = {}
 
     async def connect(self, websocket: WebSocket, user_id: int) -> None:
-        await websocket.accept()
         self.active_connections[user_id] = websocket
 
     def disconnect(self, user_id: int) -> None:
@@ -40,7 +46,7 @@ class ConnectionManager:
             "sender_id": sender_id,
             "chat_id": chat_id
         })
-        
+
         redis = get_redis()
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
 
@@ -48,7 +54,7 @@ class ConnectionManager:
         redis = get_redis()
         pubsub = redis.pubsub()
         await pubsub.subscribe(REDIS_CHAT_CHANNEL)
-        
+
         try:
             async for message in pubsub.listen():
                 if message["type"] == "message":
@@ -69,35 +75,78 @@ class ConnectionManager:
                             }
                             await self.active_connections[recipient_id].send_json(payload)
                         except Exception:
-                            # if socket is dead, remove it
                             del self.active_connections[recipient_id]
         except asyncio.CancelledError:
             await pubsub.unsubscribe(REDIS_CHAT_CHANNEL)
 
+
 manager = ConnectionManager()
 ws_router = APIRouter()
 
-@ws_router.websocket("/chat/{user_id}")
-async def websocket_chat(websocket: WebSocket, user_id: int) -> None:
+
+async def _authenticate(websocket: WebSocket) -> int | None:
+    """Wait for the client's first message and validate the JWT inside it.
+
+    Returns user_id on success, None on any failure (timeout, bad JSON,
+    invalid token). The caller is responsible for closing the socket.
+    """
+    try:
+        raw = await asyncio.wait_for(websocket.receive_text(), timeout=AUTH_TIMEOUT_SECONDS)
+        auth_data = json.loads(raw)
+    except (asyncio.TimeoutError, json.JSONDecodeError):
+        return None
+
+    if auth_data.get("type") != "auth":
+        return None
+    token = auth_data.get("token")
+    if not token:
+        return None
+
+    async with AsyncSessionLocal() as db:
+        user = await get_user_from_token(token, db)
+
+    return user.id if user else None
+
+
+@ws_router.websocket("/chat")
+async def websocket_chat(websocket: WebSocket) -> None:
+    await websocket.accept()
+
+    user_id = await _authenticate(websocket)
+    if user_id is None:
+        await websocket.close(code=WS_AUTH_FAILED, reason="auth failed")
+        return
+
     await manager.connect(websocket, user_id)
     try:
+        await websocket.send_json({"type": "auth_ok", "user_id": user_id})
+
         while True:
             data = await websocket.receive_text()
-            msg_data = json.loads(data)
-            chat_id = msg_data.get('chat_id')
-            recipient_id = msg_data.get('recipient_id')
+            try:
+                msg_data = json.loads(data)
+            except json.JSONDecodeError:
+                continue
+
+            chat_id = msg_data.get("chat_id")
             text = msg_data.get("text")
 
-            if recipient_id and text:
-                async with AsyncSessionLocal() as db:
-                    await manager.send_personal_message(
-                        chat_id=chat_id,
-                        text=text,
-                        recipient_id=recipient_id,
-                        sender_id=user_id,
-                        db=db
-                    )
+            if not (chat_id and text):
+                continue
 
+            async with AsyncSessionLocal() as db:
+                if not await ChatCRUD.is_chat_member(db, chat_id, user_id):
+                    continue
+                other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, user_id)
+                if not other:
+                    continue
+                await manager.send_personal_message(
+                    chat_id=chat_id,
+                    text=text,
+                    recipient_id=other.user_id,
+                    sender_id=user_id,
+                    db=db,
+                )
 
     except WebSocketDisconnect:
-        manager.disconnect(int(user_id))
+        manager.disconnect(user_id)
