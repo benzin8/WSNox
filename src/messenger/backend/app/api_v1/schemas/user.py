@@ -1,17 +1,22 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+PresencePreference = Literal["dnd", "invisible"]
 
 
 class ProfileBase(BaseModel):
     display_name: Optional[str] = Field(None, max_length=32)
     bio: Optional[str] = Field(None, max_length=256)
-    status: str = "Offline"
+    presence_preference: Optional[PresencePreference] = None
     profile_photos: List[str] = []
+
 
 class ProfileRead(ProfileBase):
     model_config = ConfigDict(from_attributes=True)
+
 
 class ProfileUpdate(ProfileBase):
     phone_number: Optional[str] = Field(None, max_length=20)
@@ -76,7 +81,8 @@ class UserProfileResponse(BaseModel):
     phone_number: Optional[str] = None
     display_name: Optional[str] = None
     bio: Optional[str] = None
-    status: str = "Offline"
+    presence_preference: Optional[PresencePreference] = None
+    online: bool = False
     profile_photos: List[str] = []
 
     model_config = ConfigDict(from_attributes=True)
