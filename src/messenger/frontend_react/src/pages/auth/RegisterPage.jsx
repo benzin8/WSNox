@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
+import PasswordStrengthBar from '../../components/auth/PasswordStrengthBar';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -88,6 +89,7 @@ export default function RegisterPage() {
                             onChange={(e) => setFormData({...formData, password: e.target.value})}
                             required
                         />
+                        <PasswordStrengthBar password={formData.password} />
                     </div>
 
                     {error && (
