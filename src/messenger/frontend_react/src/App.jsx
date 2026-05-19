@@ -16,6 +16,14 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+const PublicOnlyRoute = ({ children }) => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    return <Navigate to="/chat" replace />;
+  }
+  return children;
+};
+
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
 
@@ -37,11 +45,11 @@ function App() {
     <Router>
       <div className="min-h-screen bg-zinc-900 text-zinc-100 selection:bg-lime-400 selection:text-zinc-900">
         <Routes>
-          {/* Auth Routes */}
-          <Route path="/auth/send-code" element={<SendCodePage />} />
-          <Route path="/auth/verify" element={<VerifyCodePage />} />
-          <Route path="/auth/login" element={<LoginPage />} />
-          <Route path="/auth/register" element={<RegisterPage />} />
+          {/* Auth Routes — redirect to /chat if already logged in */}
+          <Route path="/auth/send-code" element={<PublicOnlyRoute><SendCodePage /></PublicOnlyRoute>} />
+          <Route path="/auth/verify" element={<PublicOnlyRoute><VerifyCodePage /></PublicOnlyRoute>} />
+          <Route path="/auth/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
+          <Route path="/auth/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
 
           {/* Protected Chat Route */}
           <Route 
