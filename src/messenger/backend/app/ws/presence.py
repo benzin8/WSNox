@@ -56,3 +56,9 @@ async def is_visible_online(
     if target_pref == "invisible":
         return False
     return await is_present(redis, target_user_id)
+
+
+async def publish_presence_event(redis: "Redis", user_id: int, online: bool) -> None:
+    """Publish a state-transition event to the presence pub/sub channel."""
+    payload = json.dumps({"user_id": user_id, "online": online})
+    await redis.publish(PRESENCE_EVENTS_CHANNEL, payload)

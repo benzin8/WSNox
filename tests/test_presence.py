@@ -1,3 +1,5 @@
+import json as _json
+
 import pytest
 
 from messenger.backend.app.ws.presence import (
@@ -77,3 +79,28 @@ async def test_no_preference_uses_redis_only(fake_redis):
         redis=fake_redis, viewer_id=1, target_user_id=42, target_pref=None
     )
     assert online is True
+
+
+@pytest.mark.asyncio
+async def test_publish_presence_event_serializes_to_channel(fake_redis):
+    from messenger.backend.app.ws.presence import (
+        PRESENCE_EVENTS_CHANNEL,
+        publish_presence_event,
+    )
+
+    pubsub = fake_redis.pubsub()
+    await pubsub.subscribe(PRESENCE_EVENTS_CHANNEL)
+    # consume the subscribe ack
+    msg = await pubsub.get_message(timeout=1.0)
+    assert msg is not None and msg["type"] == "subscribe"
+
+    await publish_presence_event(fake_redis, user_id=42, online=True)
+
+    msg = await pubsub.get_message(timeout=1.0)
+    assert msg is not None
+    assert msg["type"] == "message"
+    payload = _json.loads(msg["data"])
+    assert payload == {"user_id": 42, "online": True}
+
+    await pubsub.unsubscribe(PRESENCE_EVENTS_CHANNEL)
+    await pubsub.aclose()
