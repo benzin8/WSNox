@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
+import { parseApiError } from '../../utils/parseApiError';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -38,7 +39,7 @@ export default function RegisterPage() {
                 navigate('/auth/send-code', { state: { email } });
                 return;
             }
-            setError(err.response?.data?.detail || 'Registration failed');
+            setError(parseApiError(err, 'Registration failed'));
         } finally {
             setLoading(false);
             isSubmitting.current = false;
