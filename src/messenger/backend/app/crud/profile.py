@@ -26,7 +26,7 @@ class ProfileCRUD:
             user_id=user_id,
             display_name=display_name,
             bio="",
-            status="Online",
+            presence_preference=None,
             profile_photos=[],
         )
         session.add(profile)
