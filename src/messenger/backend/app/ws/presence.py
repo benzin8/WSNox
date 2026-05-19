@@ -93,3 +93,51 @@ async def sweep_forever(manager: "ConnectionManager") -> None:
                 logger.exception("sweep_once failed")
     except asyncio.CancelledError:
         return
+
+
+async def presence_listener(manager: "ConnectionManager") -> None:
+    """Subscribe to PRESENCE_EVENTS_CHANNEL and fan out to local sockets.
+
+    Only delivers to users who have the affected user in their chat partners.
+    Resolves partners lazily on each event — cheap because Redis pub/sub
+    fans out only state-transition events, not every ping.
+    """
+    from messenger.backend.app.crud.chat import ChatCRUD
+    from messenger.backend.db.session import AsyncSessionLocal
+
+    redis = get_redis()
+    pubsub = redis.pubsub()
+    await pubsub.subscribe(PRESENCE_EVENTS_CHANNEL)
+
+    try:
+        async for raw in pubsub.listen():
+            if raw["type"] != "message":
+                continue
+            try:
+                data = json.loads(raw["data"])
+            except (ValueError, TypeError):
+                continue
+            affected_user_id = data.get("user_id")
+            online = data.get("online")
+            if affected_user_id is None or not isinstance(online, bool):
+                continue
+
+            async with AsyncSessionLocal() as db:
+                partner_ids = await ChatCRUD.get_chat_partners(db, affected_user_id)
+
+            payload = {"type": "presence", "user_id": affected_user_id, "online": online}
+            for partner_id in partner_ids:
+                sockets = manager.active_connections.get(partner_id, set())
+                dead = []
+                for ws in sockets:
+                    try:
+                        await ws.send_json(payload)
+                    except Exception:  # noqa: BLE001
+                        dead.append(ws)
+                for ws in dead:
+                    sockets.discard(ws)
+                if not sockets and partner_id in manager.active_connections:
+                    del manager.active_connections[partner_id]
+    except asyncio.CancelledError:
+        await pubsub.unsubscribe(PRESENCE_EVENTS_CHANNEL)
+        await pubsub.aclose()
