@@ -151,7 +151,7 @@ function ChatPage() {
   const handleSelectChat = async (selectedChat) => {
     if (selectedChat.recipient) {
       setActiveChat(selectedChat);
-      setChatName(selectedChat.recipient.username);
+      setChatName(selectedChat.recipient.name);
       setMobileView('chat');
     } else if (selectedChat.id) {
       const chat = await getOrCreateChats(selectedChat.id);
@@ -159,7 +159,7 @@ function ChatPage() {
         setActiveChat(chat);
         setSearchQuery('');
         const userData = await getUserDataByChatId(chat.id);
-        setChatName(userData.username);
+        setChatName(userData.name);
         const allChats = await getAllChats();
         setChats(allChats);
         setMobileView('chat');
@@ -223,7 +223,7 @@ function ChatPage() {
                 className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold cursor-pointer hover:bg-lime-300 transition-colors"
                 title="Мой профиль"
               >
-                {currentUser?.username?.slice(0, 1)?.toUpperCase()}
+                {currentUser?.name?.slice(0, 1)?.toUpperCase()}
               </div>
               <span className="font-bold text-lg tracking-tight">Чаты</span>
             </div>
@@ -256,7 +256,7 @@ function ChatPage() {
                       </div>
                       <div className="flex-grow">
                         <div className="flex justify-between items-baseline">
-                          <h4 className="font-semibold text-zinc-100">{user.username}</h4>
+                          <h4 className="font-semibold text-zinc-100">{user.name}</h4>
                         </div>
                       </div>
                     </div>
