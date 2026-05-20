@@ -102,7 +102,8 @@ GitHub Actions (`.github/workflows/ci.yml`):
 
 - Email-аутентификация + верификация кода (Yandex SMTP)
 - WebSocket чат (Redis pub/sub), сообщения шифруются в БД
-- Профили: display_name, bio, status; редактирование с вкладками
+- Профили: display_name, bio, presence_preference; редактирование с вкладками
+- Real-time онлайн-статус: presence через Redis TTL + heartbeat, режимы «не беспокоить» / «невидимка»
 - Поиск пользователей по username
 - Список чатов с последним сообщением и счётчиком непрочитанных
 - Мобильная адаптация: Telegram-style слайд между списком и чатом (`<768px`)
@@ -114,6 +115,7 @@ GitHub Actions (`.github/workflows/ci.yml`):
 |------|----------|
 | [deployment/deploy.md](docs/deployment/deploy.md) | Runbook: логи, ручной деплой, откат |
 | [features/profiles.md](docs/features/profiles.md) | API профилей пользователей |
+| [features/online-status.md](docs/features/online-status.md) | Real-time онлайн-статус: presence, heartbeat, невидимка/DND |
 | [troubleshooting/cors.md](docs/troubleshooting/cors.md) | CORS и относительные URL |
 | [troubleshooting/security-fixes.md](docs/troubleshooting/security-fixes.md) | Исправления безопасности (IV, bcrypt) |
 | [troubleshooting/fixes-round2.md](docs/troubleshooting/fixes-round2.md) | Static mount, --reload, IDOR, тесты |
