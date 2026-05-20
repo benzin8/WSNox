@@ -19,8 +19,8 @@ class Settings(BaseSettings):
 
     smtp_host: str = "smtp.yandex.ru"
     smtp_port: int = 465
-    smtp_user: str
-    smtp_password: str
+    smtp_user: str = ""
+    smtp_password: str = ""
 
     DOCKER_MODE: bool = os.getenv("DOCKER_MODE", "false").lower() == "true"
 
