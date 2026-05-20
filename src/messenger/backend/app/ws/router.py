@@ -144,7 +144,18 @@ async def websocket_chat(websocket: WebSocket) -> None:
         await websocket.close(code=WS_AUTH_FAILED, reason="auth failed")
         return
 
+    from messenger.backend.app.ws.presence import (
+        clear_presence,
+        publish_presence_event,
+        set_presence,
+    )
+
     await manager.connect(websocket, user_id)
+    redis = get_redis()
+    transitioned = await set_presence(redis, user_id)
+    if transitioned:
+        await publish_presence_event(redis, user_id, online=True)
+
     try:
         await websocket.send_json({"type": "auth_ok", "user_id": user_id})
 
@@ -155,9 +166,16 @@ async def websocket_chat(websocket: WebSocket) -> None:
             except json.JSONDecodeError:
                 continue
 
+            msg_type = msg_data.get("type")
+            if msg_type == "ping":
+                transitioned = await set_presence(redis, user_id)
+                if transitioned:
+                    manager.offline_broadcasted.discard(user_id)
+                    await publish_presence_event(redis, user_id, online=True)
+                continue
+
             chat_id = msg_data.get("chat_id")
             text = msg_data.get("text")
-
             if not (chat_id and text):
                 continue
 
@@ -176,4 +194,9 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 )
 
     except WebSocketDisconnect:
-        manager.disconnect(user_id)
+        pass
+    finally:
+        last_socket = await manager.disconnect(websocket, user_id)
+        if last_socket:
+            await clear_presence(redis, user_id)
+            await publish_presence_event(redis, user_id, online=False)
