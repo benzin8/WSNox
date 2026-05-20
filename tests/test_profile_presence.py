@@ -119,3 +119,41 @@ async def test_self_invisible_sees_real_state(patch_redis, fake_redis, monkeypat
             assert body["presence_preference"] == "invisible"  # self sees own pref
     finally:
         app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.mark.asyncio
+async def test_chat_presence_endpoint_filters_offline_and_invisible(
+    patch_redis, fake_redis, monkeypatch
+):
+    viewer_id = 100
+
+    async def _partners(session, user_id):
+        # viewer has three partners: 101 (online), 102 (online but invisible), 103 (offline)
+        assert user_id == viewer_id
+        return [101, 102, 103]
+
+    async def _get_pref(session, target_id):
+        return {101: None, 102: "invisible", 103: None}[target_id]
+
+    from messenger.backend.app.crud.chat import ChatCRUD
+    monkeypatch.setattr(ChatCRUD, "get_chat_partners", staticmethod(_partners))
+
+    # Stub a CRUD helper we'll add for fetching preferences in batch
+    from messenger.backend.app.crud.profile import ProfileCRUD
+    async def _get_prefs(session, user_ids):
+        return {uid: {101: None, 102: "invisible", 103: None}[uid] for uid in user_ids}
+    monkeypatch.setattr(ProfileCRUD, "get_presence_preferences", staticmethod(_get_prefs), raising=False)
+
+    await set_presence(fake_redis, 101)
+    await set_presence(fake_redis, 102)
+    # 103 stays offline
+
+    app.dependency_overrides[get_current_user] = lambda: _FakeUser(id=viewer_id)
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.get("/chats/presence")
+            assert resp.status_code == 200, resp.text
+            assert sorted(resp.json()["online_user_ids"]) == [101]
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
