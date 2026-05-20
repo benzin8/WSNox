@@ -16,20 +16,24 @@ from .ws.router import ws_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Инициализация Redis
     await init_redis()
-    
-    # Старт Pub/Sub слушателя для WebSockets
+
     import asyncio
 
+    from .ws.presence import presence_listener, sweep_forever
     from .ws.router import manager
-    listener_task = asyncio.create_task(manager.pubsub_listener())
-    
-    yield
-    
-    # Завершение работы
-    listener_task.cancel()
-    await close_redis()
+
+    chat_listener_task = asyncio.create_task(manager.pubsub_listener())
+    presence_listener_task = asyncio.create_task(presence_listener(manager))
+    sweeper_task = asyncio.create_task(sweep_forever(manager))
+
+    try:
+        yield
+    finally:
+        chat_listener_task.cancel()
+        presence_listener_task.cancel()
+        sweeper_task.cancel()
+        await close_redis()
 
 app = FastAPI(
     lifespan=lifespan,

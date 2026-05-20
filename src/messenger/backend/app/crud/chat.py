@@ -92,6 +92,22 @@ class ChatCRUD:
         return result.scalar_one_or_none() is not None
 
     @staticmethod
+    async def get_chat_partners(session: AsyncSession, user_id: int) -> list[int]:
+        """Return user_ids of everyone who shares at least one chat with `user_id`."""
+        partner_chats = (
+            select(ChatMember.chat_id)
+            .where(ChatMember.user_id == user_id)
+        ).subquery()
+        query = (
+            select(ChatMember.user_id)
+            .where(ChatMember.chat_id.in_(select(partner_chats)))
+            .where(ChatMember.user_id != user_id)
+            .distinct()
+        )
+        result = await session.execute(query)
+        return [row[0] for row in result.all()]
+
+    @staticmethod
     async def get_chats(session: AsyncSession, current_user_id: int):
         OtherUser = aliased(User)
         OtherMember = aliased(ChatMember)

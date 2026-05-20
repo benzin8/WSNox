@@ -26,7 +26,7 @@ class ProfileCRUD:
             user_id=user_id,
             display_name=display_name,
             bio="",
-            status="Online",
+            presence_preference=None,
             profile_photos=[],
         )
         session.add(profile)
@@ -54,3 +54,17 @@ class ProfileCRUD:
         await session.commit()
         await session.refresh(profile)
         return profile
+
+    @staticmethod
+    async def get_presence_preferences(
+        session: AsyncSession, user_ids: list[int]
+    ) -> dict[int, str | None]:
+        """Return {user_id: presence_preference} for the given ids.
+        Users without a profile row are absent from the dict."""
+        if not user_ids:
+            return {}
+        query = select(Profile.user_id, Profile.presence_preference).where(
+            Profile.user_id.in_(user_ids)
+        )
+        result = await session.execute(query)
+        return {row[0]: row[1] for row in result.all()}

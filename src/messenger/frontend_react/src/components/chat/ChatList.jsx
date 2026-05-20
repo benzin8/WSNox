@@ -1,7 +1,7 @@
 import React from 'react';
 import { User } from 'lucide-react';
 
-export const ChatList = ({ chats, activeChatId, onSelectChat }) => {
+export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => {
   // Сортируем чаты по последнему сообщению или времени обновления
   const sortedChats = [...chats].sort((a, b) => {
     const timeA = new Date(a.last_message_time || a.updated_at || 0).getTime();
@@ -49,8 +49,9 @@ export const ChatList = ({ chats, activeChatId, onSelectChat }) => {
               isSelected ? 'bg-lime-400 scale-105 shadow-lg shadow-lime-400/20' : 'bg-zinc-800 border border-zinc-700 group-hover:border-zinc-500'
             }`}>
               <User size={24} className={isSelected ? 'text-zinc-950' : 'text-zinc-400 group-hover:text-zinc-200'} />
-              {/* Online status indicator placeholder */}
-              <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-zinc-900" />
+              {onlineUsers?.has(chat.recipient_id) && (
+                <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-lime-400 border-2 border-zinc-900" />
+              )}
             </div>
 
             <div className="flex-grow min-w-0">

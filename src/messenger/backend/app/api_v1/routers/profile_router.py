@@ -4,8 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.api_v1.auth.dependencies import get_current_user
-from messenger.backend.app.api_v1.schemas.user import PhoneCodeVerify, PhoneRequest, ProfileUpdate, UserProfileResponse
+from messenger.backend.app.api_v1.schemas.user import (
+    PhoneCodeVerify,
+    PhoneRequest,
+    ProfileUpdate,
+    UserProfileResponse,
+)
 from messenger.backend.app.crud.profile import ProfileCRUD
+from messenger.backend.app.ws.presence import is_visible_online
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
 from messenger.backend.models.user import User
@@ -13,9 +19,26 @@ from messenger.backend.models.user import User
 profile_router = APIRouter(prefix="/profiles", tags=["profiles"])
 
 
-def _build_response(user) -> UserProfileResponse:
-    """Flatten User + Profile ORM objects into a single response model."""
+async def _build_response(user, viewer_id: int) -> UserProfileResponse:
+    """Flatten User+Profile ORM objects, computing `online` and masking
+    `presence_preference` if the target is invisible to non-self viewers."""
     p = user.profile
+    target_pref = p.presence_preference if p else None
+    redis = get_redis()
+    online = await is_visible_online(
+        redis=redis,
+        viewer_id=viewer_id,
+        target_user_id=user.id,
+        target_pref=target_pref,
+    )
+
+    # Mask `invisible` preference from other viewers — hide the fact entirely.
+    visible_pref: str | None
+    if viewer_id != user.id and target_pref == "invisible":
+        visible_pref = None
+    else:
+        visible_pref = target_pref
+
     return UserProfileResponse(
         user_id=user.id,
         username=user.username,
@@ -23,7 +46,8 @@ def _build_response(user) -> UserProfileResponse:
         phone_number=user.phone_number,
         display_name=p.display_name if p else None,
         bio=p.bio if p else None,
-        status=p.status if p else "Offline",
+        presence_preference=visible_pref,
+        online=online,
         profile_photos=p.profile_photos if p else [],
     )
 
@@ -33,11 +57,10 @@ async def get_my_profile(
     db: AsyncSession = Depends(get_db_session),
     current_user=Depends(get_current_user),
 ):
-    """Return the authenticated user's own profile."""
     user = await ProfileCRUD.get_user_with_profile(db, current_user.id)
     if not user:
         raise HTTPException(status_code=404, detail="Profile not found")
-    return _build_response(user)
+    return await _build_response(user, viewer_id=current_user.id)
 
 
 @profile_router.put("/me", response_model=UserProfileResponse)
@@ -46,13 +69,12 @@ async def update_my_profile(
     db: AsyncSession = Depends(get_db_session),
     current_user=Depends(get_current_user),
 ):
-    """Update the authenticated user's editable profile fields."""
     profile = await ProfileCRUD.update_profile(db, current_user.id, data)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
     user = await ProfileCRUD.get_user_with_profile(db, current_user.id)
-    return _build_response(user)
+    return await _build_response(user, viewer_id=current_user.id)
 
 
 @profile_router.post("/phone/send-code")
@@ -92,17 +114,16 @@ async def verify_phone_code(
         await db.commit()
 
     user_with_profile = await ProfileCRUD.get_user_with_profile(db, current_user.id)
-    return _build_response(user_with_profile)
+    return await _build_response(user_with_profile, viewer_id=current_user.id)
 
 
 @profile_router.get("/{user_id}", response_model=UserProfileResponse)
 async def get_user_profile(
     user_id: int,
     db: AsyncSession = Depends(get_db_session),
-    current_user=Depends(get_current_user),  # require auth to view profiles
+    current_user=Depends(get_current_user),
 ):
-    """Return any user's profile (read-only for the requester)."""
     user = await ProfileCRUD.get_user_with_profile(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return _build_response(user)
+    return await _build_response(user, viewer_id=current_user.id)
