@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { X, Save } from "lucide-react";
 
-const STATUS_OPTIONS = ["Online", "Offline", "Не беспокоить", "Недоступен"];
+const PRESENCE_OPTIONS = [
+    { value: "",          label: "Обычный" },
+    { value: "dnd",       label: "Не беспокоить" },
+    { value: "invisible", label: "Невидимка" },
+];
 
 export const EditProfileModal = ({ profile, onClose, onSave, onSendPhoneCode, onVerifyPhoneCode }) => {
     const [activeTab, setActiveTab] = useState("profile");
@@ -9,7 +13,7 @@ export const EditProfileModal = ({ profile, onClose, onSave, onSendPhoneCode, on
     // Profile tab state
     const [displayName, setDisplayName] = useState(profile?.display_name || "");
     const [bio, setBio] = useState(profile?.bio || "");
-    const [status, setStatus] = useState(profile?.status || "Online");
+    const [presencePreference, setPresencePreference] = useState(profile?.presence_preference ?? "");
     const [isSaving, setIsSaving] = useState(false);
 
     // Personal tab state
@@ -27,7 +31,11 @@ export const EditProfileModal = ({ profile, onClose, onSave, onSendPhoneCode, on
 
     const handleSave = async () => {
         setIsSaving(true);
-        await onSave({ display_name: displayName, bio, status });
+        await onSave({
+            display_name: displayName,
+            bio,
+            presence_preference: presencePreference === "" ? null : presencePreference,
+        });
         setIsSaving(false);
         onClose();
     };
@@ -126,16 +134,19 @@ export const EditProfileModal = ({ profile, onClose, onSave, onSendPhoneCode, on
                         </div>
 
                         <div className="flex flex-col gap-1">
-                            <label className="text-xs text-zinc-400 font-medium">Статус</label>
+                            <label className="text-xs text-zinc-400 font-medium">Видимость</label>
                             <select
-                                value={status}
-                                onChange={(e) => setStatus(e.target.value)}
+                                value={presencePreference}
+                                onChange={(e) => setPresencePreference(e.target.value)}
                                 className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
                             >
-                                {STATUS_OPTIONS.map((s) => (
-                                    <option key={s} value={s}>{s}</option>
+                                {PRESENCE_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
                                 ))}
                             </select>
+                            <p className="text-[10px] text-zinc-500">
+                                «Обычный» — статус определяется автоматически. «Не беспокоить» — собеседник видит вас в сети с пометкой. «Невидимка» — все видят вас офлайн.
+                            </p>
                         </div>
 
                         <div className="flex gap-2 mt-2">

@@ -50,14 +50,21 @@ export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit }) => {
                     <p className="text-sm text-zinc-400">@{profile.username}</p>
                 </div>
 
-                {/* Status badge */}
-                <span className={`text-xs font-medium px-3 py-1 rounded-full ${
-                    profile.status === "Online"
-                        ? "bg-lime-400/15 text-lime-400"
-                        : "bg-zinc-700 text-zinc-400"
-                }`}>
-                    {profile.status}
-                </span>
+                {/* Presence badge */}
+                <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium px-3 py-1 rounded-full ${
+                        profile.online
+                            ? "bg-lime-400/15 text-lime-400"
+                            : "bg-zinc-700 text-zinc-400"
+                    }`}>
+                        {profile.online ? "в сети" : "не в сети"}
+                    </span>
+                    {profile.presence_preference === "dnd" && (
+                        <span className="text-xs font-medium px-3 py-1 rounded-full bg-amber-400/15 text-amber-400">
+                            Не беспокоить
+                        </span>
+                    )}
+                </div>
 
                 {/* Bio */}
                 {profile.bio && (

@@ -1,7 +1,7 @@
 import secrets
+from email.message import EmailMessage
 
 import aiosmtplib
-from email.message import EmailMessage
 from fastapi import HTTPException
 
 from messenger.backend.core.config import settings

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Send, LogOut, User, MessageSquare, Phone, MoreVertical, Search } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
 import { useChatSocket } from '../../hooks/useChatSocket';
+import { usePresence } from '../../hooks/usePresence';
 import { useProfile } from '../../hooks/useProfile';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
@@ -24,8 +25,10 @@ function ChatPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPhoneBanner, setShowPhoneBanner] = useState(false);
   const [mobileView, setMobileView] = useState('list');
+  const [partnerPresencePreference, setPartnerPresencePreference] = useState(null);
 
-  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage } = useChatSocket(token);
+  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, socketRef } = useChatSocket(token);
+  const { onlineUsers } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { searchChats,
           searchResult,
           isSearching,
@@ -105,6 +108,22 @@ function ChatPage() {
     }
   }, [activeChat?.id, currentUser?.id]);
 
+  useEffect(() => {
+    if (!activeChat?.recipient_id) {
+        setPartnerPresencePreference(null);
+        return;
+    }
+    let cancelled = false;
+    (async () => {
+        const p = await fetchUserProfile(activeChat.recipient_id);
+        if (!cancelled) {
+            setPartnerPresencePreference(p?.presence_preference ?? null);
+        }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeChat?.recipient_id]);
+
   const handleSendMessage = (text) => {
     if (!activeChat) return;
 
@@ -165,6 +184,10 @@ function ChatPage() {
     const updated = await updateMyProfile(data);
     if (updated) setProfileModal({ profile: updated, isOwnProfile: true });
   };
+
+  const isPartnerOnline = activeChat?.recipient_id
+      ? onlineUsers.has(activeChat.recipient_id)
+      : false;
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
@@ -251,6 +274,7 @@ function ChatPage() {
                 chats={chats}
                 activeChatId={activeChat?.id}
                 onSelectChat={handleSelectChat}
+                onlineUsers={onlineUsers}
               />
             )}
           </div>
@@ -261,6 +285,8 @@ function ChatPage() {
            setMessages={setMessages}
            sendMessage={handleSendMessage}
            isConnected={isConnected}
+           isPartnerOnline={isPartnerOnline}
+           partnerPresencePreference={partnerPresencePreference}
            messagesEndRef={messagesEndRef}
            inputText={inputText}
            setInputText={setInputText}

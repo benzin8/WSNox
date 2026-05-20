@@ -13,7 +13,10 @@ from messenger.backend.app.api_v1.schemas.message import MessageResponse
 from messenger.backend.app.api_v1.schemas.user import UserResponse
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
+from messenger.backend.app.crud.profile import ProfileCRUD
+from messenger.backend.app.ws.presence import is_present
 from messenger.backend.core.crypto import decrypt_message
+from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
 
 logging.basicConfig(level=logging.INFO)
@@ -73,6 +76,28 @@ async def get_chats(db: AsyncSession = Depends(get_db_session), current_user=Dep
         chat_resp.unread_count = unread_cnt or 0
         chats.append(chat_resp)
     return chats
+
+@chat_router.get("/presence")
+async def get_chat_presence(
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    """Return user_ids of chat partners who are currently online AND not invisible."""
+    partner_ids = await ChatCRUD.get_chat_partners(db, current_user.id)
+    if not partner_ids:
+        return {"online_user_ids": []}
+
+    prefs = await ProfileCRUD.get_presence_preferences(db, partner_ids)
+    redis = get_redis()
+
+    online = []
+    for uid in partner_ids:
+        if prefs.get(uid) == "invisible":
+            continue
+        if await is_present(redis, uid):
+            online.append(uid)
+
+    return {"online_user_ids": online}
 
 @chat_router.get("/{chat_id}/messages", response_model=list[MessageResponse])
 async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):

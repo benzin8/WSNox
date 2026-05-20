@@ -1,12 +1,13 @@
 import React from "react";
-import { User, Phone, MoreVertical, ChevronLeft } from 'lucide-react';
+import { User, Phone, MoreVertical, ChevronLeft, BellOff } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 
 export const ChatWindow = ({
     messages, setMessages, activeChat, sendMessage,
     isConnected, messagesEndRef, inputText, setInputText,
-    chatName, onOpenProfile, onBack
+    chatName, onOpenProfile, onBack,
+    isPartnerOnline, partnerPresencePreference
 }) => {
     if (!activeChat) {
         return (
@@ -38,7 +39,14 @@ export const ChatWindow = ({
               >
                 {chatName}
               </h3>
-              <p className="text-xs text-lime-400 font-medium">{isConnected ? "В сети" : "Офлайн"}</p>
+              <div className="flex items-center gap-1.5">
+                <p className={`text-xs font-medium ${isPartnerOnline ? "text-lime-400" : "text-zinc-500"}`}>
+                  {isPartnerOnline ? "в сети" : "не в сети"}
+                </p>
+                {partnerPresencePreference === "dnd" && (
+                  <BellOff size={12} className="text-amber-400" />
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-4 text-zinc-400">

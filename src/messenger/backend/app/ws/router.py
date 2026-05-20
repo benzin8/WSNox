@@ -22,31 +22,46 @@ WS_AUTH_FAILED = 4401  # custom 4xxx code, equivalent to HTTP 401
 
 class ConnectionManager:
     def __init__(self) -> None:
-        self.active_connections: Dict[int, WebSocket] = {}
+        self.active_connections: Dict[int, set[WebSocket]] = {}
+        self.offline_broadcasted: set[int] = set()
 
     async def connect(self, websocket: WebSocket, user_id: int) -> None:
-        self.active_connections[user_id] = websocket
+        self.active_connections.setdefault(user_id, set()).add(websocket)
+        self.offline_broadcasted.discard(user_id)
 
-    def disconnect(self, user_id: int) -> None:
-        if user_id in self.active_connections:
+    async def disconnect(self, websocket: WebSocket, user_id: int) -> bool:
+        """Remove `websocket` from the user's set. Returns True if the set is
+        now empty (i.e. the user has no remaining sockets)."""
+        sockets = self.active_connections.get(user_id)
+        if not sockets:
+            return True
+        sockets.discard(websocket)
+        if not sockets:
             del self.active_connections[user_id]
+            return True
+        return False
 
-    async def send_personal_message(self, chat_id: int, text: str, recipient_id: int, sender_id: int, db: AsyncSession) -> None:
+    async def send_personal_message(
+        self,
+        chat_id: int,
+        text: str,
+        recipient_id: int,
+        sender_id: int,
+        db: AsyncSession,
+    ) -> None:
         message = await MessageCRUD.create_text_message(
             db=db,
             chat_id=chat_id,
             sender_id=sender_id,
             recipient_id=recipient_id,
-            text=text
+            text=text,
         )
-
         payload = json.dumps({
             "recipient_id": recipient_id,
             "encrypted_text": message.encrypted_data,
             "sender_id": sender_id,
-            "chat_id": chat_id
+            "chat_id": chat_id,
         })
-
         redis = get_redis()
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
 
@@ -57,25 +72,37 @@ class ConnectionManager:
 
         try:
             async for message in pubsub.listen():
-                if message["type"] == "message":
-                    data = json.loads(message["data"])
-                    recipient_id = data.get("recipient_id")
-                    encrypted_text = data.get("encrypted_text")
-                    sender_id = data.get("sender_id")
-                    chat_id = data.get("chat_id")
+                if message["type"] != "message":
+                    continue
+                data = json.loads(message["data"])
+                recipient_id = data.get("recipient_id")
+                encrypted_text = data.get("encrypted_text")
+                sender_id = data.get("sender_id")
+                chat_id = data.get("chat_id")
 
-                    if recipient_id in self.active_connections:
-                        try:
-                            decrypted_text = decrypt_message(encrypted_text)
-                            payload = {
-                                "text": decrypted_text,
-                                "sender_id": sender_id,
-                                "recipient_id": recipient_id,
-                                "chat_id": chat_id,
-                            }
-                            await self.active_connections[recipient_id].send_json(payload)
-                        except Exception:
-                            del self.active_connections[recipient_id]
+                sockets = self.active_connections.get(recipient_id, set())
+                if not sockets:
+                    continue
+                try:
+                    decrypted_text = decrypt_message(encrypted_text)
+                except Exception:  # noqa: BLE001
+                    continue
+                payload = {
+                    "text": decrypted_text,
+                    "sender_id": sender_id,
+                    "recipient_id": recipient_id,
+                    "chat_id": chat_id,
+                }
+                dead = []
+                for ws in sockets:
+                    try:
+                        await ws.send_json(payload)
+                    except Exception:  # noqa: BLE001
+                        dead.append(ws)
+                for ws in dead:
+                    sockets.discard(ws)
+                if not sockets:
+                    self.active_connections.pop(recipient_id, None)
         except asyncio.CancelledError:
             await pubsub.unsubscribe(REDIS_CHAT_CHANNEL)
 
@@ -117,7 +144,18 @@ async def websocket_chat(websocket: WebSocket) -> None:
         await websocket.close(code=WS_AUTH_FAILED, reason="auth failed")
         return
 
+    from messenger.backend.app.ws.presence import (
+        clear_presence,
+        publish_presence_event,
+        set_presence,
+    )
+
     await manager.connect(websocket, user_id)
+    redis = get_redis()
+    transitioned = await set_presence(redis, user_id)
+    if transitioned:
+        await publish_presence_event(redis, user_id, online=True)
+
     try:
         await websocket.send_json({"type": "auth_ok", "user_id": user_id})
 
@@ -128,9 +166,16 @@ async def websocket_chat(websocket: WebSocket) -> None:
             except json.JSONDecodeError:
                 continue
 
+            msg_type = msg_data.get("type")
+            if msg_type == "ping":
+                transitioned = await set_presence(redis, user_id)
+                if transitioned:
+                    manager.offline_broadcasted.discard(user_id)
+                    await publish_presence_event(redis, user_id, online=True)
+                continue
+
             chat_id = msg_data.get("chat_id")
             text = msg_data.get("text")
-
             if not (chat_id and text):
                 continue
 
@@ -149,4 +194,9 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 )
 
     except WebSocketDisconnect:
-        manager.disconnect(user_id)
+        pass
+    finally:
+        last_socket = await manager.disconnect(websocket, user_id)
+        if last_socket:
+            await clear_presence(redis, user_id)
+            await publish_presence_event(redis, user_id, online=False)
