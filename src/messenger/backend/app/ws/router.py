@@ -12,6 +12,7 @@ from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import AsyncSessionLocal
+from messenger.backend.models.user import User
 
 REDIS_CHAT_CHANNEL = "chat_messages"
 AUTH_TIMEOUT_SECONDS = 10
@@ -56,11 +57,23 @@ class ConnectionManager:
             recipient_id=recipient_id,
             text=text,
         )
+        sender = await db.get(User, sender_id)
         payload = json.dumps({
             "recipient_id": recipient_id,
             "encrypted_text": message.encrypted_data,
             "sender_id": sender_id,
             "chat_id": chat_id,
+            "chat_info": {
+                "id": chat_id,
+                "name": f"private_{min(sender_id, recipient_id)}_{max(sender_id, recipient_id)}",
+                "chat_type": "private",
+                "recipient_id": sender_id,
+                "recipient": {
+                    "id": sender.id,
+                    "name": sender.name,
+                    "username": sender.username,
+                },
+            },
         })
         redis = get_redis()
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
@@ -79,6 +92,7 @@ class ConnectionManager:
                 encrypted_text = data.get("encrypted_text")
                 sender_id = data.get("sender_id")
                 chat_id = data.get("chat_id")
+                chat_info = data.get("chat_info")
 
                 sockets = self.active_connections.get(recipient_id, set())
                 if not sockets:
@@ -92,6 +106,7 @@ class ConnectionManager:
                     "sender_id": sender_id,
                     "recipient_id": recipient_id,
                     "chat_id": chat_id,
+                    "chat_info": chat_info,
                 }
                 dead = []
                 for ws in sockets:
