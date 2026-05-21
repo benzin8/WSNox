@@ -29,6 +29,8 @@ function ChatPage() {
 
   // Keeps the open chat id readable inside the socket's onmessage closure
   const activeChatIdRef = useRef(null);
+  // Mirror of chats state for reading inside effects without stale closure
+  const chatsRef = useRef([]);
 
   const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers } = usePresence(socketRef, isConnected, lastPresenceEvent);
@@ -74,36 +76,50 @@ function ChatPage() {
 
   // Обновление списка чатов при получении нового сообщения
   useEffect(() => {
-    if (lastReceivedMessage) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setChats(prevChats => {
-        const existingChatIndex = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
+    if (!lastReceivedMessage) return;
 
-        if (existingChatIndex !== -1) {
-          const isActiveChat = lastReceivedMessage.chat_id === activeChatIdRef.current;
-          const isOwnMessage = Number(lastReceivedMessage.sender_id) === currentUser?.id;
-          const updatedChat = {
-            ...prevChats[existingChatIndex],
-            last_message: lastReceivedMessage.text,
-            last_message_time: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            unread_count: (!isActiveChat && !isOwnMessage)
-              ? (prevChats[existingChatIndex].unread_count || 0) + 1
-              : prevChats[existingChatIndex].unread_count || 0
-          };
-          const otherChats = prevChats.filter(c => c.id !== lastReceivedMessage.chat_id);
-          return [updatedChat, ...otherChats];
-        } else {
-          getAllChats().then(updatedChats => setChats(updatedChats));
-          return prevChats;
-        }
+    const existingChat = chatsRef.current.find(c => c.id === lastReceivedMessage.chat_id);
+
+    if (existingChat) {
+      const isActiveChat = lastReceivedMessage.chat_id === activeChatIdRef.current;
+      const isOwnMessage = Number(lastReceivedMessage.sender_id) === currentUser?.id;
+      setChats(prevChats => {
+        const idx = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
+        if (idx === -1) return prevChats;
+        const updatedChat = {
+          ...prevChats[idx],
+          last_message: lastReceivedMessage.text,
+          last_message_time: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          unread_count: (!isActiveChat && !isOwnMessage)
+            ? (prevChats[idx].unread_count || 0) + 1
+            : prevChats[idx].unread_count || 0,
+        };
+        return [updatedChat, ...prevChats.filter(c => c.id !== lastReceivedMessage.chat_id)];
       });
+    } else if (lastReceivedMessage.chat_info) {
+      setChats(prevChats => {
+        if (prevChats.some(c => c.id === lastReceivedMessage.chat_info.id)) return prevChats;
+        const newChat = {
+          ...lastReceivedMessage.chat_info,
+          last_message: lastReceivedMessage.text,
+          last_message_time: new Date().toISOString(),
+          unread_count: 1,
+        };
+        return [newChat, ...prevChats];
+      });
+    } else {
+      getAllChats().then(updatedChats => setChats(updatedChats));
     }
   }, [lastReceivedMessage]);
 
   useEffect(() => {
     activeChatIdRef.current = activeChat?.id ?? null;
   }, [activeChat?.id]);
+
+  useEffect(() => {
+    chatsRef.current = chats;
+  }, [chats]);
 
   useEffect(() => {
     if (activeChat?.id && currentUser?.id) {
