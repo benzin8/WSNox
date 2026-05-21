@@ -28,7 +28,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx/wsnox.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/wsnox.dev.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
 
