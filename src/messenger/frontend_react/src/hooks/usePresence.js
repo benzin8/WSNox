@@ -39,6 +39,15 @@ export const usePresence = (socketRef, isConnected, lastPresenceEvent) => {
         }
     };
 
+    const refreshPresence = async () => {
+        try {
+            const res = await axios.get(`${API_BASE}/chats/presence`, authConfig());
+            setOnlineUsers(new Set(res.data.online_user_ids));
+        } catch (err) {
+            console.error("Failed to refresh presence snapshot", err);
+        }
+    };
+
     // Fetch initial snapshot and start heartbeat after auth_ok.
     useEffect(() => {
         if (!isConnected) {
@@ -91,5 +100,5 @@ export const usePresence = (socketRef, isConnected, lastPresenceEvent) => {
         });
     }, [lastPresenceEvent]);
 
-    return { onlineUsers };
+    return { onlineUsers, refreshPresence };
 };
