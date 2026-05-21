@@ -32,23 +32,23 @@ jobs:
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          host: ${{ secrets.SERVER.SERVER_HOST }}
+          username: ${{ secrets.SERVER.SERVER_USER }}
+          key: ${{ secrets.SERVER.SERVER_SSH_KEY }}
           script: |
             {
-            echo "DB_USER=${{ secrets.DB_USER }}"
-            echo "DB_PASS=${{ secrets.DB_PASS }}"
-            echo "DB_HOST=${{ secrets.DB_HOST }}"
-            echo "DB_PORT=${{ secrets.DB_PORT }}"
-            echo "DB_NAME=${{ secrets.DB_NAME }}"
-            echo "SMTP_HOST=${{ secrets.SMTP_HOST }}"
-            echo "SMTP_PORT=${{ secrets.SMTP_PORT }}"
-            echo "SMTP_USER=${{ secrets.SMTP_USER }}"
-            echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}"
-            echo "SECRET_KEY=${{ secrets.SECRET_KEY }}"
-            echo "ALGORITHM=${{ secrets.ALGORITHM }}"
-            echo "REDIS_URL=${{ secrets.REDIS_URL }}"
+            echo "DB_USER=${{ secrets.DB.DB_USER }}"
+            echo "DB_PASS=${{ secrets.DB.DB_PASS }}"
+            echo "DB_HOST=${{ secrets.DB.DB_HOST }}"
+            echo "DB_PORT=${{ secrets.DB.DB_PORT }}"
+            echo "DB_NAME=${{ secrets.DB.DB_NAME }}"
+            echo "SMTP_HOST=${{ secrets.SMTP.SMTP_HOST }}"
+            echo "SMTP_PORT=${{ secrets.SMTP.SMTP_PORT }}"
+            echo "SMTP_USER=${{ secrets.SMTP.SMTP_USER }}"
+            echo "SMTP_PASSWORD=${{ secrets.SMTP.SMTP_PASSWORD }}"
+            echo "SECRET_KEY=${{ secrets.SECURITY.SECRET_KEY }}"
+            echo "ALGORITHM=${{ secrets.SECURITY.ALGORITHM }}"
+            echo "REDIS_URL=${{ secrets.SECURITY.REDIS_URL }}"
             } > ~/WSNox/.env
             cd ~/WSNox
             docker compose pull
