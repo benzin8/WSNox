@@ -27,7 +27,10 @@ function ChatPage() {
   const [mobileView, setMobileView] = useState('list');
   const [partnerPresencePreference, setPartnerPresencePreference] = useState(null);
 
-  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, socketRef } = useChatSocket(token);
+  // Keeps the open chat id readable inside the socket's onmessage closure
+  const activeChatIdRef = useRef(null);
+
+  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { searchChats,
           searchResult,
@@ -92,6 +95,10 @@ function ChatPage() {
       });
     }
   }, [lastReceivedMessage]);
+
+  useEffect(() => {
+    activeChatIdRef.current = activeChat?.id ?? null;
+  }, [activeChat?.id]);
 
   useEffect(() => {
     if (activeChat?.id && currentUser?.id) {
@@ -244,7 +251,7 @@ function ChatPage() {
             </div>
           </div>
 
-          <div className="flex-grow overflow-y-auto">
+          <div className="flex-grow min-h-0 overflow-y-auto">
             {searchQuery?.length > 0 ? (
               <div className="p-2 space-y-1">
                 {searchResult?.length > 0 ? (

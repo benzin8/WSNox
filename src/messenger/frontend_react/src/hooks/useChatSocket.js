@@ -6,7 +6,7 @@ const WS_BASE = import.meta.env.VITE_WS_BASE_URL ||
 
 const RECONNECT_DELAYS_MS = [2000, 4000, 8000, 16000, 30000];
 
-export const useChatSocket = (token) => {
+export const useChatSocket = (token, activeChatIdRef) => {
     const [messages, setMessages] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
     const [lastReceivedMessage, setLastReceivedMessage] = useState(null);
@@ -59,12 +59,14 @@ export const useChatSocket = (token) => {
                     return;
                 }
 
-                setMessages((prev) => [...prev, {
-                    ...data,
-                    text: data.text,
-                    type: data.sender_id === currentUserRef.current ? "outgoing" : "incoming",
-                    id: Date.now(),
-                }]);
+                if (data.chat_id === activeChatIdRef?.current) {
+                    setMessages((prev) => [...prev, {
+                        ...data,
+                        text: data.text,
+                        type: data.sender_id === currentUserRef.current ? "outgoing" : "incoming",
+                        id: Date.now(),
+                    }]);
+                }
                 setLastReceivedMessage(data);
             };
 

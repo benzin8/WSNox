@@ -17,7 +17,7 @@ export const ChatWindow = ({
         );
     }
     return (
-      <div className="flex-grow flex flex-col bg-zinc-900 shadow-2xl">
+      <div className="flex-grow flex flex-col min-h-0 bg-zinc-900 shadow-2xl">
         {/* Chat Header */}
         <header className="h-20 flex-shrink-0 border-b border-zinc-800 flex items-center justify-between px-8 bg-zinc-900/80 backdrop-blur-md">
           <div className="flex items-center gap-4">

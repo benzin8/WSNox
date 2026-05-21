@@ -3,7 +3,7 @@ import { MessageSquare } from "lucide-react";
 
 export const MessageList = ({messages, messagesEndRef}) => {
     return (
-        <div className="flex-grow overflow-y-auto p-6 space-y-4 scrollbar-hide">
+        <div className="flex-grow min-h-0 overflow-y-auto p-6 space-y-4 scrollbar-hide">
           {messages.length === 0 && (
             <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40">
               <MessageSquare size={48} className="mb-4 text-lime-400" />
