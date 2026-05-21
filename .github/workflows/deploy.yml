@@ -1,0 +1,51 @@
+name: Deploy
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/benzin8/wsnox:latest
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            {
+            echo "DB_USER=${{ secrets.DB_USER }}"
+            echo "DB_PASS=${{ secrets.DB_PASS }}"
+            echo "DB_HOST=${{ secrets.DB_HOST }}"
+            echo "DB_PORT=${{ secrets.DB_PORT }}"
+            echo "DB_NAME=${{ secrets.DB_NAME }}"
+            echo "SMTP_HOST=${{ secrets.SMTP_HOST }}"
+            echo "SMTP_PORT=${{ secrets.SMTP_PORT }}"
+            echo "SMTP_USER=${{ secrets.SMTP_USER }}"
+            echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}"
+            echo "SECRET_KEY=${{ secrets.SECRET_KEY }}"
+            echo "ALGORITHM=${{ secrets.ALGORITHM }}"
+            echo "REDIS_URL=${{ secrets.REDIS_URL }}"
+            } > ~/WSNox/.env
+            cd ~/WSNox
+            docker compose pull
+            docker compose up -d
