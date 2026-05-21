@@ -17,13 +17,22 @@ services:
     volumes:
       - redis_data:/data
 
+  nginx:
+    image: nginx:alpine
+    container_name: messenger_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/wsnox.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+
   backend:
     image: ghcr.io/benzin8/wsnox:latest
     container_name: messenger_backend
     restart: always
     env_file: .env
-    ports:
-      - "8000:8000"
     environment:
       - DOCKER_MODE=true
       - DEBUG=false
