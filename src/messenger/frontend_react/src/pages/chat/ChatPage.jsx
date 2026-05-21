@@ -33,7 +33,7 @@ function ChatPage() {
   const chatsRef = useRef([]);
 
   const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, socketRef } = useChatSocket(token, activeChatIdRef);
-  const { onlineUsers } = usePresence(socketRef, isConnected, lastPresenceEvent);
+  const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { searchChats,
           searchResult,
           isSearching,
@@ -108,6 +108,7 @@ function ChatPage() {
         };
         return [newChat, ...prevChats];
       });
+      refreshPresence();
     } else {
       getAllChats().then(updatedChats => setChats(updatedChats));
     }
