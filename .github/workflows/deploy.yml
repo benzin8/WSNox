@@ -51,5 +51,6 @@ jobs:
             echo "REDIS_URL=${{ secrets.REDIS_URL }}"
             } > ~/WSNox/.env
             cd ~/WSNox
+            git pull origin main
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
