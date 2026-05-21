@@ -80,11 +80,16 @@ function ChatPage() {
         const existingChatIndex = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
 
         if (existingChatIndex !== -1) {
+          const isActiveChat = lastReceivedMessage.chat_id === activeChatIdRef.current;
+          const isOwnMessage = Number(lastReceivedMessage.sender_id) === currentUser?.id;
           const updatedChat = {
             ...prevChats[existingChatIndex],
             last_message: lastReceivedMessage.text,
             last_message_time: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            unread_count: (!isActiveChat && !isOwnMessage)
+              ? (prevChats[existingChatIndex].unread_count || 0) + 1
+              : prevChats[existingChatIndex].unread_count || 0
           };
           const otherChats = prevChats.filter(c => c.id !== lastReceivedMessage.chat_id);
           return [updatedChat, ...otherChats];
@@ -160,6 +165,9 @@ function ChatPage() {
       setActiveChat(selectedChat);
       setChatName(selectedChat.recipient.name);
       setMobileView('chat');
+      setChats(prevChats => prevChats.map(c =>
+        c.id === selectedChat.id ? { ...c, unread_count: 0 } : c
+      ));
     } else if (selectedChat.id) {
       const chat = await getOrCreateChats(selectedChat.id);
       if (chat) {
