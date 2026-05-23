@@ -103,12 +103,25 @@ export const useChatAction = () => {
         }
     }
 
+    const markChatAsRead = async (chatId) => {
+        try {
+            await axios.post(
+                `${API_BASE}/chats/${chatId}/read`,
+                null,
+                getAuthConfig()
+            );
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to mark chat as read");
+        }
+    }
+
     return {searchChats,
             getUserDataByChatId,
             getOrCreateChats,
             getMyData,
             getMessagesByChatId,
             getAllChats,
+            markChatAsRead,
             setActiveChat,
             activeChat,
             searchResult,
