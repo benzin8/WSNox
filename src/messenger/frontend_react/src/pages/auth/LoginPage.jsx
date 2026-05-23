@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
 
@@ -83,6 +83,14 @@ export default function LoginPage() {
                     >
                         {loading ? 'Вход...' : 'Войти'}
                     </button>
+
+                    <Link
+                        to="/auth/forgot-password"
+                        state={{ email }}
+                        className="block text-center text-sm text-lime-400 hover:text-lime-300 transition-colors"
+                    >
+                        Забыли пароль?
+                    </Link>
 
                     <button
                         type="button"

@@ -5,6 +5,7 @@ import { usePushSubscription } from "../hooks/usePushSubscription.js";
 import { TONES } from "../constants.js";
 import { playTone } from "../audio/tones.js";
 import { isDesktopNotificationSupported, getDesktopPermission } from "../utils/permissions.js";
+import { isIosSafariNotStandalone } from "../utils/platform.js";
 
 export function NotificationSettingsTab() {
   const {
@@ -146,7 +147,12 @@ export function NotificationSettingsTab() {
         <p className="pl-6 text-[10px] text-zinc-500">
           Получайте уведомления даже когда вкладка закрыта (на Android и в PWA).
         </p>
-        {!push.supported && (
+        {!push.supported && isIosSafariNotStandalone() && (
+          <p className="pl-6 text-xs text-amber-400 leading-snug">
+            Для пушей на iPhone: нажми <span className="font-semibold">Поделиться</span> в Safari → <span className="font-semibold">«На экран Домой»</span>, потом открой приложение с главного экрана и вернись сюда.
+          </p>
+        )}
+        {!push.supported && !isIosSafariNotStandalone() && (
           <p className="pl-6 text-xs text-zinc-500">
             Браузер не поддерживает push-уведомления.
           </p>

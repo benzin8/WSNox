@@ -34,6 +34,17 @@ class EmailVerify(BaseModel):
     email: EmailStr
     code: str = Field(..., min_length=4, max_length=6)
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=10, max_length=128)
+    password: str = Field(..., min_length=8, max_length=128)
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+
 class UserBase(BaseModel):
     username: str = Field(..., min_length=3, max_length=32)
     name: str = Field(..., min_length=2, max_length=32)
@@ -78,10 +89,12 @@ class UserProfileResponse(BaseModel):
     username: str
     name: str
     phone_number: Optional[str] = None
+    email: Optional[EmailStr] = None
     display_name: Optional[str] = None
     bio: Optional[str] = None
     presence_preference: Optional[PresencePreference] = None
     online: bool = False
     profile_photos: List[str] = []
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

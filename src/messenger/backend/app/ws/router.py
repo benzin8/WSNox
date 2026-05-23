@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from messenger.backend.app.api_v1.auth.dependencies import get_user_from_token
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
+from messenger.backend.app.ws.push import send_push_to_user
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import AsyncSessionLocal
