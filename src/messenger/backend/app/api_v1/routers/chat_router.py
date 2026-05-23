@@ -53,7 +53,9 @@ async def get_user_data_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_
     user = await ChatCRUD.get_user_data_by_chat_id(db, chat_id, current_user.id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
-    return UserResponse.model_validate(user)
+    resp = UserResponse.model_validate(user)
+    resp.display_name = user.profile.display_name if user.profile else None
+    return resp
 
 @chat_router.get("/me", response_model=UserResponse)
 async def get_my_data(db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
@@ -63,9 +65,10 @@ async def get_my_data(db: AsyncSession = Depends(get_db_session), current_user=D
 async def get_chats(db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     result = await ChatCRUD.get_chats(db, current_user.id)
     chats = []
-    for chat, other_user, encrypted_data, last_msg_time, unread_cnt in result:
+    for chat, other_user, rcpt_display_name, encrypted_data, last_msg_time, unread_cnt in result:
         chat_resp = ChatResponse.model_validate(chat)
         chat_resp.recipient = UserResponse.model_validate(other_user)
+        chat_resp.recipient.display_name = rcpt_display_name
         chat_resp.recipient_id = other_user.id
         if encrypted_data:
             try:

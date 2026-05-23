@@ -22,10 +22,12 @@ async def lifespan(app: FastAPI):
     import asyncio
 
     from .ws.presence import presence_listener, sweep_forever
+    from .ws.profile_events import profile_listener
     from .ws.router import manager
 
     chat_listener_task = asyncio.create_task(manager.pubsub_listener())
     presence_listener_task = asyncio.create_task(presence_listener(manager))
+    profile_listener_task = asyncio.create_task(profile_listener(manager))
     sweeper_task = asyncio.create_task(sweep_forever(manager))
 
     try:
@@ -33,6 +35,7 @@ async def lifespan(app: FastAPI):
     finally:
         chat_listener_task.cancel()
         presence_listener_task.cancel()
+        profile_listener_task.cancel()
         sweeper_task.cancel()
         await close_redis()
 

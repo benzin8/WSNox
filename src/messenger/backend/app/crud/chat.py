@@ -1,10 +1,11 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 
 from messenger.backend.app.api_v1.schemas.chat import ChatCreateRequest
 from messenger.backend.models.chat import Chat, ChatMember
 from messenger.backend.models.message import Message
+from messenger.backend.models.profile import Profile
 from messenger.backend.models.user import User
 
 
@@ -65,6 +66,7 @@ class ChatCRUD:
     async def get_user_data_by_chat_id(session: AsyncSession, chat_id: int, current_user_id: int) -> User:
         query = (
             select(User)
+            .options(selectinload(User.profile))
             .join(ChatMember, ChatMember.user_id == User.id)
             .where(ChatMember.chat_id == chat_id)
             .where(User.id != current_user_id)
@@ -140,6 +142,7 @@ class ChatCRUD:
             select(
                 Chat,
                 OtherUser,
+                Profile.display_name.label("rcpt_display_name"),
                 last_msg.c.encrypted_data,
                 last_msg.c.created_at.label("last_msg_time"),
                 unread_sub.c.cnt,
@@ -147,6 +150,7 @@ class ChatCRUD:
             .join(ChatMember, ChatMember.chat_id == Chat.id)
             .join(OtherMember, (OtherMember.chat_id == Chat.id) & (OtherMember.user_id != current_user_id))
             .join(OtherUser, OtherUser.id == OtherMember.user_id)
+            .outerjoin(Profile, Profile.user_id == OtherUser.id)
             .outerjoin(last_msg, last_msg.c.chat_id == Chat.id)
             .outerjoin(unread_sub, unread_sub.c.chat_id == Chat.id)
             .where(ChatMember.user_id == current_user_id)
