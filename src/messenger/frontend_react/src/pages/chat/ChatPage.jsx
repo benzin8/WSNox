@@ -23,6 +23,7 @@ function ChatPage() {
   const [chats, setChats] = useState([]);
   const [inputText, setInputText] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [myProfile, setMyProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState(null);
   const [chatName, setChatName] = useState('');
 
@@ -72,10 +73,13 @@ function ChatPage() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      const user = await getMyData();
+      const [user, profile, allChats] = await Promise.all([
+        getMyData(),
+        fetchMyProfile(),
+        getAllChats(),
+      ]);
       setCurrentUser(user);
-
-      const allChats = await getAllChats();
+      setMyProfile(profile);
       setChats(allChats);
     };
 
@@ -220,7 +224,10 @@ function ChatPage() {
   // Save changes from EditProfileModal and refresh the modal profile state
   const handleSaveProfile = async (data) => {
     const updated = await updateMyProfile(data);
-    if (updated) setProfileModal({ profile: updated, isOwnProfile: true });
+    if (updated) {
+      setProfileModal({ profile: updated, isOwnProfile: true });
+      setMyProfile(updated);
+    }
   };
 
   const isPartnerOnline = activeChat?.recipient_id
@@ -241,7 +248,7 @@ function ChatPage() {
                 className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold cursor-pointer hover:bg-lime-300 transition-colors"
                 title="Мой профиль"
               >
-                {currentUser?.name?.slice(0, 1)?.toUpperCase()}
+                {(myProfile?.display_name || myProfile?.name || currentUser?.name)?.slice(0, 1)?.toUpperCase()}
               </div>
               <span className="font-bold text-lg tracking-tight">Чаты</span>
             </div>
