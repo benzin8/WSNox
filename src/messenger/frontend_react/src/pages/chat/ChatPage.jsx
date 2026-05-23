@@ -235,7 +235,13 @@ function ChatPage() {
       : false;
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
+    <div
+      className="flex flex-col h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
       <PushPromptModal />
       <div className="relative flex-1 overflow-hidden md:flex">
         {/* Sidebar */}
