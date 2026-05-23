@@ -1,33 +1,38 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { isDesktopNotificationSupported, getDesktopPermission } from "../utils/permissions.js";
 
 /**
  * Показывает browser notification при каждом изменении `notification`.
- * Не вызывает уведомление на первом mount.
+ * `notification = null` на первом mount — защита от холостого срабатывания.
  */
 export function useNotificationDesktop({ notification, enabled }) {
-  const firstRun = useRef(true);
-
   useEffect(() => {
-    if (firstRun.current) {
-      firstRun.current = false;
+    if (!notification) return;
+    if (!enabled) {
+      console.debug("[notifications] desktop skipped: disabled by user");
       return;
     }
-    if (!enabled || !notification) return;
-    if (!isDesktopNotificationSupported()) return;
-    if (getDesktopPermission() !== "granted") return;
+    if (!isDesktopNotificationSupported()) {
+      console.debug("[notifications] desktop skipped: API unsupported");
+      return;
+    }
+    const perm = getDesktopPermission();
+    if (perm !== "granted") {
+      console.debug("[notifications] desktop skipped: permission =", perm);
+      return;
+    }
 
     try {
       const n = new Notification(notification.title, {
         tag: `chat-${notification.chatId}`,
         icon: "/WSNox_logo.svg",
       });
+      console.debug("[notifications] desktop shown:", notification.title);
       n.onclick = () => {
         window.focus();
         n.close();
       };
     } catch (err) {
-      // permission отозван на лету / любой другой сбой — логируем для диагностики
       console.warn("[notifications] desktop notification failed:", err);
     }
   }, [notification, enabled]);
