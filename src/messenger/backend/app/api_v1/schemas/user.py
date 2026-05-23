@@ -65,6 +65,7 @@ class UserResponse(BaseModel):
     phone_number: Optional[str] = None
     email: EmailStr
     created_at: datetime
+    display_name: Optional[str] = None
 
     class Config:
         from_attributes = True

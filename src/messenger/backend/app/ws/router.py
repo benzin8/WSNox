@@ -58,7 +58,9 @@ class ConnectionManager:
             recipient_id=recipient_id,
             text=text,
         )
-        sender = await db.get(User, sender_id)
+        from sqlalchemy.orm import selectinload as _selectinload
+        sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
+        sender_display_name = sender.profile.display_name if sender.profile else None
         payload = json.dumps({
             "recipient_id": recipient_id,
             "encrypted_text": message.encrypted_data,
@@ -73,6 +75,7 @@ class ConnectionManager:
                     "id": sender.id,
                     "name": sender.name,
                     "username": sender.username,
+                    "display_name": sender_display_name,
                 },
             },
         })

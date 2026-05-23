@@ -14,6 +14,7 @@ from messenger.backend.app.api_v1.schemas.user import (
 from messenger.backend.app.crud.profile import ProfileCRUD
 from messenger.backend.app.crud.user import UserCRUD
 from messenger.backend.app.ws.presence import is_visible_online
+from messenger.backend.app.ws.profile_events import publish_profile_event
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
 from messenger.backend.models.user import User
@@ -78,6 +79,17 @@ async def update_my_profile(
         raise HTTPException(status_code=404, detail="Profile not found")
 
     user = await ProfileCRUD.get_user_with_profile(db, current_user.id)
+    await publish_profile_event(
+        get_redis(),
+        user.id,
+        {
+            "name": user.name,
+            "username": user.username,
+            "display_name": user.profile.display_name if user.profile else None,
+            "bio": user.profile.bio if user.profile else None,
+            "presence_preference": user.profile.presence_preference if user.profile else None,
+        },
+    )
     return await _build_response(user, viewer_id=current_user.id)
 
 
