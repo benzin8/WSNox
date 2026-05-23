@@ -18,10 +18,10 @@ export const InputArea = ({sendMessage, isConnected}) => {
             onSubmit={handleSubmit}
             className="flex items-center gap-3 bg-zinc-800 rounded-2xl p-2 pl-4 border border-zinc-700 focus-within:border-lime-400/50 focus-within:ring-4 focus-within:ring-lime-500/10 transition-all"
           >
-            <input 
+            <input
               type="text"
               placeholder="Type your message..."
-              className="flex-grow bg-transparent border-none focus:outline-none text-sm py-2"
+              className="flex-grow bg-transparent border-none focus:outline-none text-base md:text-sm py-2"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
             />
