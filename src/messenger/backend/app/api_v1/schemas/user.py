@@ -78,6 +78,7 @@ class UserProfileResponse(BaseModel):
     username: str
     name: str
     phone_number: Optional[str] = None
+    email: Optional[EmailStr] = None
     display_name: Optional[str] = None
     bio: Optional[str] = None
     presence_preference: Optional[PresencePreference] = None
