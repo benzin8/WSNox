@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
 
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_mailto: str = "mailto:admin@wsnox.app"
+
     DOCKER_MODE: bool = os.getenv("DOCKER_MODE", "false").lower() == "true"
 
     @computed_field

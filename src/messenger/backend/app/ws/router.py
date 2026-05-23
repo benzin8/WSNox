@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from messenger.backend.app.api_v1.auth.dependencies import get_user_from_token
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
+from messenger.backend.app.ws.push import send_push_to_user
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import AsyncSessionLocal
@@ -96,6 +97,14 @@ class ConnectionManager:
 
                 sockets = self.active_connections.get(recipient_id, set())
                 if not sockets:
+                    # No active WebSocket — send push notification
+                    sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
+                    asyncio.create_task(send_push_to_user(recipient_id, {
+                        "title": f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение",
+                        "body": "Нажмите, чтобы открыть чат",
+                        "chat_id": chat_id,
+                        "sender_id": sender_id,
+                    }))
                     continue
                 try:
                     decrypted_text = decrypt_message(encrypted_text)
