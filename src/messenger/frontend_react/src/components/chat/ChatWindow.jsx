@@ -2,6 +2,7 @@ import React from "react";
 import { User, Phone, MoreVertical, ChevronLeft, BellOff } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
+import { ChatMuteToggle } from "../../features/notifications";
 
 export const ChatWindow = ({
     messages, setMessages, activeChat, sendMessage,
@@ -50,6 +51,7 @@ export const ChatWindow = ({
             </div>
           </div>
           <div className="flex items-center gap-4 text-zinc-400">
+            <ChatMuteToggle chatId={activeChat?.id} />
             <Phone size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
             <MoreVertical size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
           </div>
