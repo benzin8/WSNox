@@ -20,15 +20,15 @@ export function useNotificationDesktop({ notification, enabled }) {
     try {
       const n = new Notification(notification.title, {
         tag: `chat-${notification.chatId}`,
-        icon: "/logo.svg",
-        silent: true,
+        icon: "/WSNox_logo.svg",
       });
       n.onclick = () => {
         window.focus();
         n.close();
       };
-    } catch {
-      // permission отозван на лету / любой другой сбой — молча
+    } catch (err) {
+      // permission отозван на лету / любой другой сбой — логируем для диагностики
+      console.warn("[notifications] desktop notification failed:", err);
     }
   }, [notification, enabled]);
 }
