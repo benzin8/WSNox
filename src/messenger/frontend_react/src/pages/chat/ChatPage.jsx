@@ -247,17 +247,17 @@ function ChatPage() {
         {/* Sidebar */}
         <div className={`absolute inset-y-0 left-0 w-full flex flex-col bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 z-10 transition-transform duration-200 ease-in-out md:relative md:inset-auto md:w-80 md:translate-x-0 ${mobileView === 'list' ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Clicking the avatar opens own profile */}
-              <div
-                onClick={handleOpenOwnProfile}
-                className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold cursor-pointer hover:bg-lime-300 transition-colors"
-                title="Мой профиль"
-              >
+            <button
+              type="button"
+              onClick={handleOpenOwnProfile}
+              className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl hover:bg-zinc-800/50 active:scale-[0.98] transition-all"
+              title="Мой профиль"
+            >
+              <div className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold group-hover:bg-lime-300 transition-colors">
                 {(myProfile?.display_name || myProfile?.name || currentUser?.name)?.slice(0, 1)?.toUpperCase()}
               </div>
-              <span className="font-bold text-lg tracking-tight">Чаты</span>
-            </div>
+              <span className="font-bold text-lg tracking-tight group-hover:text-lime-400 transition-colors">Чаты</span>
+            </button>
             <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">
               <LogOut size={20} />
             </button>
