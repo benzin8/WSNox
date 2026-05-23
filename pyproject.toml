@@ -23,7 +23,8 @@ dependencies = [
     "bcrypt (>=5.0.0,<6.0.0)",
     "alembic (>=1.18.4,<2.0.0)",
     "python-multipart (>=0.0.22,<0.0.23)",
-    "aiosmtplib (>=3.0.0,<4.0.0)"
+    "aiosmtplib (>=3.0.0,<4.0.0)",
+    "pywebpush (>=2.0.0,<3.0.0)"
 ]
 
 [tool.poetry]

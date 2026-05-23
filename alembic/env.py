@@ -10,7 +10,7 @@ from alembic import context
 from messenger.backend.core.config import settings
 from messenger.backend.db import Base
 from messenger.backend.models import \
-Chat, ChatMember, User, Message, Profile
+Chat, ChatMember, User, Message, Profile, PushSubscription
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -14,6 +14,7 @@ export default defineConfig({
       },
       '/chats': { target: 'http://localhost:8000', changeOrigin: true },
       '/profiles': { target: 'http://localhost:8000', changeOrigin: true },
+      '/api/v1/push': { target: 'http://localhost:8000', changeOrigin: true },
       // /chat is both the React page and the WS endpoint — only proxy WebSocket upgrades
       '/chat': {
         target: 'ws://localhost:8000',
