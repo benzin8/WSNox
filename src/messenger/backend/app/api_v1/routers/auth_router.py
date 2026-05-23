@@ -5,6 +5,8 @@ from messenger.backend.app.api_v1.schemas.user import (
     AuthResponse,
     EmailRequest,
     EmailVerify,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
     UserCreate,
     UserLogin,
     UserResponse,
@@ -13,7 +15,13 @@ from messenger.backend.app.crud.user import UserCRUD
 from messenger.backend.core.redis import get_redis
 from messenger.backend.core.security import create_pair_jwt_tokens, verify_password
 from messenger.backend.db.session import get_db_session
-from messenger.backend.services.verification import send_verification_code, verify_code
+from messenger.backend.services.verification import (
+    consume_password_reset_token,
+    create_password_reset_token,
+    send_password_reset_email,
+    send_verification_code,
+    verify_code,
+)
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -65,6 +73,48 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db_session))
         "access_token": tokens["access_token"],
         "refresh_token": tokens["refresh_token"],
         "token_type": "bearer"
+    }
+
+
+@auth_router.post("/forgot-password")
+async def forgot_password(
+    data: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Send a reset link if the email belongs to a real account.
+
+    Always returns 200 with `{ok: true}` to avoid leaking which emails are
+    registered.
+    """
+    user = await UserCRUD.get_user_by_email(db, data.email)
+    if user:
+        token = await create_password_reset_token(data.email)
+        await send_password_reset_email(data.email, token)
+    return {"ok": True}
+
+
+@auth_router.post("/reset-password", response_model=AuthResponse)
+async def reset_password(
+    data: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db_session),
+):
+    email = await consume_password_reset_token(data.token)
+    if not email:
+        raise HTTPException(status_code=400, detail="Ссылка недействительна или истекла")
+
+    user = await UserCRUD.get_user_by_email(db, email)
+    if not user:
+        raise HTTPException(status_code=400, detail="Аккаунт не найден")
+
+    await UserCRUD.set_password(db, user, data.password)
+
+    tokens = create_pair_jwt_tokens(user.id)
+    return {
+        "status": "success",
+        "user": UserResponse.model_validate(user),
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens["refresh_token"],
+        "token_type": "bearer",
     }
 
 

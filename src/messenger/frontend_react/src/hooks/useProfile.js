@@ -67,5 +67,18 @@ export const useProfile = () => {
         }
     };
 
-    return { isLoading, fetchMyProfile, fetchUserProfile, updateMyProfile, sendPhoneCode, verifyPhoneCode };
+    const changePassword = async (currentPassword, newPassword) => {
+        try {
+            await axios.post(
+                `${API_BASE}/profiles/me/password`,
+                { current_password: currentPassword, new_password: newPassword },
+                getAuthConfig(),
+            );
+            return true;
+        } catch (err) {
+            throw err.response?.data?.detail || 'Не удалось сменить пароль';
+        }
+    };
+
+    return { isLoading, fetchMyProfile, fetchUserProfile, updateMyProfile, sendPhoneCode, verifyPhoneCode, changePassword };
 };
