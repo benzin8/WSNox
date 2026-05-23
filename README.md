@@ -120,3 +120,88 @@ GitHub Actions (`.github/workflows/ci.yml`):
 | [troubleshooting/security-fixes.md](docs/troubleshooting/security-fixes.md) | Исправления безопасности (IV, bcrypt) |
 | [troubleshooting/fixes-round2.md](docs/troubleshooting/fixes-round2.md) | Static mount, --reload, IDOR, тесты |
 | [troubleshooting/fixes-round3.md](docs/troubleshooting/fixes-round3.md) | Auth race, Vite proxy, мобильная адаптация, last message |
+
+---
+
+## Уведомления
+
+Изолированная фича в `src/messenger/frontend_react/src/features/notifications/` — React Context + хуки + UI. Backend задействован только для push.
+
+**Четыре независимых канала**, каждый отключается отдельно, всё хранится в `localStorage` (никаких миграций под настройки):
+
+| Канал | Где работает | Как реализовано |
+|-------|--------------|-----------------|
+| Звук (Ding / Chime / Bell) | Любая открытая вкладка | Web Audio API, тоны синтезируются в `audio/tones.js` — никаких mp3-ассетов. `audio/unlock.js` прогревает `AudioContext` на первый user-gesture, чтобы обойти autoplay-policy |
+| Бейдж в `document.title` | Свёрнутая/неактивная вкладка | `useNotificationTitle` дописывает `(N)` к исходному заголовку |
+| Browser Notification | Любая видимость, OS-уровень | `useNotificationDesktop` — `new Notification(...)`. Skip если чат активен и вкладка видима, дедуп через `tag: chat-<id>` |
+| **Web Push (VAPID)** | Вкладка закрыта / приложение свёрнуто | Service worker `public/sw.js` + бэкенд-фоллбэк когда у получателя нет активного WebSocket |
+
+**Push-флоу:**
+1. На фронте `usePushSubscription` регистрирует SW, запрашивает `Notification.requestPermission()`, подписывается через `PushManager.subscribe()` с публичным ключом из `GET /api/v1/push/vapid-public-key`.
+2. Эндпойнт `POST /api/v1/push/subscribe` сохраняет `endpoint + p256dh + auth` в `push_subscriptions`.
+3. В `ws/router.py:pubsub_listener` если у получателя нет активных WebSocket → вызывается `send_push_to_user` (`ws/push.py`), который через `pywebpush` шлёт во все сохранённые подписки. Stale-подписки (HTTP 410) удаляются автоматически.
+
+**Дополнительные мелочи:**
+- **PWA-метаданные** (`public/manifest.json` + meta-теги в `index.html`) — обязательный pre-req для push на iOS 16.4+
+- **Mute отдельных чатов** через `ChatMuteToggle` в шапке чата
+- **`PushPromptModal`** — через 600ms после входа в `ChatPage` показывает модалку «Включи уведомления», dismissible (флаг `push_prompt_dismissed` в localStorage). На iOS Safari вне standalone вместо кнопки «Разрешить» показывает хинт «Поделиться → На экран Домой»
+- **iOS-детект** в `features/notifications/utils/platform.js`
+
+**Конфигурация VAPID** (env vars):
+```env
+VAPID_PUBLIC_KEY=...     # urlsafe-base64 без padding
+VAPID_PRIVATE_KEY=...    # 32 байта urlsafe-base64
+VAPID_MAILTO=mailto:admin@example.com   # дефолт mailto:admin@wsnox.app
+```
+Без ключей бэкенд молча пропускает push (`push.py:20-21`), эндпойнт `vapid-public-key` отвечает 503.
+
+Генерация ключей:
+```python
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization
+import base64
+
+priv = ec.generate_private_key(ec.SECP256R1())
+pub = priv.public_key().public_bytes(
+    encoding=serialization.Encoding.X962,
+    format=serialization.PublicFormat.UncompressedPoint,
+)
+priv_bytes = priv.private_numbers().private_value.to_bytes(32, "big")
+b64u = lambda b: base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+print("PUBLIC:", b64u(pub))
+print("PRIVATE:", b64u(priv_bytes))
+```
+
+---
+
+## Восстановление и смена пароля
+
+**Забыл пароль (с логина):**
+1. На `LoginPage` ссылка «Забыли пароль?» → `ForgotPasswordPage` → email
+2. `POST /auth/forgot-password` — генерит 32-байтный `secrets.token_urlsafe(32)`, кладёт в Redis `password_reset:<token> -> email` (TTL 30 мин), шлёт **HTML-письмо** с кнопкой «Сбросить пароль» и брендингом WSNox (`services/verification.py:_render_reset_email_html`)
+3. Эндпойнт всегда отвечает `200 {ok: true}` — намеренно, чтобы не дать перебирать email на «зарегистрирован/нет»
+4. Клик в письме → `/auth/reset-password?token=...` → новый пароль → `POST /auth/reset-password` → токен консьюмится (single-use), пароль хешится bcrypt, сразу выдаётся JWT-пара → редирект в `/chat`
+
+**Смена пароля в профиле (когда уже залогинен):**
+- Таб «Безопасность» в `EditProfileModal`
+- `POST /profiles/me/password {current_password, new_password}` — проверяет текущий через `verify_password`, ругается на совпадение со старым, обновляет хеш
+- Без email-подтверждения — по дизайну (текущего пароля достаточно)
+
+**Конфигурация:**
+```env
+FRONTEND_BASE_URL=https://wsnox.urldot.ru   # для построения reset-ссылок; дефолт уже стоит
+SMTP_HOST=smtp.yandex.ru
+SMTP_PORT=465
+SMTP_USER=your@yandex.ru
+SMTP_PASSWORD=...
+```
+
+---
+
+## Профиль: что нового
+
+- **Email отображается только в своём профиле** — `_build_response` в `profile_router.py` подставляет `email` только когда `viewer_id == user.id`; у чужих профилей `email = null`
+- **Мета-блок в `ProfileModal`** — email, `ID 42`, «С нами с май 2026» (`created_at` теперь в `UserProfileResponse`)
+- **Редизайн модалки**: градиентный хедер (lime → emerald → zinc), аватарка 96px с точкой статуса наезжает на хедер, `animate-popIn` + `animate-fadeIn` (keyframes в `index.css`)
+- **Сайдбар** использует `display_name || name` для буквы-аватарки и обновляется сразу после сохранения профиля (`myProfile` state в `ChatPage`)
+- **Привязка телефона** убрана из UI (таб «Личные данные»); сами эндпойнты `/profiles/phone/*` сохранены
