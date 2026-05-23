@@ -14,8 +14,11 @@ class Settings(BaseSettings):
     db_name: str
     
     secret_key: str
+    jwt_secret_key: str = ""
+    message_encryption_key: str = ""
     algorithm: str
     redis_url: str
+    debug: bool = False
 
     smtp_host: str = "smtp.yandex.ru"
     smtp_port: int = 465
