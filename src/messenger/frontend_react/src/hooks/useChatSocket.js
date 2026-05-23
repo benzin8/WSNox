@@ -113,6 +113,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
                 chat_id: activeChatId,
                 text,
                 sender_id: currentUserRef.current,
+                created_at: new Date().toISOString(),
             });
         }
     };
