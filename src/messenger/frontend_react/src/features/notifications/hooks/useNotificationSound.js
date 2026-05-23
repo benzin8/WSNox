@@ -1,18 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { playTone } from "../audio/tones.js";
 
 /**
- * Играет тон при изменении `trigger`. Не звучит на первом mount.
+ * Играет тон при изменении `trigger`. `trigger = 0` на первом mount
+ * — защита от холостого срабатывания.
  */
 export function useNotificationSound({ trigger, enabled, sample }) {
-  const firstRun = useRef(true);
-
   useEffect(() => {
-    if (firstRun.current) {
-      firstRun.current = false;
-      return;
-    }
-    if (!enabled || !trigger) return;
+    if (!trigger) return;
+    if (!enabled) return;
     playTone(sample);
   }, [trigger, enabled, sample]);
 }
