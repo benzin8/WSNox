@@ -10,6 +10,11 @@ import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
 import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
+import {
+  NotificationSettingsProvider,
+  useNotifications,
+  useNotificationSettings,
+} from '../../features/notifications';
 
 function ChatPage() {
   const token = localStorage.getItem('access_token');
@@ -34,6 +39,15 @@ function ChatPage() {
 
   const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
+  const { settings: notificationSettings } = useNotificationSettings();
+  const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+  useNotifications({
+    lastReceivedMessage,
+    currentUser,
+    activeChatIdRef,
+    totalUnread,
+    settings: notificationSettings,
+  });
   const { searchChats,
           searchResult,
           isSearching,
@@ -43,7 +57,8 @@ function ChatPage() {
           getUserDataByChatId,
           getMyData,
           getMessagesByChatId,
-          getAllChats
+          getAllChats,
+          markChatAsRead
   } = useChatAction();
   const { fetchMyProfile, fetchUserProfile, updateMyProfile, sendPhoneCode, verifyPhoneCode } = useProfile();
   const navigate = useNavigate();
@@ -83,6 +98,9 @@ function ChatPage() {
     if (existingChat) {
       const isActiveChat = lastReceivedMessage.chat_id === activeChatIdRef.current;
       const isOwnMessage = Number(lastReceivedMessage.sender_id) === currentUser?.id;
+      if (isActiveChat && !isOwnMessage && !document.hidden) {
+        markChatAsRead(lastReceivedMessage.chat_id);
+      }
       setChats(prevChats => {
         const idx = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
         if (idx === -1) return prevChats;
@@ -357,4 +375,10 @@ function ChatPage() {
   );
 }
 
-export default ChatPage;
+export default function ChatPageWithProviders() {
+  return (
+    <NotificationSettingsProvider>
+      <ChatPage />
+    </NotificationSettingsProvider>
+  );
+}

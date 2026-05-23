@@ -106,3 +106,9 @@ async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_d
     await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
     messages = await MessageCRUD.get_messages(db, chat_id)
     return [MessageResponse.model_validate(message) for message in messages]
+
+@chat_router.post("/{chat_id}/read", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_chat_as_read(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
+    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
+    await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
