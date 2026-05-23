@@ -12,6 +12,7 @@ import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import {
   NotificationSettingsProvider,
+  PushPromptModal,
   useNotifications,
   useNotificationSettings,
 } from '../../features/notifications';
@@ -28,7 +29,6 @@ function ChatPage() {
   // Profile modal state: { profile, isOwnProfile } or null when closed
   const [profileModal, setProfileModal] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showPhoneBanner, setShowPhoneBanner] = useState(false);
   const [mobileView, setMobileView] = useState('list');
   const [partnerPresencePreference, setPartnerPresencePreference] = useState(null);
 
@@ -60,7 +60,7 @@ function ChatPage() {
           getAllChats,
           markChatAsRead
   } = useChatAction();
-  const { fetchMyProfile, fetchUserProfile, updateMyProfile, sendPhoneCode, verifyPhoneCode } = useProfile();
+  const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
 
@@ -81,13 +81,6 @@ function ChatPage() {
 
     fetchInitialData();
   }, []);
-
-  useEffect(() => {
-    if (currentUser && !currentUser.phone_number) {
-      const dismissed = localStorage.getItem('phone_banner_dismissed');
-      if (!dismissed) setShowPhoneBanner(true);
-    }
-  }, [currentUser]);
 
   // Обновление списка чатов при получении нового сообщения
   useEffect(() => {
@@ -189,11 +182,6 @@ function ChatPage() {
     navigate('/auth/send-code');
   };
 
-  const handleDismissBanner = () => {
-    localStorage.setItem('phone_banner_dismissed', 'true');
-    setShowPhoneBanner(false);
-  };
-
   // Выбор чата
   const handleSelectChat = async (selectedChat) => {
     if (selectedChat.recipient) {
@@ -241,27 +229,7 @@ function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
-      {showPhoneBanner && (
-        <div className="flex items-center justify-between px-6 py-2 bg-lime-400/10 border-b border-lime-400/30 shrink-0">
-          <span className="text-lime-400 font-semibold text-sm">
-            Добавьте номер телефона для дополнительной безопасности
-          </span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleOpenOwnProfile}
-              className="text-sm font-bold text-zinc-900 bg-lime-400 px-3 py-1 rounded-lg hover:bg-lime-300 transition-colors"
-            >
-              Добавить
-            </button>
-            <button
-              onClick={handleDismissBanner}
-              className="text-zinc-400 hover:text-zinc-200 transition-colors text-lg leading-none"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+      <PushPromptModal />
       <div className="relative flex-1 overflow-hidden md:flex">
         {/* Sidebar */}
         <div className={`absolute inset-y-0 left-0 w-full flex flex-col bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 z-10 transition-transform duration-200 ease-in-out md:relative md:inset-auto md:w-80 md:translate-x-0 ${mobileView === 'list' ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -362,12 +330,6 @@ function ChatPage() {
             profile={profileModal.profile}
             onClose={() => setShowEditModal(false)}
             onSave={handleSaveProfile}
-            onSendPhoneCode={sendPhoneCode}
-            onVerifyPhoneCode={async (phone, code) => {
-              const updated = await verifyPhoneCode(phone, code);
-              if (updated) setProfileModal({ profile: updated, isOwnProfile: true });
-              return updated;
-            }}
           />
         )}
       </div>
