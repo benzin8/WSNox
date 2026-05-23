@@ -5,7 +5,7 @@ from jose import jwt
 
 from messenger.backend.core.config import settings
 
-SECRET_KEY = settings.secret_key
+SECRET_KEY = settings.jwt_secret_key or settings.secret_key
 ALGORITHM = settings.algorithm
 
 
