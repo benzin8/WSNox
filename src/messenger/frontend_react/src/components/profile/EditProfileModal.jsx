@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, Save } from "lucide-react";
+import { NotificationSettingsTab } from "../../features/notifications";
 
 const PRESENCE_OPTIONS = [
     { value: "",          label: "Обычный" },
@@ -104,6 +105,16 @@ export const EditProfileModal = ({ profile, onClose, onSave, onSendPhoneCode, on
                         }`}
                     >
                         Личные данные
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("notifications")}
+                        className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors ${
+                            activeTab === "notifications"
+                                ? "bg-zinc-700 text-zinc-100"
+                                : "text-zinc-400 hover:text-zinc-200"
+                        }`}
+                    >
+                        Уведомления
                     </button>
                 </div>
 
@@ -227,6 +238,19 @@ export const EditProfileModal = ({ profile, onClose, onSave, onSendPhoneCode, on
                             </>
                         )}
 
+                        <button
+                            onClick={onClose}
+                            className="w-full mt-2 bg-zinc-800 text-zinc-300 text-sm font-medium py-2 rounded-xl hover:bg-zinc-700 transition-colors"
+                        >
+                            Закрыть
+                        </button>
+                    </div>
+                )}
+
+                {/* Notifications tab */}
+                {activeTab === "notifications" && (
+                    <div className="flex flex-col gap-3">
+                        <NotificationSettingsTab />
                         <button
                             onClick={onClose}
                             className="w-full mt-2 bg-zinc-800 text-zinc-300 text-sm font-medium py-2 rounded-xl hover:bg-zinc-700 transition-colors"
