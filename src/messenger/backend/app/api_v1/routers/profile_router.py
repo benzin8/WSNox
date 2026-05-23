@@ -44,6 +44,7 @@ async def _build_response(user, viewer_id: int) -> UserProfileResponse:
         username=user.username,
         name=user.name,
         phone_number=user.phone_number,
+        email=getattr(user, "email", None) if viewer_id == user.id else None,
         display_name=p.display_name if p else None,
         bio=p.bio if p else None,
         presence_preference=visible_pref,

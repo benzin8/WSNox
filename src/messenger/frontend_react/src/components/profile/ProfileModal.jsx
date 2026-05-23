@@ -42,12 +42,15 @@ export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit }) => {
                     {initials}
                 </div>
 
-                {/* Display name + username */}
+                {/* Display name + username + email */}
                 <div className="text-center">
                     <h2 className="text-lg font-bold text-zinc-100">
                         {profile.display_name || profile.name}
                     </h2>
                     <p className="text-sm text-zinc-400">@{profile.username}</p>
+                    {profile.email && (
+                        <p className="text-xs text-zinc-500 mt-0.5 break-all">{profile.email}</p>
+                    )}
                 </div>
 
                 {/* Presence badge */}
