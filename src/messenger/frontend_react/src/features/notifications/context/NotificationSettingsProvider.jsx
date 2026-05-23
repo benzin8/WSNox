@@ -1,8 +1,7 @@
-import { createContext, useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { STORAGE_KEY, DEFAULT_SETTINGS } from "../constants.js";
 import { requestDesktopPermission } from "../utils/permissions.js";
-
-export const NotificationSettingsContext = createContext(null);
+import { NotificationSettingsContext } from "./NotificationSettingsContext.js";
 
 function loadInitial() {
   try {

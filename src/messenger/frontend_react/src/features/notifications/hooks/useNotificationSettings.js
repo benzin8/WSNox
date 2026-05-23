@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { NotificationSettingsContext } from "../context/NotificationSettingsContext.jsx";
+import { NotificationSettingsContext } from "../context/NotificationSettingsContext.js";
 
 export function useNotificationSettings() {
   const ctx = useContext(NotificationSettingsContext);

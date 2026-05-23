@@ -10,6 +10,11 @@ import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
 import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
+import {
+  NotificationSettingsProvider,
+  useNotifications,
+  useNotificationSettings,
+} from '../../features/notifications';
 
 function ChatPage() {
   const token = localStorage.getItem('access_token');
@@ -34,6 +39,15 @@ function ChatPage() {
 
   const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
+  const { settings: notificationSettings } = useNotificationSettings();
+  const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+  useNotifications({
+    lastReceivedMessage,
+    currentUser,
+    activeChatIdRef,
+    totalUnread,
+    settings: notificationSettings,
+  });
   const { searchChats,
           searchResult,
           isSearching,
@@ -357,4 +371,10 @@ function ChatPage() {
   );
 }
 
-export default ChatPage;
+export default function ChatPageWithProviders() {
+  return (
+    <NotificationSettingsProvider>
+      <ChatPage />
+    </NotificationSettingsProvider>
+  );
+}
