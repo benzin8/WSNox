@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_mailto: str = "mailto:admin@wsnox.app"
 
+    frontend_base_url: str = "https://wsnox.urldot.ru"
+
     DOCKER_MODE: bool = os.getenv("DOCKER_MODE", "false").lower() == "true"
 
     @computed_field
