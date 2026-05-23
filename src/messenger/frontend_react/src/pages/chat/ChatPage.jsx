@@ -57,7 +57,8 @@ function ChatPage() {
           getUserDataByChatId,
           getMyData,
           getMessagesByChatId,
-          getAllChats
+          getAllChats,
+          markChatAsRead
   } = useChatAction();
   const { fetchMyProfile, fetchUserProfile, updateMyProfile, sendPhoneCode, verifyPhoneCode } = useProfile();
   const navigate = useNavigate();
@@ -97,6 +98,9 @@ function ChatPage() {
     if (existingChat) {
       const isActiveChat = lastReceivedMessage.chat_id === activeChatIdRef.current;
       const isOwnMessage = Number(lastReceivedMessage.sender_id) === currentUser?.id;
+      if (isActiveChat && !isOwnMessage && !document.hidden) {
+        markChatAsRead(lastReceivedMessage.chat_id);
+      }
       setChats(prevChats => {
         const idx = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
         if (idx === -1) return prevChats;
