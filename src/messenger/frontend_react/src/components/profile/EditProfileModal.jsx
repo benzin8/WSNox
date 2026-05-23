@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { X, Save } from "lucide-react";
+import { X, Save, Lock } from "lucide-react";
 import { NotificationSettingsTab } from "../../features/notifications";
+import PasswordStrengthBar from "../auth/PasswordStrengthBar";
+import { useProfile } from "../../hooks/useProfile";
 
 const PRESENCE_OPTIONS = [
     { value: "",          label: "Обычный" },
@@ -27,13 +29,19 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
         onClose();
     };
 
+    const tabs = [
+        { id: "profile",       label: "Профиль" },
+        { id: "security",      label: "Безопасность" },
+        { id: "notifications", label: "Уведомления" },
+    ];
+
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn"
             onClick={onClose}
         >
             <div
-                className="relative w-80 max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-6 flex flex-col gap-4"
+                className="relative w-[22rem] max-w-[95vw] max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-6 flex flex-col gap-4 animate-popIn"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -46,26 +54,19 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
 
                 {/* Tabs */}
                 <div className="flex gap-1 bg-zinc-800 rounded-xl p-1">
-                    <button
-                        onClick={() => setActiveTab("profile")}
-                        className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors ${
-                            activeTab === "profile"
-                                ? "bg-zinc-700 text-zinc-100"
-                                : "text-zinc-400 hover:text-zinc-200"
-                        }`}
-                    >
-                        Профиль
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("notifications")}
-                        className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors ${
-                            activeTab === "notifications"
-                                ? "bg-zinc-700 text-zinc-100"
-                                : "text-zinc-400 hover:text-zinc-200"
-                        }`}
-                    >
-                        Уведомления
-                    </button>
+                    {tabs.map((t) => (
+                        <button
+                            key={t.id}
+                            onClick={() => setActiveTab(t.id)}
+                            className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors ${
+                                activeTab === t.id
+                                    ? "bg-zinc-700 text-zinc-100"
+                                    : "text-zinc-400 hover:text-zinc-200"
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
                 </div>
 
                 {/* Profile tab */}
@@ -120,7 +121,7 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="flex-1 flex items-center justify-center gap-2 bg-lime-400 text-zinc-900 text-sm font-semibold py-2 rounded-xl hover:bg-lime-300 transition-colors disabled:opacity-50"
+                                className="flex-1 flex items-center justify-center gap-2 bg-lime-400 text-zinc-900 text-sm font-semibold py-2 rounded-xl hover:bg-lime-300 active:scale-[0.98] transition-all disabled:opacity-50"
                             >
                                 <Save size={14} />
                                 {isSaving ? "Сохранение..." : "Сохранить"}
@@ -129,7 +130,8 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                     </>
                 )}
 
-                {/* Notifications tab */}
+                {activeTab === "security" && <SecurityTab onClose={onClose} />}
+
                 {activeTab === "notifications" && (
                     <div className="flex flex-col gap-3">
                         <NotificationSettingsTab />
@@ -145,3 +147,101 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
         </div>
     );
 };
+
+function SecurityTab({ onClose }) {
+    const { changePassword } = useProfile();
+    const [current, setCurrent] = useState("");
+    const [next, setNext] = useState("");
+    const [confirm, setConfirm] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+        setSuccess(false);
+        if (next.length < 8) { setError("Минимум 8 символов"); return; }
+        if (next !== confirm) { setError("Пароли не совпадают"); return; }
+        if (next === current) { setError("Новый пароль совпадает с текущим"); return; }
+        setBusy(true);
+        try {
+            await changePassword(current, next);
+            setSuccess(true);
+            setCurrent(""); setNext(""); setConfirm("");
+        } catch (err) {
+            setError(String(err));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+                <Lock size={14} className="text-zinc-500" />
+                <span>Смена пароля</span>
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <label className="text-xs text-zinc-400 font-medium">Текущий пароль</label>
+                <input
+                    type="password"
+                    value={current}
+                    onChange={(e) => setCurrent(e.target.value)}
+                    autoComplete="current-password"
+                    className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                    placeholder="••••••••"
+                    required
+                />
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <label className="text-xs text-zinc-400 font-medium">Новый пароль</label>
+                <input
+                    type="password"
+                    value={next}
+                    onChange={(e) => setNext(e.target.value)}
+                    autoComplete="new-password"
+                    className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                    placeholder="••••••••"
+                    required
+                />
+                <PasswordStrengthBar password={next} />
+            </div>
+
+            <div className="flex flex-col gap-1">
+                <label className="text-xs text-zinc-400 font-medium">Ещё раз</label>
+                <input
+                    type="password"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    autoComplete="new-password"
+                    className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                    placeholder="••••••••"
+                    required
+                />
+            </div>
+
+            {error && <p className="text-xs text-red-400">{error}</p>}
+            {success && <p className="text-xs text-lime-400">Пароль обновлён ✓</p>}
+
+            <div className="flex gap-2 mt-1">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 bg-zinc-800 text-zinc-300 text-sm font-medium py-2 rounded-xl hover:bg-zinc-700 transition-colors"
+                >
+                    Закрыть
+                </button>
+                <button
+                    type="submit"
+                    disabled={busy}
+                    className="flex-1 bg-lime-400 text-zinc-900 text-sm font-semibold py-2 rounded-xl hover:bg-lime-300 active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                    {busy ? "Сохранение..." : "Сменить"}
+                </button>
+            </div>
+        </form>
+    );
+}

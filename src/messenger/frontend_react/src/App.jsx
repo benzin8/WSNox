@@ -6,6 +6,8 @@ import SendCodePage from './pages/auth/SendCodePage';
 import VerifyCodePage from './pages/auth/VerifyCodePage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import ChatPage from './pages/chat/ChatPage';
 
 const ProtectedRoute = ({ children }) => {
@@ -50,6 +52,8 @@ function App() {
           <Route path="/auth/verify" element={<PublicOnlyRoute><VerifyCodePage /></PublicOnlyRoute>} />
           <Route path="/auth/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
           <Route path="/auth/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
+          <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
           {/* Protected Chat Route */}
           <Route 
