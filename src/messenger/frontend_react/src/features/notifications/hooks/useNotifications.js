@@ -3,6 +3,8 @@ import { shouldNotify } from "../utils/shouldNotify.js";
 import { useNotificationSound } from "./useNotificationSound.js";
 import { useNotificationTitle } from "./useNotificationTitle.js";
 import { useNotificationDesktop } from "./useNotificationDesktop.js";
+import { getCtx } from "../audio/tones.js";
+import { installAudioUnlock } from "../audio/unlock.js";
 
 /**
  * Главный хук фичи. Подписывается на lastReceivedMessage и распределяет
@@ -11,6 +13,11 @@ import { useNotificationDesktop } from "./useNotificationDesktop.js";
 export function useNotifications({ lastReceivedMessage, currentUser, activeChatIdRef, totalUnread, settings }) {
   const [soundTrigger, setSoundTrigger] = useState(0);
   const [desktopPayload, setDesktopPayload] = useState(null);
+
+  // Safari/Chrome autoplay policy: разогреваем AudioContext на первое user gesture
+  useEffect(() => {
+    installAudioUnlock(getCtx);
+  }, []);
 
   useEffect(() => {
     if (!lastReceivedMessage) return;

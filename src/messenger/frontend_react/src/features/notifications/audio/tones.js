@@ -2,7 +2,7 @@ import { TONES } from "../constants.js";
 
 let sharedCtx = null;
 
-function getCtx() {
+export function getCtx() {
   if (sharedCtx) return sharedCtx;
   const Ctor = window.AudioContext || window.webkitAudioContext;
   if (!Ctor) return null;
