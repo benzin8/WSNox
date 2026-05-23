@@ -12,6 +12,7 @@ from messenger.backend.app.api_v1.schemas.user import (
     UserResponse,
 )
 from messenger.backend.app.crud.user import UserCRUD
+from messenger.backend.core.rate_limit import rate_limit_send_code
 from messenger.backend.core.redis import get_redis
 from messenger.backend.core.security import create_pair_jwt_tokens, verify_password
 from messenger.backend.db.session import get_db_session
@@ -26,7 +27,7 @@ from messenger.backend.services.verification import (
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@auth_router.post("/send-code")
+@auth_router.post("/send-code", dependencies=[Depends(rate_limit_send_code)])
 async def send_code(data: EmailRequest):
     await send_verification_code(data.email)
     return {"message": True}
@@ -76,7 +77,7 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db_session))
     }
 
 
-@auth_router.post("/forgot-password")
+@auth_router.post("/forgot-password", dependencies=[Depends(rate_limit_send_code)])
 async def forgot_password(
     data: ForgotPasswordRequest,
     db: AsyncSession = Depends(get_db_session),

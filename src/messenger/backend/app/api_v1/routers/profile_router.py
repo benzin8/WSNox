@@ -15,6 +15,8 @@ from messenger.backend.app.crud.profile import ProfileCRUD
 from messenger.backend.app.crud.user import UserCRUD
 from messenger.backend.app.ws.presence import is_visible_online
 from messenger.backend.app.ws.profile_events import publish_profile_event
+from messenger.backend.core.config import settings
+from messenger.backend.core.rate_limit import rate_limit_send_code
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
 from messenger.backend.models.user import User
@@ -93,7 +95,7 @@ async def update_my_profile(
     return await _build_response(user, viewer_id=current_user.id)
 
 
-@profile_router.post("/phone/send-code")
+@profile_router.post("/phone/send-code", dependencies=[Depends(rate_limit_send_code)])
 async def send_phone_code(
     data: PhoneRequest,
     current_user=Depends(get_current_user),
@@ -106,7 +108,8 @@ async def send_phone_code(
     else:
         code = str(secrets.randbelow(900000) + 100000)
         await redis.setex(key, 300, code)
-    print(f"[DEV] Phone verification code for {data.phone_number}: {code}")
+    if settings.debug:
+        print(f"[DEV] Phone verification code for {data.phone_number}: {code}")
     return {"message": True}
 
 
