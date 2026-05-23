@@ -66,6 +66,8 @@ class ConnectionManager:
             "encrypted_text": message.encrypted_data,
             "sender_id": sender_id,
             "chat_id": chat_id,
+            "created_at": message.created_at.isoformat() if message.created_at else None,
+            "message_id": message.id,
             "chat_info": {
                 "id": chat_id,
                 "name": f"private_{min(sender_id, recipient_id)}_{max(sender_id, recipient_id)}",
@@ -119,6 +121,8 @@ class ConnectionManager:
                     "recipient_id": recipient_id,
                     "chat_id": chat_id,
                     "chat_info": chat_info,
+                    "created_at": data.get("created_at"),
+                    "message_id": data.get("message_id"),
                 }
                 dead = []
                 for ws in sockets:

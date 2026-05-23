@@ -192,7 +192,8 @@ function ChatPage() {
     setMessages((prev) => [...prev, {
             text: text,
             type: 'outgoing',
-            id: Date.now()
+            id: Date.now(),
+            created_at: new Date().toISOString(),
         }]);
   }
 
