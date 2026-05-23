@@ -12,6 +12,7 @@ import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import {
   NotificationSettingsProvider,
+  PushPromptModal,
   useNotifications,
   useNotificationSettings,
 } from '../../features/notifications';
@@ -22,13 +23,13 @@ function ChatPage() {
   const [chats, setChats] = useState([]);
   const [inputText, setInputText] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [myProfile, setMyProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState(null);
   const [chatName, setChatName] = useState('');
 
   // Profile modal state: { profile, isOwnProfile } or null when closed
   const [profileModal, setProfileModal] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showPhoneBanner, setShowPhoneBanner] = useState(false);
   const [mobileView, setMobileView] = useState('list');
   const [partnerPresencePreference, setPartnerPresencePreference] = useState(null);
 
@@ -60,7 +61,7 @@ function ChatPage() {
           getAllChats,
           markChatAsRead
   } = useChatAction();
-  const { fetchMyProfile, fetchUserProfile, updateMyProfile, sendPhoneCode, verifyPhoneCode } = useProfile();
+  const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
 
@@ -72,22 +73,18 @@ function ChatPage() {
 
   useEffect(() => {
     const fetchInitialData = async () => {
-      const user = await getMyData();
+      const [user, profile, allChats] = await Promise.all([
+        getMyData(),
+        fetchMyProfile(),
+        getAllChats(),
+      ]);
       setCurrentUser(user);
-
-      const allChats = await getAllChats();
+      setMyProfile(profile);
       setChats(allChats);
     };
 
     fetchInitialData();
   }, []);
-
-  useEffect(() => {
-    if (currentUser && !currentUser.phone_number) {
-      const dismissed = localStorage.getItem('phone_banner_dismissed');
-      if (!dismissed) setShowPhoneBanner(true);
-    }
-  }, [currentUser]);
 
   // Обновление списка чатов при получении нового сообщения
   useEffect(() => {
@@ -189,11 +186,6 @@ function ChatPage() {
     navigate('/auth/send-code');
   };
 
-  const handleDismissBanner = () => {
-    localStorage.setItem('phone_banner_dismissed', 'true');
-    setShowPhoneBanner(false);
-  };
-
   // Выбор чата
   const handleSelectChat = async (selectedChat) => {
     if (selectedChat.recipient) {
@@ -232,7 +224,10 @@ function ChatPage() {
   // Save changes from EditProfileModal and refresh the modal profile state
   const handleSaveProfile = async (data) => {
     const updated = await updateMyProfile(data);
-    if (updated) setProfileModal({ profile: updated, isOwnProfile: true });
+    if (updated) {
+      setProfileModal({ profile: updated, isOwnProfile: true });
+      setMyProfile(updated);
+    }
   };
 
   const isPartnerOnline = activeChat?.recipient_id
@@ -240,43 +235,29 @@ function ChatPage() {
       : false;
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
-      {showPhoneBanner && (
-        <div className="flex items-center justify-between px-6 py-2 bg-lime-400/10 border-b border-lime-400/30 shrink-0">
-          <span className="text-lime-400 font-semibold text-sm">
-            Добавьте номер телефона для дополнительной безопасности
-          </span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleOpenOwnProfile}
-              className="text-sm font-bold text-zinc-900 bg-lime-400 px-3 py-1 rounded-lg hover:bg-lime-300 transition-colors"
-            >
-              Добавить
-            </button>
-            <button
-              onClick={handleDismissBanner}
-              className="text-zinc-400 hover:text-zinc-200 transition-colors text-lg leading-none"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+    <div
+      className="flex flex-col h-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
+      <PushPromptModal />
       <div className="relative flex-1 overflow-hidden md:flex">
         {/* Sidebar */}
         <div className={`absolute inset-y-0 left-0 w-full flex flex-col bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 z-10 transition-transform duration-200 ease-in-out md:relative md:inset-auto md:w-80 md:translate-x-0 ${mobileView === 'list' ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Clicking the avatar opens own profile */}
-              <div
-                onClick={handleOpenOwnProfile}
-                className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold cursor-pointer hover:bg-lime-300 transition-colors"
-                title="Мой профиль"
-              >
-                {currentUser?.name?.slice(0, 1)?.toUpperCase()}
+            <button
+              type="button"
+              onClick={handleOpenOwnProfile}
+              className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl hover:bg-zinc-800/50 active:scale-[0.98] transition-all"
+              title="Мой профиль"
+            >
+              <div className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold group-hover:bg-lime-300 transition-colors">
+                {(myProfile?.display_name || myProfile?.name || currentUser?.name)?.slice(0, 1)?.toUpperCase()}
               </div>
-              <span className="font-bold text-lg tracking-tight">Чаты</span>
-            </div>
+              <span className="font-bold text-lg tracking-tight group-hover:text-lime-400 transition-colors">Чаты</span>
+            </button>
             <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">
               <LogOut size={20} />
             </button>
@@ -362,12 +343,6 @@ function ChatPage() {
             profile={profileModal.profile}
             onClose={() => setShowEditModal(false)}
             onSave={handleSaveProfile}
-            onSendPhoneCode={sendPhoneCode}
-            onVerifyPhoneCode={async (phone, code) => {
-              const updated = await verifyPhoneCode(phone, code);
-              if (updated) setProfileModal({ profile: updated, isOwnProfile: true });
-              return updated;
-            }}
           />
         )}
       </div>

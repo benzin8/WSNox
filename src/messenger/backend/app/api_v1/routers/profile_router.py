@@ -5,12 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.api_v1.auth.dependencies import get_current_user
 from messenger.backend.app.api_v1.schemas.user import (
+    ChangePasswordRequest,
     PhoneCodeVerify,
     PhoneRequest,
     ProfileUpdate,
     UserProfileResponse,
 )
 from messenger.backend.app.crud.profile import ProfileCRUD
+from messenger.backend.app.crud.user import UserCRUD
 from messenger.backend.app.ws.presence import is_visible_online
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
@@ -44,11 +46,13 @@ async def _build_response(user, viewer_id: int) -> UserProfileResponse:
         username=user.username,
         name=user.name,
         phone_number=user.phone_number,
+        email=getattr(user, "email", None) if viewer_id == user.id else None,
         display_name=p.display_name if p else None,
         bio=p.bio if p else None,
         presence_preference=visible_pref,
         online=online,
         profile_photos=p.profile_photos if p else [],
+        created_at=getattr(user, "created_at", None),
     )
 
 
@@ -115,6 +119,21 @@ async def verify_phone_code(
 
     user_with_profile = await ProfileCRUD.get_user_with_profile(db, current_user.id)
     return await _build_response(user_with_profile, viewer_id=current_user.id)
+
+
+@profile_router.post("/me/password", status_code=204)
+async def change_my_password(
+    data: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    user = await db.get(User, current_user.id)
+    if not user or not UserCRUD.check_password(user, data.current_password):
+        raise HTTPException(status_code=400, detail="Неверный текущий пароль")
+    if data.new_password == data.current_password:
+        raise HTTPException(status_code=400, detail="Новый пароль совпадает с текущим")
+    await UserCRUD.set_password(db, user, data.new_password)
+    return None
 
 
 @profile_router.get("/{user_id}", response_model=UserProfileResponse)
