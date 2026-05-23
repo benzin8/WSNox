@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.api_v1.schemas.user import UserCreate
 from messenger.backend.app.crud.profile import ProfileCRUD
-from messenger.backend.core.security import hash_password
+from messenger.backend.core.security import hash_password, verify_password
 from messenger.backend.models import User
 
 
@@ -43,3 +43,12 @@ class UserCRUD:
         query = select(User).where(User.email == email)
         result = await session.execute(query)
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def set_password(session: AsyncSession, user: User, new_password: str) -> None:
+        user.hashed_password = hash_password(new_password)
+        await session.commit()
+
+    @staticmethod
+    def check_password(user: User, password: str) -> bool:
+        return verify_password(password, user.hashed_password)
