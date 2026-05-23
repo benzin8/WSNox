@@ -11,6 +11,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
     const [isConnected, setIsConnected] = useState(false);
     const [lastReceivedMessage, setLastReceivedMessage] = useState(null);
     const [lastPresenceEvent, setLastPresenceEvent] = useState(null);
+    const [lastProfileEvent, setLastProfileEvent] = useState(null);
 
     const currentUserRef = useRef(null);
     const socketRef = useRef(null);
@@ -56,6 +57,11 @@ export const useChatSocket = (token, activeChatIdRef) => {
 
                 if (data.type === "presence") {
                     setLastPresenceEvent(data);
+                    return;
+                }
+
+                if (data.type === "profile_update") {
+                    setLastProfileEvent(data);
                     return;
                 }
 
@@ -118,6 +124,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
         isConnected,
         lastReceivedMessage,
         lastPresenceEvent,
+        lastProfileEvent,
         socketRef,
     };
 };
