@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Volume2 } from "lucide-react";
 import { useNotificationSettings } from "../hooks/useNotificationSettings.js";
+import { usePushSubscription } from "../hooks/usePushSubscription.js";
 import { TONES } from "../constants.js";
 import { playTone } from "../audio/tones.js";
 import { isDesktopNotificationSupported, getDesktopPermission } from "../utils/permissions.js";
@@ -14,6 +15,8 @@ export function NotificationSettingsTab() {
     setTitleBadgeEnabled,
   } = useNotificationSettings();
 
+  const push = usePushSubscription();
+  const [pushHint, setPushHint] = useState("");
   const [desktopHint, setDesktopHint] = useState("");
   const supported = isDesktopNotificationSupported();
   const permission = getDesktopPermission();
@@ -30,6 +33,24 @@ export function NotificationSettingsTab() {
       } else if (result === "default") {
         setDesktopHint("Уведомления не разрешены.");
       }
+    }
+  };
+
+  const handlePushToggle = async (e) => {
+    setPushHint("");
+    if (e.target.checked) {
+      const result = await push.subscribe();
+      if (result === "denied") {
+        setPushHint("Браузер блокирует уведомления. Разрешите их в настройках сайта.");
+      } else if (result === "unsupported") {
+        setPushHint("Браузер не поддерживает push-уведомления.");
+      } else if (result === "not_configured") {
+        setPushHint("Push-уведомления не настроены на сервере.");
+      } else if (result === "error") {
+        setPushHint("Не удалось подписаться на push-уведомления.");
+      }
+    } else {
+      await push.unsubscribe();
     }
   };
 
@@ -108,6 +129,31 @@ export function NotificationSettingsTab() {
         <p className="pl-6 text-[10px] text-zinc-500">
           Например: «(3) WSNox» когда вкладка не активна.
         </p>
+      </div>
+
+      {/* Push notifications */}
+      <div className="flex flex-col gap-1">
+        <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
+          <input
+            type="checkbox"
+            checked={push.enabled}
+            onChange={handlePushToggle}
+            disabled={!push.supported || push.loading}
+            className="accent-lime-400"
+          />
+          Push-уведомления
+        </label>
+        <p className="pl-6 text-[10px] text-zinc-500">
+          Получайте уведомления даже когда вкладка закрыта (на Android и в PWA).
+        </p>
+        {!push.supported && (
+          <p className="pl-6 text-xs text-zinc-500">
+            Браузер не поддерживает push-уведомления.
+          </p>
+        )}
+        {pushHint && (
+          <p className="pl-6 text-xs text-red-400">{pushHint}</p>
+        )}
       </div>
     </div>
   );
