@@ -1,6 +1,6 @@
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.models.chat_mute import ChatMute
 from messenger.backend.models.profile import Profile
