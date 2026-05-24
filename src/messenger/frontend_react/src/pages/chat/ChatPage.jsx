@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Send, LogOut, User, MessageSquare, Phone, MoreVertical, Search } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
 import { useChatSocket } from '../../hooks/useChatSocket';
 import { usePresence } from '../../hooks/usePresence';
 import { useProfile } from '../../hooks/useProfile';
+import { useEdgeSwipe } from '../../hooks/useEdgeSwipe';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
@@ -251,6 +252,53 @@ function ChatPage() {
       ? onlineUsers.has(activeChat.recipient_id)
       : false;
 
+  // ── Mobile slide & swipe ──────────────────────────────────
+  const sliderRef = useRef(null);
+  const [dragOffset, setDragOffset] = useState(0);   // 0..1 during swipe
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  const handleSwipeDrag = useCallback((progress) => {
+    setDragOffset(progress);
+  }, []);
+
+  const handleSwipeComplete = useCallback(() => {
+    setDragOffset(0);
+    setMobileView('list');
+  }, []);
+
+  const handleSwipeCancel = useCallback(() => {
+    setDragOffset(0);
+  }, []);
+
+  useEdgeSwipe({
+    containerRef: sliderRef,
+    enabled: mobileView === 'chat',
+    edgeZone: 24,
+    threshold: 0.3,
+    velocityThreshold: 0.4,
+    onDrag: handleSwipeDrag,
+    onSwipeComplete: handleSwipeComplete,
+    onSwipeCancel: handleSwipeCancel,
+  });
+
+  // When mobileView changes, briefly enable transition then clear
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+    setIsAnimating(true);
+    const id = setTimeout(() => setIsAnimating(false), 350);
+    return () => clearTimeout(id);
+  }, [mobileView, prefersReducedMotion]);
+
+  // Compute mobile slider translate: 0% = list visible, -100% = chat visible
+  const mobileTranslateX =
+    mobileView === 'chat'
+      ? `calc(-100% + ${dragOffset * 100}%)`
+      : '0%';
+
   return (
     <div
       className="flex flex-col h-dvh bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
@@ -260,88 +308,108 @@ function ChatPage() {
       }}
     >
       <PushPromptModal />
-      <div className="relative flex-1 overflow-hidden md:flex">
-        {/* Sidebar */}
-        <div className={`absolute inset-y-0 left-0 w-full flex flex-col bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 z-10 transition-transform duration-200 ease-in-out md:relative md:inset-auto md:w-80 md:translate-x-0 ${mobileView === 'list' ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={handleOpenOwnProfile}
-              className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl hover:bg-zinc-800/50 active:scale-[0.98] transition-all"
-              title="Мой профиль"
-            >
-              <div className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold group-hover:bg-lime-300 transition-colors">
-                {(myProfile?.display_name || myProfile?.name || currentUser?.name)?.slice(0, 1)?.toUpperCase()}
-              </div>
-              <span className="font-bold text-lg tracking-tight group-hover:text-lime-400 transition-colors">Чаты</span>
-            </button>
-            <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">
-              <LogOut size={20} />
-            </button>
-          </div>
 
-          <div className="p-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
-              <input
-                onChange={(e) => {searchChats(e.target.value); setSearchQuery(e.target.value)}}
-                type="text"
-                placeholder="Search chats..."
-                className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-lime-400/50 transition-all"
-              />
+      {/* Desktop: normal flex layout.  Mobile: sliding 200vw container */}
+      <div className="relative flex-1 overflow-hidden md:flex">
+        <div
+          ref={sliderRef}
+          className="absolute inset-y-0 left-0 flex md:contents"
+          style={{
+            width: '200%',
+            transform: `translateX(${mobileTranslateX})`,
+            transition:
+              dragOffset > 0 || prefersReducedMotion
+                ? 'none'
+                : isAnimating
+                  ? 'transform 300ms cubic-bezier(.4,0,.2,1)'
+                  : 'none',
+            willChange: dragOffset > 0 || isAnimating ? 'transform' : 'auto',
+          }}
+        >
+          {/* Sidebar — takes 50% of the 200vw slider = 100vw on mobile */}
+          <div className="w-1/2 flex flex-col bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 md:w-80 md:flex-shrink-0">
+            <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={handleOpenOwnProfile}
+                className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl hover:bg-zinc-800/50 active:scale-[0.98] transition-all"
+                title="Мой профиль"
+              >
+                <div className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold group-hover:bg-lime-300 transition-colors">
+                  {(myProfile?.display_name || myProfile?.name || currentUser?.name)?.slice(0, 1)?.toUpperCase()}
+                </div>
+                <span className="font-bold text-lg tracking-tight group-hover:text-lime-400 transition-colors">Чаты</span>
+              </button>
+              <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">
+                <LogOut size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+                <input
+                  onChange={(e) => {searchChats(e.target.value); setSearchQuery(e.target.value)}}
+                  type="text"
+                  placeholder="Search chats..."
+                  className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-lime-400/50 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="flex-grow min-h-0 overflow-y-auto">
+              {searchQuery?.length > 0 ? (
+                <div className="p-2 space-y-1">
+                  {searchResult?.length > 0 ? (
+                    searchResult.map((user) => (
+                      <div key={user.id} onClick={() => handleSelectChat(user)}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
+                        <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
+                          <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
+                        </div>
+                        <div className="flex-grow">
+                          <div className="flex justify-between items-baseline">
+                            <h4 className="font-semibold text-zinc-100">{user.name}</h4>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    !isSearching && (
+                      <div className="p-4 text-center text-zinc-500 text-sm">
+                        Пользователь "{searchQuery}" не найден
+                      </div>
+                    )
+                  )}
+                </div>
+              ) : (
+                <ChatList
+                  chats={chats}
+                  activeChatId={activeChat?.id}
+                  onSelectChat={handleSelectChat}
+                  onlineUsers={onlineUsers}
+                />
+              )}
             </div>
           </div>
 
-          <div className="flex-grow min-h-0 overflow-y-auto">
-            {searchQuery?.length > 0 ? (
-              <div className="p-2 space-y-1">
-                {searchResult?.length > 0 ? (
-                  searchResult.map((user) => (
-                    <div key={user.id} onClick={() => handleSelectChat(user)}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
-                      <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
-                        <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
-                      </div>
-                      <div className="flex-grow">
-                        <div className="flex justify-between items-baseline">
-                          <h4 className="font-semibold text-zinc-100">{user.name}</h4>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  !isSearching && (
-                    <div className="p-4 text-center text-zinc-500 text-sm">
-                      Пользователь "{searchQuery}" не найден
-                    </div>
-                  )
-                )}
-              </div>
-            ) : (
-              <ChatList
-                chats={chats}
-                activeChatId={activeChat?.id}
-                onSelectChat={handleSelectChat}
-                onlineUsers={onlineUsers}
-              />
-            )}
+          {/* Chat panel — takes other 50% = 100vw on mobile */}
+          <div className="w-1/2 flex flex-col md:flex-1 md:w-auto">
+            <ChatWindow activeChat={activeChat}
+             messages={messages}
+             setMessages={setMessages}
+             sendMessage={handleSendMessage}
+             isConnected={isConnected}
+             isPartnerOnline={isPartnerOnline}
+             partnerPresencePreference={partnerPresencePreference}
+             messagesEndRef={messagesEndRef}
+             inputText={inputText}
+             setInputText={setInputText}
+             chatName={chatName}
+             onOpenProfile={() => activeChat?.recipient_id && handleOpenUserProfile(activeChat.recipient_id)}
+             onBack={() => setMobileView('list')}
+             />
           </div>
-        </div>
-        <div className={`absolute inset-y-0 left-0 w-full flex flex-col transition-transform duration-200 ease-in-out md:relative md:inset-auto md:flex-1 md:translate-x-0 ${mobileView === 'chat' ? 'translate-x-0' : 'translate-x-full'}`}>
-          <ChatWindow activeChat={activeChat}
-           messages={messages}
-           setMessages={setMessages}
-           sendMessage={handleSendMessage}
-           isConnected={isConnected}
-           isPartnerOnline={isPartnerOnline}
-           partnerPresencePreference={partnerPresencePreference}
-           messagesEndRef={messagesEndRef}
-           inputText={inputText}
-           setInputText={setInputText}
-           chatName={chatName}
-           onOpenProfile={() => activeChat?.recipient_id && handleOpenUserProfile(activeChat.recipient_id)}
-           onBack={() => setMobileView('list')}
-           />
         </div>
 
         {/* Profile view modal */}
