@@ -20,4 +20,6 @@ class MessageCreate(MessageBase):
     pass
 
 class MessageResponse(MessageBase):
+    id: int
+
     model_config = ConfigDict(from_attributes=True)
