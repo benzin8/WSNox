@@ -23,6 +23,13 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // Explicit target for Safari 16 — ensures iOS 18 (Safari 18) compatibility.
+    // Vite 8 defaults to 'baseline-widely-available' (safari16.4) but being
+    // explicit guards against future default bumps.
+    target: ['es2020', 'safari16'],
+    cssTarget: ['safari16'],
+  },
   plugins: [
     react(),
     tailwindcss(),
