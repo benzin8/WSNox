@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS = {
   titleBadge: { enabled: true },
   mutedChats: [],
   dnd:        false,
+  readReceipts: true,
 };
 
 export const MIGRATION_FLAG_KEY = "wsnox.notifications.migratedToBackend";

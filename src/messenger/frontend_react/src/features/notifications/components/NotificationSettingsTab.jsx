@@ -15,6 +15,7 @@ export function NotificationSettingsTab() {
     setDesktopEnabled,
     setTitleBadgeEnabled,
     setDnd,
+    setReadReceipts,
   } = useNotificationSettings();
 
   const push = usePushSubscription();
@@ -71,6 +72,22 @@ export function NotificationSettingsTab() {
         </label>
         <p className="pl-6 text-[10px] text-zinc-500">
           Полностью отключает push-уведомления, пока включено.
+        </p>
+      </div>
+
+      {/* Read receipts */}
+      <div className="flex flex-col gap-1">
+        <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
+          <input
+            type="checkbox"
+            checked={!!settings.readReceipts}
+            onChange={(e) => setReadReceipts(e.target.checked)}
+            className="accent-lime-400"
+          />
+          Отметки о прочтении
+        </label>
+        <p className="pl-6 text-[10px] text-zinc-500">
+          Показывать, прочитано ли сообщение. При отключении индикатор скрывается у обеих сторон.
         </p>
       </div>
 

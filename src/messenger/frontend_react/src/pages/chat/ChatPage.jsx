@@ -39,7 +39,7 @@ function ChatPage() {
   // Mirror of chats state for reading inside effects without stale closure
   const chatsRef = useRef([]);
 
-  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
+  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastReadReceiptEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { settings: notificationSettings } = useNotificationSettings();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
@@ -98,6 +98,15 @@ function ChatPage() {
       const isOwnMessage = Number(lastReceivedMessage.sender_id) === currentUser?.id;
       if (isActiveChat && !isOwnMessage && !document.hidden) {
         markChatAsRead(lastReceivedMessage.chat_id);
+        // Send WS read receipt for real-time notification
+        const ws = socketRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN && lastReceivedMessage.message_id) {
+          ws.send(JSON.stringify({
+            type: 'message_read',
+            chat_id: lastReceivedMessage.chat_id,
+            last_message_id: lastReceivedMessage.message_id,
+          }));
+        }
       }
       setChats(prevChats => {
         const idx = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
@@ -152,15 +161,29 @@ function ChatPage() {
   // Realtime profile updates from other users
   useEffect(() => {
     if (!lastProfileEvent) return;
-    const { user_id, name, display_name } = lastProfileEvent;
-    setChats(prev => prev.map(c => (
-      c.recipient_id === user_id && c.recipient
-        ? { ...c, recipient: { ...c.recipient, name, display_name } }
-        : c
-    )));
-    if (activeChat?.recipient_id === user_id) {
-      setChatName(display_name || name);
-      setActiveChat(prev => prev ? { ...prev, recipient: { ...(prev.recipient || {}), name, display_name } } : prev);
+    const { user_id, name, display_name, read_receipts_changed } = lastProfileEvent;
+    if (name || display_name) {
+      setChats(prev => prev.map(c => (
+        c.recipient_id === user_id && c.recipient
+          ? { ...c, recipient: { ...c.recipient, name, display_name } }
+          : c
+      )));
+      if (activeChat?.recipient_id === user_id) {
+        setChatName(display_name || name);
+        setActiveChat(prev => prev ? { ...prev, recipient: { ...(prev.recipient || {}), name, display_name } } : prev);
+      }
+    }
+    // When partner changes read receipts, refresh messages to update read_at visibility
+    if (read_receipts_changed && activeChat?.recipient_id === user_id) {
+      getMessagesByChatId(activeChat.id).then(msgs => {
+        if (!msgs) return;
+        const mappedMsgs = msgs.map(m => ({
+          ...m,
+          text: m.text,
+          type: m.sender_id === currentUser?.id ? 'outgoing' : 'incoming'
+        }));
+        setMessages(mappedMsgs);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastProfileEvent]);
@@ -179,6 +202,18 @@ function ChatPage() {
           type: m.sender_id === currentUser.id ? 'outgoing' : 'incoming'
         }));
         setMessages(mappedMsgs);
+        // Send WS read receipt for the latest incoming message
+        const lastIncoming = [...msgs].reverse().find(m => m.sender_id !== currentUser.id);
+        if (lastIncoming && !document.hidden) {
+          const ws = socketRef.current;
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'message_read',
+              chat_id: activeChat.id,
+              last_message_id: lastIncoming.id,
+            }));
+          }
+        }
       }
       fetchMessages();
     }

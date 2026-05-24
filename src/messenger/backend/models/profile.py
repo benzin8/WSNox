@@ -15,6 +15,9 @@ class Profile(Base):
     notification_dnd: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    read_receipts_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     profile_photos: Mapped[list] = mapped_column(JSON, default=list)
 
     user: Mapped["User"] = relationship(back_populates="profile")

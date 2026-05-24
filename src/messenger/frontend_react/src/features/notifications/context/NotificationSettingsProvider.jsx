@@ -6,6 +6,7 @@ import {
   fetchNotificationPreferences,
   setDndOnServer,
   setChatMuteOnServer,
+  setReadReceiptsOnServer,
 } from "../api.js";
 
 function loadInitial() {
@@ -19,6 +20,7 @@ function loadInitial() {
       titleBadge: { ...DEFAULT_SETTINGS.titleBadge, ...(parsed.titleBadge || {}) },
       mutedChats: Array.isArray(parsed.mutedChats) ? parsed.mutedChats : [],
       dnd:        typeof parsed.dnd === "boolean" ? parsed.dnd : false,
+      readReceipts: typeof parsed.readReceipts === "boolean" ? parsed.readReceipts : true,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -70,10 +72,12 @@ export function NotificationSettingsProvider({ children }) {
         localStorage.setItem(MIGRATION_FLAG_KEY, "1");
 
         const mergedMuted = Array.from(new Set([...serverMuted, ...toMigrate]));
+        const serverReadReceipts = prefs.read_receipts_enabled !== false;
         setSettings((s) => ({
           ...s,
           mutedChats: mergedMuted,
           dnd: serverDnd,
+          readReceipts: serverReadReceipts,
         }));
       } catch (err) {
         console.warn("[notifications] failed to sync preferences:", err);
@@ -140,6 +144,15 @@ export function NotificationSettingsProvider({ children }) {
     });
   }, []);
 
+  const setReadReceipts = useCallback((enabled) => {
+    const next = !!enabled;
+    setSettings((s) => ({ ...s, readReceipts: next }));
+    setReadReceiptsOnServer(next).catch((err) => {
+      console.warn("[notifications] read receipts sync failed, rolling back:", err);
+      setSettings((s) => ({ ...s, readReceipts: !next }));
+    });
+  }, []);
+
   const isMuted = useCallback(
     (chatId) => settings.mutedChats.includes(Number(chatId)),
     [settings.mutedChats]
@@ -155,8 +168,9 @@ export function NotificationSettingsProvider({ children }) {
       toggleMute,
       isMuted,
       setDnd,
+      setReadReceipts,
     }),
-    [settings, setSoundEnabled, setSoundSample, setDesktopEnabled, setTitleBadgeEnabled, toggleMute, isMuted, setDnd]
+    [settings, setSoundEnabled, setSoundSample, setDesktopEnabled, setTitleBadgeEnabled, toggleMute, isMuted, setDnd, setReadReceipts]
   );
 
   return (

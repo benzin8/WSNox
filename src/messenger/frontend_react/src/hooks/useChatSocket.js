@@ -12,6 +12,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
     const [lastReceivedMessage, setLastReceivedMessage] = useState(null);
     const [lastPresenceEvent, setLastPresenceEvent] = useState(null);
     const [lastProfileEvent, setLastProfileEvent] = useState(null);
+    const [lastReadReceiptEvent, setLastReadReceiptEvent] = useState(null);
 
     const currentUserRef = useRef(null);
     const socketRef = useRef(null);
@@ -62,6 +63,19 @@ export const useChatSocket = (token, activeChatIdRef) => {
 
                 if (data.type === "profile_update") {
                     setLastProfileEvent(data);
+                    return;
+                }
+
+                if (data.type === "messages_read") {
+                    setLastReadReceiptEvent(data);
+                    // Update read_at on messages in the active chat
+                    if (data.chat_id === activeChatIdRef?.current) {
+                        setMessages((prev) => prev.map((msg) =>
+                            msg.type === 'outgoing' && msg.id <= data.up_to_message_id && !msg.read_at
+                                ? { ...msg, read_at: data.read_at }
+                                : msg
+                        ));
+                    }
                     return;
                 }
 
@@ -126,6 +140,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
         lastReceivedMessage,
         lastPresenceEvent,
         lastProfileEvent,
+        lastReadReceiptEvent,
         socketRef,
     };
 };
