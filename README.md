@@ -75,7 +75,7 @@ tests/                  # pytest
 
 ## Реализованные фичи
 
-- **Аутентификация**: email-код + JWT, [восстановление пароля по ссылке](#восстановление-и-смена-пароля)
+- **Аутентификация**: email-код + JWT, [восстановление и смена пароля](docs/features/password-reset.md)
 - **Чат**: WebSocket, история, поиск пользователей, последнее сообщение и счётчик непрочитанных в списке
 - **Профили**: `display_name`, `bio`, фото; модалка с табами «Личные данные» / «Безопасность»
 - **[Онлайн-статус в реал-тайме](docs/features/online-status.md)**: Redis TTL + heartbeat, режимы «не беспокоить» и «невидимка»
@@ -132,6 +132,7 @@ GitHub Actions (`.github/workflows/`):
 - [Отметки о прочтении](docs/features/read-receipts.md) — gray/green точка, серверный gate взаимной приватности
 - [Мобильная навигация](docs/features/mobile-navigation.md) — слайд между списком и чатом, edge-swipe back
 - [Профили](docs/features/profiles.md) — модель, API, редактирование
+- [Восстановление и смена пароля](docs/features/password-reset.md) — reset по email-ссылке, смена через профиль, SMTP-конфиг
 
 **Деплой**
 
