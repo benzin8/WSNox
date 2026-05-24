@@ -32,6 +32,31 @@ AUTH_TIMEOUT_SECONDS = 10
 WS_AUTH_FAILED = 4401  # custom 4xxx code, equivalent to HTTP 401
 
 
+async def publish_read_receipt(
+    db: AsyncSession,
+    chat_id: int,
+    reader_id: int,
+    up_to_message_id: int,
+) -> None:
+    """Fan out a messages_read event so the sender's client can flip the
+    read indicator without a refresh. Caller must have already persisted
+    the read_at update in the DB. Honors the reciprocity rule."""
+    other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, reader_id)
+    if not other:
+        return
+    if not await should_expose_read_receipts(db, reader_id, other.user_id):
+        return
+    payload = json.dumps({
+        "type": "messages_read",
+        "chat_id": chat_id,
+        "up_to_message_id": up_to_message_id,
+        "read_at": datetime.now(timezone.utc).isoformat(),
+        "reader_id": reader_id,
+    })
+    redis = get_redis()
+    await redis.publish(REDIS_CHAT_CHANNEL + ":read_receipts", payload)
+
+
 class ConnectionManager:
     def __init__(self) -> None:
         self.active_connections: Dict[int, set[WebSocket]] = {}
@@ -291,16 +316,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                         if not await ChatCRUD.is_chat_member(db, read_chat_id, user_id):
                             continue
                         await MessageCRUD.mark_as_read_up_to(db, read_chat_id, user_id, last_message_id)
-                        other = await ChatCRUD.get_other_user_by_chat_id(db, read_chat_id, user_id)
-                        if other and await should_expose_read_receipts(db, user_id, other.user_id):
-                            read_payload = json.dumps({
-                                "type": "messages_read",
-                                "chat_id": read_chat_id,
-                                "up_to_message_id": last_message_id,
-                                "read_at": datetime.now(timezone.utc).isoformat(),
-                                "reader_id": user_id,
-                            })
-                            await redis.publish(REDIS_CHAT_CHANNEL + ":read_receipts", read_payload)
+                        await publish_read_receipt(db, read_chat_id, user_id, last_message_id)
                 continue
 
             chat_id = msg_data.get("chat_id")

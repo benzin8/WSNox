@@ -15,6 +15,7 @@ from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.app.crud.profile import ProfileCRUD
 from messenger.backend.app.ws.presence import is_present
+from messenger.backend.app.ws.router import publish_read_receipt
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
@@ -106,7 +107,9 @@ async def get_chat_presence(
 async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
-    await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
+    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
+    if max_id:
+        await publish_read_receipt(db, chat_id, current_user.id, max_id)
     messages = await MessageCRUD.get_messages(db, chat_id)
 
     # Determine whether to expose read_at based on reciprocity
@@ -128,4 +131,6 @@ async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_d
 async def mark_chat_as_read(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
-    await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
+    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
+    if max_id:
+        await publish_read_receipt(db, chat_id, current_user.id, max_id)
