@@ -33,6 +33,7 @@ function ChatPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [mobileView, setMobileView] = useState('list');
   const [partnerPresencePreference, setPartnerPresencePreference] = useState(null);
+  const [chatListBlurred, setChatListBlurred] = useState(false);
 
   // Keeps the open chat id readable inside the socket's onmessage closure
   const activeChatIdRef = useRef(null);
@@ -284,6 +285,7 @@ function ChatPage() {
 
   // Выбор чата
   const handleSelectChat = async (selectedChat) => {
+    setChatListBlurred(false);
     if (selectedChat.recipient) {
       setActiveChat(selectedChat);
       setChatName(selectedChat.recipient.display_name || selectedChat.recipient.name);
@@ -329,6 +331,33 @@ function ChatPage() {
   const isPartnerOnline = activeChat?.recipient_id
       ? onlineUsers.has(activeChat.recipient_id)
       : false;
+
+  // ── Desktop ESC navigation ────────────────────────────────
+  // First ESC: close active chat. Second ESC: blur chat list.
+  // Unblur only on mouse click on the chat list.
+  const chatListRef = useRef(null);
+
+  useEffect(() => {
+    const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+    if (!isDesktop) return;
+
+    const handleEsc = (e) => {
+      if (e.key !== 'Escape') return;
+      // Don't interfere when modals are open
+      if (profileModal || showEditModal) return;
+
+      if (activeChat) {
+        setActiveChat(null);
+        setChatName('');
+        setMessages([]);
+      } else {
+        setChatListBlurred(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [activeChat, profileModal, showEditModal]);
 
   // ── Mobile slide & swipe ──────────────────────────────────
   const sliderRef = useRef(null);
@@ -407,7 +436,12 @@ function ChatPage() {
           }}
         >
           {/* Sidebar — takes 50% of the 200vw slider = 100vw on mobile */}
-          <div className="w-1/2 flex flex-col bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 md:w-80 md:flex-shrink-0">
+          <div
+            ref={chatListRef}
+            onClick={() => { if (chatListBlurred) setChatListBlurred(false); }}
+            className={`w-1/2 flex flex-col bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 md:w-80 md:flex-shrink-0 transition-all duration-300 ${
+              chatListBlurred ? 'blur-sm opacity-50 select-none' : ''
+            }`}>
             <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
               <button
                 type="button"
