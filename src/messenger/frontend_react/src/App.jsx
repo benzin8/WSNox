@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie'
 
+import LandingPage from './pages/LandingPage';
 import SendCodePage from './pages/auth/SendCodePage';
 import VerifyCodePage from './pages/auth/VerifyCodePage';
 import LoginPage from './pages/auth/LoginPage';
@@ -65,10 +66,10 @@ function App() {
             } 
           />
 
-          {/* Root Redirect */}
-          <Route 
-            path="/" 
-            element={isAuthenticated ? <Navigate to="/chat" replace /> : <Navigate to="/auth/send-code" replace />} 
+          {/* Root — landing or chat */}
+          <Route
+            path="/"
+            element={isAuthenticated ? <Navigate to="/chat" replace /> : <LandingPage />}
           />
 
           {/* Fallback */}
