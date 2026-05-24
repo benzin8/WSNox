@@ -9,7 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from messenger.backend.app.api_v1.auth.dependencies import get_user_from_token
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
+from messenger.backend.app.crud.notification import NotificationCRUD
 from messenger.backend.app.ws.push import send_push_to_user
+from messenger.backend.app.ws.viewing_chat import (
+    clear_viewing_chat,
+    get_viewing_chat,
+    set_viewing_chat,
+)
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import AsyncSessionLocal
@@ -102,14 +108,15 @@ class ConnectionManager:
 
                 sockets = self.active_connections.get(recipient_id, set())
                 if not sockets:
-                    # No active WebSocket — send push notification
-                    sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
-                    asyncio.create_task(send_push_to_user(recipient_id, {
-                        "title": f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение",
-                        "body": "Нажмите, чтобы открыть чат",
-                        "chat_id": chat_id,
-                        "sender_id": sender_id,
-                    }))
+                    # No active WebSocket — consider push, but respect prefs
+                    if await self._should_push(recipient_id, chat_id):
+                        sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
+                        asyncio.create_task(send_push_to_user(recipient_id, {
+                            "title": f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение",
+                            "body": "Нажмите, чтобы открыть чат",
+                            "chat_id": chat_id,
+                            "sender_id": sender_id,
+                        }))
                     continue
                 try:
                     decrypted_text = decrypt_message(encrypted_text)
@@ -136,6 +143,25 @@ class ConnectionManager:
                     self.active_connections.pop(recipient_id, None)
         except asyncio.CancelledError:
             await pubsub.unsubscribe(REDIS_CHAT_CHANNEL)
+
+    async def _should_push(self, recipient_id: int, chat_id: int) -> bool:
+        """Apply notification preferences before sending a push.
+
+        Returns False when push should be suppressed: user has the chat
+        currently open (within grace window), user has DND on, or the chat
+        is muted.
+        """
+        redis = get_redis()
+        viewing = await get_viewing_chat(redis, recipient_id)
+        if viewing is not None and viewing == chat_id:
+            return False
+
+        async with AsyncSessionLocal() as db:
+            if await NotificationCRUD.get_dnd(db, recipient_id):
+                return False
+            if await NotificationCRUD.is_chat_muted(db, recipient_id, chat_id):
+                return False
+        return True
 
 
 manager = ConnectionManager()
@@ -203,6 +229,17 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 if transitioned:
                     manager.offline_broadcasted.discard(user_id)
                     await publish_presence_event(redis, user_id, online=True)
+                continue
+
+            if msg_type == "viewing_chat":
+                viewing_chat_id = msg_data.get("chat_id")
+                if viewing_chat_id is None:
+                    await clear_viewing_chat(redis, user_id)
+                else:
+                    try:
+                        await set_viewing_chat(redis, user_id, int(viewing_chat_id))
+                    except (TypeError, ValueError):
+                        pass
                 continue
 
             chat_id = msg_data.get("chat_id")

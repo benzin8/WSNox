@@ -134,6 +134,21 @@ function ChatPage() {
     activeChatIdRef.current = activeChat?.id ?? null;
   }, [activeChat?.id]);
 
+  // Tell the server which chat is currently open so it can suppress pushes
+  // for that chat (within the server-side TTL grace window).
+  useEffect(() => {
+    if (!isConnected) return;
+    const ws = socketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const viewingId = mobileView === 'list' ? null : (activeChat?.id ?? null);
+    ws.send(JSON.stringify({ type: 'viewing_chat', chat_id: viewingId }));
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'viewing_chat', chat_id: null }));
+      }
+    };
+  }, [activeChat?.id, mobileView, isConnected, socketRef]);
+
   // Realtime profile updates from other users
   useEffect(() => {
     if (!lastProfileEvent) return;

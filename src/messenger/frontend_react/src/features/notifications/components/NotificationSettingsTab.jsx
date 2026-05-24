@@ -14,6 +14,7 @@ export function NotificationSettingsTab() {
     setSoundSample,
     setDesktopEnabled,
     setTitleBadgeEnabled,
+    setDnd,
   } = useNotificationSettings();
 
   const push = usePushSubscription();
@@ -57,6 +58,22 @@ export function NotificationSettingsTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* DND */}
+      <div className="flex flex-col gap-1">
+        <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
+          <input
+            type="checkbox"
+            checked={!!settings.dnd}
+            onChange={(e) => setDnd(e.target.checked)}
+            className="accent-lime-400"
+          />
+          Не беспокоить
+        </label>
+        <p className="pl-6 text-[10px] text-zinc-500">
+          Полностью отключает push-уведомления, пока включено.
+        </p>
+      </div>
+
       {/* Звук */}
       <div className="flex flex-col gap-2">
         <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
