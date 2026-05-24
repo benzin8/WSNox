@@ -343,10 +343,12 @@ function ChatPage() {
     return () => clearTimeout(id);
   }, [mobileView, prefersReducedMotion]);
 
-  // Compute mobile slider translate: 0% = list visible, -100% = chat visible
+  // Compute mobile slider translate: 0% = list visible, -50% = chat visible
+  // (the slider itself is 200% wide, so its two w-1/2 halves are each 100vw on
+  // mobile; shifting by -50% of the slider's own width = -100vw).
   const mobileTranslateX =
     mobileView === 'chat'
-      ? `calc(-100% + ${dragOffset * 100}%)`
+      ? `calc(-50% + ${dragOffset * 50}%)`
       : '0%';
 
   return (
