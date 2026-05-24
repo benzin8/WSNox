@@ -53,8 +53,8 @@ services:
       - redis
     volumes:
       - ./src/messenger/backend:/app/src/messenger/backend
-      - ./alembic:/alembic
-      - ./alembic.ini:/alembic.ini
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
 
 
 volumes:
