@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { MessageSquare } from "lucide-react";
 
 function formatTime(iso) {
@@ -47,7 +47,15 @@ function DateSeparator({ label }) {
 }
 
 export const MessageList = ({ messages, messagesEndRef }) => {
-    let lastDateKey = null;
+    const itemsWithSeparators = useMemo(
+        () => messages.map((msg, idx) => {
+            const dateKey = getDateKey(msg.created_at);
+            const prevDateKey = idx > 0 ? getDateKey(messages[idx - 1].created_at) : null;
+            const showDateSep = !!(dateKey && dateKey !== prevDateKey);
+            return { msg, showDateSep };
+        }),
+        [messages],
+    );
 
     return (
         <div className="flex-grow min-h-0 overflow-y-auto scrollbar-hide">
@@ -58,15 +66,9 @@ export const MessageList = ({ messages, messagesEndRef }) => {
                 <p>Нет сообщений. Начните разговор!</p>
               </div>
             )}
-            {messages.map((msg) => {
+            {itemsWithSeparators.map(({ msg, showDateSep }) => {
               const isOut = msg.type === 'outgoing';
               const time = formatTime(msg.created_at);
-              const dateKey = getDateKey(msg.created_at);
-              let showDateSep = false;
-              if (dateKey && dateKey !== lastDateKey) {
-                  showDateSep = true;
-                  lastDateKey = dateKey;
-              }
               return (
                 <React.Fragment key={msg.id}>
                   {showDateSep && (
