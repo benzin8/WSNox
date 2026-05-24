@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from messenger.backend.core.rate_limit import rate_limit_send_code
 from messenger.backend.app.api_v1.schemas.user import (
     AuthResponse,
     EmailRequest,
@@ -13,6 +12,7 @@ from messenger.backend.app.api_v1.schemas.user import (
     UserResponse,
 )
 from messenger.backend.app.crud.user import UserCRUD
+from messenger.backend.core.rate_limit import rate_limit_send_code
 from messenger.backend.core.redis import get_redis
 from messenger.backend.core.security import create_pair_jwt_tokens, verify_password
 from messenger.backend.db.session import get_db_session

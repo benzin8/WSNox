@@ -14,7 +14,6 @@ from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import AsyncSessionLocal
 from messenger.backend.models.user import User
-from messenger.backend.app.ws.push import send_push_to_user
 
 REDIS_CHAT_CHANNEL = "chat_messages"
 AUTH_TIMEOUT_SECONDS = 10
@@ -59,12 +58,16 @@ class ConnectionManager:
             recipient_id=recipient_id,
             text=text,
         )
-        sender = await db.get(User, sender_id)
+        from sqlalchemy.orm import selectinload as _selectinload
+        sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
+        sender_display_name = sender.profile.display_name if sender.profile else None
         payload = json.dumps({
             "recipient_id": recipient_id,
             "encrypted_text": message.encrypted_data,
             "sender_id": sender_id,
             "chat_id": chat_id,
+            "created_at": message.created_at.isoformat() if message.created_at else None,
+            "message_id": message.id,
             "chat_info": {
                 "id": chat_id,
                 "name": f"private_{min(sender_id, recipient_id)}_{max(sender_id, recipient_id)}",
@@ -74,6 +77,7 @@ class ConnectionManager:
                     "id": sender.id,
                     "name": sender.name,
                     "username": sender.username,
+                    "display_name": sender_display_name,
                 },
             },
         })
@@ -117,6 +121,8 @@ class ConnectionManager:
                     "recipient_id": recipient_id,
                     "chat_id": chat_id,
                     "chat_info": chat_info,
+                    "created_at": data.get("created_at"),
+                    "message_id": data.get("message_id"),
                 }
                 dead = []
                 for ws in sockets:

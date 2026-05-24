@@ -120,6 +120,7 @@ GitHub Actions (`.github/workflows/ci.yml`):
 | [troubleshooting/security-fixes.md](docs/troubleshooting/security-fixes.md) | Исправления безопасности (IV, bcrypt) |
 | [troubleshooting/fixes-round2.md](docs/troubleshooting/fixes-round2.md) | Static mount, --reload, IDOR, тесты |
 | [troubleshooting/fixes-round3.md](docs/troubleshooting/fixes-round3.md) | Auth race, Vite proxy, мобильная адаптация, last message |
+| [security/hardening.md](docs/security/hardening.md) | Security hardening: разделение ключей, AES-GCM, HSTS, rate-limit, что НЕ закрывается без E2EE |
 
 ---
 
