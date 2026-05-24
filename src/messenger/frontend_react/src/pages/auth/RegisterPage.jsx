@@ -52,7 +52,7 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="flex min-h-dvh items-center justify-center p-4">
             <div className="glass w-full max-w-md rounded-2xl p-8 shadow-2xl">
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl font-bold tracking-tight text-lime-400">Заполните профиль</h1>

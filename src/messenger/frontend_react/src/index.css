@@ -1,8 +1,30 @@
 @import "tailwindcss";
 
 @layer base {
+  html {
+    height: 100%;
+    overflow: hidden;
+    /* Prevent iOS overscroll / bounce that exposes white/black bg */
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-zinc-900 text-zinc-100 font-sans;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    /* Lock body so only inner containers scroll */
+    position: fixed;
+    width: 100%;
+  }
+
+  #root {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 }
 
