@@ -8,6 +8,7 @@ from fastapi.websockets import WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.api_v1.auth.dependencies import get_user_from_token
+from messenger.backend.app.api_v1.schemas.message import _utc_iso
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.app.crud.notification import (
@@ -115,7 +116,7 @@ class ConnectionManager:
             "encrypted_text": message.encrypted_data,
             "sender_id": sender_id,
             "chat_id": chat_id,
-            "created_at": message.created_at.isoformat() if message.created_at else None,
+            "created_at": _utc_iso(message.created_at),
             "message_id": message.id,
             "reply_to_id": message.reply_to_id,
             "reply_to_text": reply_to_text,
