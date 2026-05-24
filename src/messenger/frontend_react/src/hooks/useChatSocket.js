@@ -68,10 +68,16 @@ export const useChatSocket = (token, activeChatIdRef) => {
 
                 if (data.type === "messages_read") {
                     setLastReadReceiptEvent(data);
-                    // Update read_at on messages in the active chat
-                    if (data.chat_id === activeChatIdRef?.current) {
+                    // Update read_at on outgoing messages in the active chat.
+                    // We compare by created_at, not id — locally sent messages
+                    // use `Date.now()` as a placeholder id, which doesn't line
+                    // up with the server's DB ids in `up_to_message_id`.
+                    if (data.chat_id === activeChatIdRef?.current && data.read_at) {
                         setMessages((prev) => prev.map((msg) =>
-                            msg.type === 'outgoing' && msg.id <= data.up_to_message_id && !msg.read_at
+                            msg.type === 'outgoing'
+                            && msg.created_at
+                            && msg.created_at <= data.read_at
+                            && !msg.read_at
                                 ? { ...msg, read_at: data.read_at }
                                 : msg
                         ));
