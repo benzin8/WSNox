@@ -69,7 +69,7 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2 max-w-[calc(100vw-2rem)]">
           <button
             onClick={() => { onReply(message); onClose(); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-zinc-100 text-sm transition-all active:scale-95"

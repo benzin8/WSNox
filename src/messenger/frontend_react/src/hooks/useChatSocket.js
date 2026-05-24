@@ -85,6 +85,17 @@ export const useChatSocket = (token, activeChatIdRef) => {
                     return;
                 }
 
+                if (data.type === "message_ack") {
+                    if (data.temp_id != null) {
+                        setMessages((prev) => prev.map((m) =>
+                            m.id === data.temp_id
+                                ? { ...m, id: data.message_id }
+                                : m
+                        ));
+                    }
+                    return;
+                }
+
                 if (data.type === "message_deleted") {
                     if (data.chat_id === activeChatIdRef?.current) {
                         setMessages((prev) => prev.filter(m => m.id !== data.message_id));
@@ -131,7 +142,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
         };
     }, [token]);
 
-    const sendMessage = (text, activeChatId, replyToId = null) => {
+    const sendMessage = (text, activeChatId, replyToId = null, tempId = null) => {
         if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
             const payload = {
                 text,
@@ -139,6 +150,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
                 timestamp: new Date().toISOString(),
             };
             if (replyToId) payload.reply_to_id = replyToId;
+            if (tempId != null) payload.temp_id = tempId;
             socketRef.current.send(JSON.stringify(payload));
             setLastReceivedMessage({
                 chat_id: activeChatId,

@@ -86,7 +86,7 @@ class ConnectionManager:
         sender_id: int,
         db: AsyncSession,
         reply_to_id: int | None = None,
-    ) -> None:
+    ) -> int:
         message = await MessageCRUD.create_text_message(
             db=db,
             chat_id=chat_id,
@@ -133,6 +133,7 @@ class ConnectionManager:
         })
         redis = get_redis()
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
+        return message.id
 
     async def pubsub_listener(self) -> None:
         redis = get_redis()
@@ -405,7 +406,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, user_id)
                 if not other:
                     continue
-                await manager.send_personal_message(
+                message_id = await manager.send_personal_message(
                     chat_id=chat_id,
                     text=text,
                     recipient_id=other.user_id,
@@ -413,6 +414,14 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     db=db,
                     reply_to_id=reply_to_id,
                 )
+                temp_id = msg_data.get("temp_id")
+                if temp_id is not None:
+                    await websocket.send_json({
+                        "type": "message_ack",
+                        "temp_id": temp_id,
+                        "message_id": message_id,
+                        "chat_id": chat_id,
+                    })
 
     except WebSocketDisconnect:
         pass

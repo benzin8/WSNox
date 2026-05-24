@@ -305,12 +305,13 @@ function ChatPage() {
   const handleSendMessage = (text, replyMsg) => {
     if (!activeChat) return;
 
-    sendMessage(text, activeChat.id, replyMsg?.id ?? null);
+    const tempId = Date.now();
+    sendMessage(text, activeChat.id, replyMsg?.id ?? null, tempId);
 
     setMessages((prev) => [...prev, {
             text: text,
             type: 'outgoing',
-            id: Date.now(),
+            id: tempId,
             created_at: new Date().toISOString(),
             reply_to_id: replyMsg?.id ?? null,
             reply_to_text: replyMsg?.text ?? null,
