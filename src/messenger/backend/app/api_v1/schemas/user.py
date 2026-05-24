@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
+
+from messenger.backend.app.api_v1.schemas.message import _utc_iso
 
 PresencePreference = Literal["dnd", "invisible"]
 
@@ -70,6 +72,10 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+    @field_serializer("created_at", when_used="json")
+    def _serialize_dt(self, value: datetime) -> str:
+        return _utc_iso(value)
+
 class AuthResponse(BaseModel):
     status: str
     user: UserResponse
@@ -99,3 +105,7 @@ class UserProfileResponse(BaseModel):
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("created_at", when_used="json")
+    def _serialize_dt(self, value: Optional[datetime]) -> Optional[str]:
+        return _utc_iso(value)
