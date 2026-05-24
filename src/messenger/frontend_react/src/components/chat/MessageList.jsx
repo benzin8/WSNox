@@ -97,7 +97,7 @@ export const MessageList = ({ messages, messagesEndRef }) => {
                           {isOut && (
                             <span
                               className={`inline-block w-1.5 h-1.5 rounded-full ${
-                                msg.read_at ? 'bg-lime-400' : 'bg-zinc-500'
+                                msg.read_at ? 'bg-zinc-900' : 'bg-zinc-900/40'
                               }`}
                               title={msg.read_at ? 'Прочитано' : 'Доставлено'}
                             />
