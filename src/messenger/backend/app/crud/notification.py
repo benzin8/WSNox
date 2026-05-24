@@ -6,6 +6,17 @@ from messenger.backend.models.chat_mute import ChatMute
 from messenger.backend.models.profile import Profile
 
 
+async def should_expose_read_receipts(db: AsyncSession, user_a_id: int, user_b_id: int) -> bool:
+    """Return True only when BOTH users have read_receipts_enabled=True."""
+    result = await db.execute(
+        select(Profile.user_id, Profile.read_receipts_enabled).where(
+            Profile.user_id.in_([user_a_id, user_b_id])
+        )
+    )
+    prefs = {row[0]: row[1] for row in result.all()}
+    return prefs.get(user_a_id, True) and prefs.get(user_b_id, True)
+
+
 class NotificationCRUD:
     """Per-user notification preferences: per-chat mutes + global DND flag."""
 
@@ -60,5 +71,25 @@ class NotificationCRUD:
         if not profile:
             return False
         profile.notification_dnd = enabled
+        await db.commit()
+        return True
+
+    @staticmethod
+    async def get_read_receipts_enabled(db: AsyncSession, user_id: int) -> bool:
+        result = await db.execute(
+            select(Profile.read_receipts_enabled).where(Profile.user_id == user_id)
+        )
+        value = result.scalar_one_or_none()
+        return value if value is not None else True
+
+    @staticmethod
+    async def set_read_receipts_enabled(db: AsyncSession, user_id: int, enabled: bool) -> bool:
+        result = await db.execute(
+            select(Profile).where(Profile.user_id == user_id)
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            return False
+        profile.read_receipts_enabled = enabled
         await db.commit()
         return True

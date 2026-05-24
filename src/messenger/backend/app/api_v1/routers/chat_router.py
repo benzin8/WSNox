@@ -108,7 +108,21 @@ async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
     messages = await MessageCRUD.get_messages(db, chat_id)
-    return [MessageResponse.model_validate(message) for message in messages]
+
+    # Determine whether to expose read_at based on reciprocity
+    from messenger.backend.app.crud.notification import should_expose_read_receipts
+    other_user = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, current_user.id)
+    expose = False
+    if other_user:
+        expose = await should_expose_read_receipts(db, current_user.id, other_user.user_id)
+
+    result = []
+    for message in messages:
+        resp = MessageResponse.model_validate(message)
+        if not expose:
+            resp.read_at = None
+        result.append(resp)
+    return result
 
 @chat_router.post("/{chat_id}/read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_chat_as_read(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):

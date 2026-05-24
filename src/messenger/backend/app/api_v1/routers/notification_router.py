@@ -6,9 +6,11 @@ from messenger.backend.app.api_v1.schemas.notification import (
     DndUpdate,
     MuteUpdate,
     NotificationPreferences,
+    ReadReceiptsUpdate,
 )
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.notification import NotificationCRUD
+from messenger.backend.core.redis import get_redis
 from messenger.backend.db import get_db_session
 from messenger.backend.models.user import User
 
@@ -19,6 +21,7 @@ async def _build_prefs(db: AsyncSession, user_id: int) -> NotificationPreference
     return NotificationPreferences(
         dnd=await NotificationCRUD.get_dnd(db, user_id),
         muted_chats=await NotificationCRUD.list_muted_chat_ids(db, user_id),
+        read_receipts_enabled=await NotificationCRUD.get_read_receipts_enabled(db, user_id),
     )
 
 
@@ -41,6 +44,35 @@ async def set_dnd(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
         )
+    return await _build_prefs(db, user.id)
+
+
+@notification_router.put("/read-receipts", response_model=NotificationPreferences)
+async def set_read_receipts(
+    body: ReadReceiptsUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    ok = await NotificationCRUD.set_read_receipts_enabled(db, user.id, body.enabled)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+        )
+    # Notify chat partners so their UI updates instantly
+    import json
+    partner_ids = await ChatCRUD.get_chat_partners(db, user.id)
+    if partner_ids:
+        redis = get_redis()
+        payload = json.dumps({
+            "type": "read_receipts_changed",
+            "user_id": user.id,
+            "enabled": body.enabled,
+        })
+        from messenger.backend.app.ws.profile_events import PROFILE_EVENTS_CHANNEL
+        await redis.publish(PROFILE_EVENTS_CHANNEL, json.dumps({
+            "user_id": user.id,
+            "profile": {"read_receipts_changed": True, "read_receipts_enabled": body.enabled},
+        }))
     return await _build_prefs(db, user.id)
 
 

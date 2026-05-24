@@ -27,6 +27,7 @@ async def lifespan(app: FastAPI):
     from .ws.router import manager
 
     chat_listener_task = asyncio.create_task(manager.pubsub_listener())
+    read_receipts_task = asyncio.create_task(manager.read_receipts_listener())
     presence_listener_task = asyncio.create_task(presence_listener(manager))
     profile_listener_task = asyncio.create_task(profile_listener(manager))
     sweeper_task = asyncio.create_task(sweep_forever(manager))
@@ -35,6 +36,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         chat_listener_task.cancel()
+        read_receipts_task.cancel()
         presence_listener_task.cancel()
         profile_listener_task.cancel()
         sweeper_task.cancel()

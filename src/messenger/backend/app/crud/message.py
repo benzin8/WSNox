@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.core.crypto import decrypt_message, encrypt_message
@@ -42,12 +42,42 @@ class MessageCRUD:
         return messages[::-1]
 
     @staticmethod
-    async def mark_as_read(db: AsyncSession, chat_id: int, user_id: int) -> None:
+    async def mark_as_read(db: AsyncSession, chat_id: int, user_id: int) -> int:
+        """Mark all unread messages in the chat as read.
+
+        Returns the max message id that was marked, or 0 if nothing changed.
+        """
+        now = datetime.now(timezone.utc)
+        # Get max id before update for the WS event
+        max_id_result = await db.execute(
+            select(func.max(Message.id))
+            .where(Message.chat_id == chat_id)
+            .where(Message.recipient_id == user_id)
+            .where(Message.is_read == False)  # noqa: E712
+        )
+        max_id = max_id_result.scalar() or 0
+
+        if max_id:
+            await db.execute(
+                update(Message)
+                .where(Message.chat_id == chat_id)
+                .where(Message.recipient_id == user_id)
+                .where(Message.is_read == False)  # noqa: E712
+                .values(is_read=True, read_at=now)
+            )
+            await db.commit()
+        return max_id
+
+    @staticmethod
+    async def mark_as_read_up_to(db: AsyncSession, chat_id: int, user_id: int, up_to_message_id: int) -> None:
+        """Mark messages up to a specific message_id as read."""
+        now = datetime.now(timezone.utc)
         await db.execute(
             update(Message)
             .where(Message.chat_id == chat_id)
             .where(Message.recipient_id == user_id)
+            .where(Message.id <= up_to_message_id)
             .where(Message.is_read == False)  # noqa: E712
-            .values(is_read=True)
+            .values(is_read=True, read_at=now)
         )
         await db.commit()

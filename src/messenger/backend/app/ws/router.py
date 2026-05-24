@@ -144,6 +144,39 @@ class ConnectionManager:
         except asyncio.CancelledError:
             await pubsub.unsubscribe(REDIS_CHAT_CHANNEL)
 
+    async def read_receipts_listener(self) -> None:
+        """Listen for read receipt events and fan out to the message sender."""
+        redis = get_redis()
+        pubsub = redis.pubsub()
+        channel = REDIS_CHAT_CHANNEL + ":read_receipts"
+        await pubsub.subscribe(channel)
+
+        try:
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                data = json.loads(message["data"])
+                if data.get("type") != "messages_read":
+                    continue
+                chat_id = data.get("chat_id")
+                reader_id = data.get("reader_id")
+                # Send to all participants of the chat EXCEPT the reader
+                for uid, sockets in list(self.active_connections.items()):
+                    if uid == reader_id:
+                        continue
+                    dead = []
+                    for ws in sockets:
+                        try:
+                            await ws.send_json(data)
+                        except Exception:  # noqa: BLE001
+                            dead.append(ws)
+                    for ws in dead:
+                        sockets.discard(ws)
+                    if not sockets and uid in self.active_connections:
+                        del self.active_connections[uid]
+        except asyncio.CancelledError:
+            await pubsub.unsubscribe(channel)
+
     async def _should_push(self, recipient_id: int, chat_id: int) -> bool:
         """Apply notification preferences before sending a push.
 
@@ -240,6 +273,33 @@ async def websocket_chat(websocket: WebSocket) -> None:
                         await set_viewing_chat(redis, user_id, int(viewing_chat_id))
                     except (TypeError, ValueError):
                         pass
+                continue
+
+            if msg_type == "message_read":
+                read_chat_id = msg_data.get("chat_id")
+                last_message_id = msg_data.get("last_message_id")
+                if read_chat_id and last_message_id:
+                    try:
+                        read_chat_id = int(read_chat_id)
+                        last_message_id = int(last_message_id)
+                    except (TypeError, ValueError):
+                        continue
+                    async with AsyncSessionLocal() as db:
+                        from messenger.backend.app.crud.notification import should_expose_read_receipts
+                        if not await ChatCRUD.is_chat_member(db, read_chat_id, user_id):
+                            continue
+                        await MessageCRUD.mark_as_read_up_to(db, read_chat_id, user_id, last_message_id)
+                        other = await ChatCRUD.get_other_user_by_chat_id(db, read_chat_id, user_id)
+                        if other and await should_expose_read_receipts(db, user_id, other.user_id):
+                            from datetime import datetime, timezone
+                            read_payload = json.dumps({
+                                "type": "messages_read",
+                                "chat_id": read_chat_id,
+                                "up_to_message_id": last_message_id,
+                                "read_at": datetime.now(timezone.utc).isoformat(),
+                                "reader_id": user_id,
+                            })
+                            await redis.publish(REDIS_CHAT_CHANNEL + ":read_receipts", read_payload)
                 continue
 
             chat_id = msg_data.get("chat_id")

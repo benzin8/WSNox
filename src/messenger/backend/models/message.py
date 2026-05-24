@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from messenger.backend.db import Base
@@ -24,6 +24,7 @@ class Message(Base):
 
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), index=True)
     is_read: Mapped[bool] = mapped_column(default=False)
+    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
 
     chat: Mapped["Chat"] = relationship(
         "Chat",

@@ -31,3 +31,12 @@ export async function setChatMuteOnServer(chatId, muted) {
   );
   return data;
 }
+
+export async function setReadReceiptsOnServer(enabled) {
+  const { data } = await axios.put(
+    `${API_BASE}/api/v1/notifications/read-receipts`,
+    { enabled },
+    getAuthConfig()
+  );
+  return data;
+}

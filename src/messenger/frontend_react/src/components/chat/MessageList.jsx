@@ -86,13 +86,23 @@ export const MessageList = ({ messages, messagesEndRef }) => {
                     >
                       <div className="flex items-end gap-2">
                         <span className="whitespace-pre-wrap break-words">{msg.text}</span>
-                        {time && (
-                          <span className={`text-[10px] leading-none shrink-0 self-end mb-0.5 select-none ${
-                            isOut ? 'text-zinc-700/70' : 'text-zinc-500'
-                          }`}>
-                            {time}
-                          </span>
-                        )}
+                        <span className="flex items-center gap-1 shrink-0 self-end mb-0.5">
+                          {time && (
+                            <span className={`text-[10px] leading-none select-none ${
+                              isOut ? 'text-zinc-700/70' : 'text-zinc-500'
+                            }`}>
+                              {time}
+                            </span>
+                          )}
+                          {isOut && (
+                            <span
+                              className={`inline-block w-1.5 h-1.5 rounded-full ${
+                                msg.read_at ? 'bg-lime-400' : 'bg-zinc-500'
+                              }`}
+                              title={msg.read_at ? 'Прочитано' : 'Доставлено'}
+                            />
+                          )}
+                        </span>
                       </div>
                     </div>
                   </div>
