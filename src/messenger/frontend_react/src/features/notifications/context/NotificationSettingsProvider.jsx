@@ -38,29 +38,39 @@ function persist(settings) {
 export function NotificationSettingsProvider({ children }) {
   const [settings, setSettings] = useState(loadInitial);
   const syncedRef = useRef(false);
+  const baselineRef = useRef(null);
 
   useEffect(() => {
     persist(settings);
   }, [settings]);
 
   // On mount: fetch server-side prefs, merge & one-time migrate cached mutes.
+  // We capture a baseline of what the user saw at mount and only overwrite a
+  // field if it still matches that baseline — if the user toggled something
+  // while the fetch was in flight, their optimistic change wins.
   useEffect(() => {
     if (syncedRef.current) return;
     const token = localStorage.getItem("access_token");
     if (!token) return;
     syncedRef.current = true;
+    baselineRef.current = {
+      mutedChats: [...(settings.mutedChats || [])],
+      dnd: !!settings.dnd,
+      readReceipts: settings.readReceipts !== false,
+    };
 
     (async () => {
       try {
         const prefs = await fetchNotificationPreferences();
         const serverMuted = Array.isArray(prefs.muted_chats) ? prefs.muted_chats : [];
         const serverDnd = !!prefs.dnd;
+        const serverReadReceipts = prefs.read_receipts_enabled !== false;
 
         const alreadyMigrated = localStorage.getItem(MIGRATION_FLAG_KEY) === "1";
-        const cachedMuted = settings.mutedChats || [];
+        const baselineMuted = baselineRef.current.mutedChats;
         const toMigrate = alreadyMigrated
           ? []
-          : cachedMuted.filter((id) => !serverMuted.includes(id));
+          : baselineMuted.filter((id) => !serverMuted.includes(id));
 
         if (toMigrate.length > 0) {
           await Promise.all(
@@ -72,13 +82,22 @@ export function NotificationSettingsProvider({ children }) {
         localStorage.setItem(MIGRATION_FLAG_KEY, "1");
 
         const mergedMuted = Array.from(new Set([...serverMuted, ...toMigrate]));
-        const serverReadReceipts = prefs.read_receipts_enabled !== false;
-        setSettings((s) => ({
-          ...s,
-          mutedChats: mergedMuted,
-          dnd: serverDnd,
-          readReceipts: serverReadReceipts,
-        }));
+
+        setSettings((current) => {
+          const baseline = baselineRef.current;
+          const userTouchedMutes =
+            current.mutedChats.length !== baseline.mutedChats.length ||
+            current.mutedChats.some((id) => !baseline.mutedChats.includes(id));
+          return {
+            ...current,
+            mutedChats: userTouchedMutes ? current.mutedChats : mergedMuted,
+            dnd: current.dnd !== baseline.dnd ? current.dnd : serverDnd,
+            readReceipts:
+              current.readReceipts !== baseline.readReceipts
+                ? current.readReceipts
+                : serverReadReceipts,
+          };
+        });
       } catch (err) {
         console.warn("[notifications] failed to sync preferences:", err);
       }

@@ -9,9 +9,14 @@ export function ChatMuteToggle({ chatId }) {
 
   return (
     <button
-      onClick={() => toggleMute(chatId)}
+      onClick={(e) => {
+        toggleMute(chatId);
+        // Drop focus so iOS Safari doesn't keep the :hover style stuck
+        // after the tap — that's what makes the icon look "frozen".
+        e.currentTarget.blur();
+      }}
       title={muted ? "Включить уведомления" : "Отключить уведомления"}
-      className="text-zinc-400 hover:text-lime-400 transition-colors p-1"
+      className={`p-1 transition-colors ${muted ? "text-lime-400" : "text-zinc-400"} [@media(hover:hover)]:hover:text-lime-400`}
     >
       {muted ? <BellOff size={18} /> : <Bell size={18} />}
     </button>
