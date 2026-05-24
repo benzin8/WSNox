@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Reply, Trash2, Copy } from "lucide-react";
 
 export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, onClose }) => {
@@ -30,7 +31,11 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   })();
 
-  return (
+  // Render via portal — the chat slider in ChatPage has a CSS transform
+  // which creates a containing block for fixed descendants, otherwise
+  // `inset-0` snaps to the 200vw slider instead of the viewport and the
+  // overlay sits off-center on mobile.
+  return createPortal(
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
@@ -95,6 +100,7 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

@@ -65,6 +65,7 @@ def test_message_response_read_at_default_none():
     from messenger.backend.app.api_v1.schemas.message import MessageResponse
 
     msg = MessageResponse(
+        id=1,
         chat_id=1, sender_id=1, recipient_id=2,
         text="hello", is_read=False, created_at=datetime(2026, 1, 1),
         msg_type="text",
@@ -78,6 +79,7 @@ def test_message_response_read_at_preserves_value():
 
     read_time = datetime(2026, 1, 1, 0, 5)
     msg = MessageResponse(
+        id=1,
         chat_id=1, sender_id=1, recipient_id=2,
         text="hello", is_read=True, created_at=datetime(2026, 1, 1),
         msg_type="text", read_at=read_time,
@@ -90,6 +92,7 @@ def test_message_response_read_at_stripped():
     from messenger.backend.app.api_v1.schemas.message import MessageResponse
 
     msg = MessageResponse(
+        id=1,
         chat_id=1, sender_id=1, recipient_id=2,
         text="hello", is_read=True, created_at=datetime(2026, 1, 1),
         msg_type="text", read_at=datetime(2026, 1, 1, 0, 5),
