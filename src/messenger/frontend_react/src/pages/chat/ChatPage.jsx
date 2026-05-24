@@ -38,6 +38,8 @@ function ChatPage() {
   const activeChatIdRef = useRef(null);
   // Mirror of chats state for reading inside effects without stale closure
   const chatsRef = useRef([]);
+  // Track whether this is first connect (skip refetch) or a reconnect
+  const hasConnectedOnceRef = useRef(false);
 
   const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
@@ -86,6 +88,32 @@ function ChatPage() {
 
     fetchInitialData();
   }, []);
+
+  // Sync missed messages on WebSocket reconnect (e.g. after phone was off)
+  useEffect(() => {
+    if (!isConnected) return;
+
+    if (!hasConnectedOnceRef.current) {
+      // First connect — fetchInitialData already handles loading
+      hasConnectedOnceRef.current = true;
+      return;
+    }
+
+    // Reconnect — refetch chat list and active chat messages from DB
+    getAllChats().then(updatedChats => setChats(updatedChats));
+
+    if (activeChatIdRef.current && currentUser?.id) {
+      getMessagesByChatId(activeChatIdRef.current).then(msgs => {
+        if (!msgs) return;
+        setMessages(msgs.map(m => ({
+          ...m,
+          text: m.text,
+          type: m.sender_id === currentUser.id ? 'outgoing' : 'incoming',
+        })));
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
 
   // Обновление списка чатов при получении нового сообщения
   useEffect(() => {
