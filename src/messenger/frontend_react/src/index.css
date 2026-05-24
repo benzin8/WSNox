@@ -1,5 +1,87 @@
 @import "tailwindcss";
 
+/*
+ * Safari 18.0.x @property compatibility fallback.
+ *
+ * Tailwind CSS v4 relies on CSS @property to set initial values for its
+ * internal custom properties (translate, shadow, ring, gradient, etc.).
+ * The built-in @supports fallback only fires on OLD Safari (< 16.4) via
+ * a margin-trim feature-detection heuristic.  Safari 18.0.x passes that
+ * check (it reports margin-trim: inline support) so the fallback is
+ * skipped — but Safari 18.0.x has known @property regressions that can
+ * leave these vars as the "guaranteed-invalid" value, breaking layout.
+ *
+ * The block below unconditionally seeds every element with the same
+ * initial values that @property would provide.  Because it lives in
+ * @layer base, any utility in @layer utilities will override it normally.
+ */
+@layer base {
+  *, :before, :after, ::backdrop {
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-translate-z: 0;
+    --tw-scale-x: 1;
+    --tw-scale-y: 1;
+    --tw-scale-z: 1;
+    --tw-rotate-x: initial;
+    --tw-rotate-y: initial;
+    --tw-rotate-z: initial;
+    --tw-skew-x: initial;
+    --tw-skew-y: initial;
+    --tw-space-y-reverse: 0;
+    --tw-border-style: solid;
+    --tw-gradient-position: initial;
+    --tw-gradient-from: #0000;
+    --tw-gradient-via: #0000;
+    --tw-gradient-to: #0000;
+    --tw-gradient-stops: initial;
+    --tw-gradient-via-stops: initial;
+    --tw-gradient-from-position: 0%;
+    --tw-gradient-via-position: 50%;
+    --tw-gradient-to-position: 100%;
+    --tw-leading: initial;
+    --tw-font-weight: initial;
+    --tw-tracking: initial;
+    --tw-shadow: 0 0 #0000;
+    --tw-shadow-color: initial;
+    --tw-shadow-alpha: 100%;
+    --tw-inset-shadow: 0 0 #0000;
+    --tw-inset-shadow-color: initial;
+    --tw-inset-shadow-alpha: 100%;
+    --tw-ring-color: initial;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-inset-ring-color: initial;
+    --tw-inset-ring-shadow: 0 0 #0000;
+    --tw-ring-inset: initial;
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-offset-shadow: 0 0 #0000;
+    --tw-blur: initial;
+    --tw-brightness: initial;
+    --tw-contrast: initial;
+    --tw-grayscale: initial;
+    --tw-hue-rotate: initial;
+    --tw-invert: initial;
+    --tw-opacity: initial;
+    --tw-saturate: initial;
+    --tw-sepia: initial;
+    --tw-drop-shadow: initial;
+    --tw-drop-shadow-color: initial;
+    --tw-drop-shadow-alpha: 100%;
+    --tw-drop-shadow-size: initial;
+    --tw-backdrop-blur: initial;
+    --tw-backdrop-brightness: initial;
+    --tw-backdrop-contrast: initial;
+    --tw-backdrop-grayscale: initial;
+    --tw-backdrop-hue-rotate: initial;
+    --tw-backdrop-invert: initial;
+    --tw-backdrop-opacity: initial;
+    --tw-backdrop-saturate: initial;
+    --tw-backdrop-sepia: initial;
+    --tw-duration: initial;
+  }
+}
+
 @layer base {
   html {
     height: 100%;
@@ -60,8 +142,9 @@
 
 /* Landing page */
 .nav-blur {
-  backdrop-filter: blur(12px) saturate(1.4);
-  -webkit-backdrop-filter: blur(12px) saturate(1.4);
+  --_nav-blur: blur(12px) saturate(1.4);
+  -webkit-backdrop-filter: var(--_nav-blur);
+  backdrop-filter: var(--_nav-blur);
   background: rgba(24, 24, 27, 0.75);
   border-bottom: 1px solid rgba(63, 63, 70, 0.25);
 }
