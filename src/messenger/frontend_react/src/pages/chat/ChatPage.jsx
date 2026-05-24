@@ -35,12 +35,32 @@ function ChatPage() {
   const [partnerPresencePreference, setPartnerPresencePreference] = useState(null);
   const [chatListBlurred, setChatListBlurred] = useState(false);
 
-  // Keeps the open chat id readable inside the socket's onmessage closure
+  // Tracks the chat currently held in `activeChat` state — regardless of
+  // whether it's visually on screen on mobile. Used by reconnect refetch.
   const activeChatIdRef = useRef(null);
+  // Reflects what the user is actually looking at: on desktop = activeChat,
+  // on mobile only when mobileView === 'chat'. Drives messages_state push,
+  // mark-as-read, notification suppression — anything tied to "user sees this".
+  const viewingChatIdRef = useRef(null);
   // Mirror of chats state for reading inside effects without stale closure
   const chatsRef = useRef([]);
   // Track whether this is first connect (skip refetch) or a reconnect
   const hasConnectedOnceRef = useRef(false);
+
+  // Mobile breakpoint — reactive media query so view-gating updates if
+  // the device rotates or window resizes between md and below.
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== 'undefined'
+      ? window.matchMedia('(max-width: 767px)').matches
+      : false,
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(max-width: 767px)');
+    const onChange = (e) => setIsMobile(e.matches);
+    mql.addEventListener?.('change', onChange);
+    return () => mql.removeEventListener?.('change', onChange);
+  }, []);
 
   const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
@@ -49,7 +69,7 @@ function ChatPage() {
   useNotifications({
     lastReceivedMessage,
     currentUser,
-    activeChatIdRef,
+    activeChatIdRef: viewingChatIdRef,
     totalUnread,
     settings: notificationSettings,
   });
@@ -70,10 +90,13 @@ function ChatPage() {
   const messagesEndRef = useRef(null);
 
 
-  // Auto-scroll
+  // Auto-scroll. Skip when the chat panel is offscreen on mobile —
+  // scrollIntoView on a transform-translated, hidden element can drag
+  // the layout viewport sideways on iOS Safari and break the slider.
   useEffect(() => {
+    if (isMobile && mobileView !== 'chat') return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [messages]);
+  }, [messages, mobileView, isMobile]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -123,9 +146,12 @@ function ChatPage() {
     const existingChat = chatsRef.current.find(c => c.id === lastReceivedMessage.chat_id);
 
     if (existingChat) {
-      const isActiveChat = lastReceivedMessage.chat_id === activeChatIdRef.current;
+      // "Viewing" — user can actually see the chat right now. On mobile
+      // list view this is false even if activeChat is set, so we count
+      // the message as unread and skip mark-as-read.
+      const isViewing = lastReceivedMessage.chat_id === viewingChatIdRef.current;
       const isOwnMessage = Number(lastReceivedMessage.sender_id) === currentUser?.id;
-      if (isActiveChat && !isOwnMessage && !document.hidden) {
+      if (isViewing && !isOwnMessage && !document.hidden) {
         markChatAsRead(lastReceivedMessage.chat_id);
         // Send WS read receipt for real-time notification
         const ws = socketRef.current;
@@ -145,7 +171,7 @@ function ChatPage() {
           last_message: lastReceivedMessage.text,
           last_message_time: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          unread_count: (!isActiveChat && !isOwnMessage)
+          unread_count: (!isViewing && !isOwnMessage)
             ? (prevChats[idx].unread_count || 0) + 1
             : prevChats[idx].unread_count || 0,
         };
@@ -171,6 +197,11 @@ function ChatPage() {
   useEffect(() => {
     activeChatIdRef.current = activeChat?.id ?? null;
   }, [activeChat?.id]);
+
+  useEffect(() => {
+    const viewing = !isMobile || mobileView === 'chat';
+    viewingChatIdRef.current = viewing ? (activeChat?.id ?? null) : null;
+  }, [activeChat?.id, mobileView, isMobile]);
 
   // Tell the server which chat is currently open so it can suppress pushes
   // for that chat (within the server-side TTL grace window).
@@ -338,12 +369,10 @@ function ChatPage() {
   const chatListRef = useRef(null);
 
   useEffect(() => {
-    const isDesktop = window.matchMedia('(min-width: 768px)').matches;
-    if (!isDesktop) return;
+    if (isMobile) return;
 
     const handleEsc = (e) => {
       if (e.key !== 'Escape') return;
-      // Don't interfere when modals are open
       if (profileModal || showEditModal) return;
 
       if (activeChat) {
@@ -357,7 +386,7 @@ function ChatPage() {
 
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [activeChat, profileModal, showEditModal]);
+  }, [activeChat, profileModal, showEditModal, isMobile]);
 
   // ── Mobile slide & swipe ──────────────────────────────────
   const sliderRef = useRef(null);
