@@ -23,6 +23,7 @@ from messenger.backend.app.ws.viewing_chat import (
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import AsyncSessionLocal
+from messenger.backend.models.message import Message
 from messenger.backend.models.user import User
 
 REDIS_CHAT_CHANNEL = "chat_messages"
