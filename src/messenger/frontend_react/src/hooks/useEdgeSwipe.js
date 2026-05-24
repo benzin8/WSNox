@@ -72,8 +72,11 @@ export function useEdgeSwipe({
 
       if (!s.directionLocked || !s.isHorizontal) return;
 
-      // Only allow right-swipe (positive dx)
-      const progress = Math.max(0, Math.min(1, dx / (containerRef.current?.offsetWidth || 375)));
+      // Only allow right-swipe (positive dx). Progress is measured against the
+      // viewport width — the slider element may itself be wider than the screen
+      // (e.g. a 200vw two-panel container), which would otherwise halve drag.
+      const screenWidth = window.innerWidth || 375;
+      const progress = Math.max(0, Math.min(1, dx / screenWidth));
       onDrag(progress);
 
       // Prevent vertical scroll while swiping
@@ -94,7 +97,7 @@ export function useEdgeSwipe({
       const dx = touch.clientX - s.startX;
       const elapsed = Date.now() - s.startTime;
       const velocity = dx / elapsed; // px/ms
-      const width = containerRef.current?.offsetWidth || 375;
+      const width = window.innerWidth || 375;
       const fraction = dx / width;
 
       s.tracking = false;
