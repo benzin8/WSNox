@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie'
 
+import LandingPage from './pages/LandingPage';
 import SendCodePage from './pages/auth/SendCodePage';
 import VerifyCodePage from './pages/auth/VerifyCodePage';
 import LoginPage from './pages/auth/LoginPage';
@@ -45,7 +46,7 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-zinc-900 text-zinc-100 selection:bg-lime-400 selection:text-zinc-900">
+      <div className="min-h-dvh bg-zinc-900 text-zinc-100 selection:bg-lime-400 selection:text-zinc-900">
         <Routes>
           {/* Auth Routes — redirect to /chat if already logged in */}
           <Route path="/auth/send-code" element={<PublicOnlyRoute><SendCodePage /></PublicOnlyRoute>} />
@@ -65,10 +66,10 @@ function App() {
             } 
           />
 
-          {/* Root Redirect */}
-          <Route 
-            path="/" 
-            element={isAuthenticated ? <Navigate to="/chat" replace /> : <Navigate to="/auth/send-code" replace />} 
+          {/* Root — landing or chat */}
+          <Route
+            path="/"
+            element={isAuthenticated ? <Navigate to="/chat" replace /> : <LandingPage />}
           />
 
           {/* Fallback */}
