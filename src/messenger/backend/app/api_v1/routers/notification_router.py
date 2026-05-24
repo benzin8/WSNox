@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +12,7 @@ from messenger.backend.app.api_v1.schemas.notification import (
 )
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.notification import NotificationCRUD
+from messenger.backend.app.ws.profile_events import PROFILE_EVENTS_CHANNEL
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db import get_db_session
 from messenger.backend.models.user import User
@@ -59,16 +62,9 @@ async def set_read_receipts(
             status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
         )
     # Notify chat partners so their UI updates instantly
-    import json
     partner_ids = await ChatCRUD.get_chat_partners(db, user.id)
     if partner_ids:
         redis = get_redis()
-        payload = json.dumps({
-            "type": "read_receipts_changed",
-            "user_id": user.id,
-            "enabled": body.enabled,
-        })
-        from messenger.backend.app.ws.profile_events import PROFILE_EVENTS_CHANNEL
         await redis.publish(PROFILE_EVENTS_CHANNEL, json.dumps({
             "user_id": user.id,
             "profile": {"read_receipts_changed": True, "read_receipts_enabled": body.enabled},

@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import datetime, timezone
 from typing import Dict
 
 from fastapi import APIRouter, WebSocket
@@ -9,7 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from messenger.backend.app.api_v1.auth.dependencies import get_user_from_token
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
-from messenger.backend.app.crud.notification import NotificationCRUD
+from messenger.backend.app.crud.notification import (
+    NotificationCRUD,
+    should_expose_read_receipts,
+)
 from messenger.backend.app.ws.push import send_push_to_user
 from messenger.backend.app.ws.viewing_chat import (
     clear_viewing_chat,
@@ -158,7 +162,6 @@ class ConnectionManager:
                 data = json.loads(message["data"])
                 if data.get("type") != "messages_read":
                     continue
-                chat_id = data.get("chat_id")
                 reader_id = data.get("reader_id")
                 # Send to all participants of the chat EXCEPT the reader
                 for uid, sockets in list(self.active_connections.items()):
@@ -285,13 +288,11 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     except (TypeError, ValueError):
                         continue
                     async with AsyncSessionLocal() as db:
-                        from messenger.backend.app.crud.notification import should_expose_read_receipts
                         if not await ChatCRUD.is_chat_member(db, read_chat_id, user_id):
                             continue
                         await MessageCRUD.mark_as_read_up_to(db, read_chat_id, user_id, last_message_id)
                         other = await ChatCRUD.get_other_user_by_chat_id(db, read_chat_id, user_id)
                         if other and await should_expose_read_receipts(db, user_id, other.user_id):
-                            from datetime import datetime, timezone
                             read_payload = json.dumps({
                                 "type": "messages_read",
                                 "chat_id": read_chat_id,
