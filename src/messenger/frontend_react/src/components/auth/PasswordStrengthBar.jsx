@@ -3,18 +3,21 @@ const levels = [
         label: 'Слабый пароль',
         tip: 'Используйте минимум 8 символов разных типов',
         color: 'bg-red-500',
+        textColor: 'text-red-500',
         width: 'w-1/3',
     },
     {
         label: 'Средний пароль',
         tip: 'Добавьте цифры, спецсимволы или заглавные буквы',
-        color: 'bg-yellow-400',
+        color: 'bg-lime-400/60',
+        textColor: 'text-lime-400/60',
         width: 'w-2/3',
     },
     {
         label: 'Надёжный пароль',
         tip: 'Отлично! Пароль достаточно сложный',
         color: 'bg-lime-400',
+        textColor: 'text-lime-400',
         width: 'w-full',
     },
 ];
@@ -42,7 +45,7 @@ export default function PasswordStrengthBar({ password }) {
                 <div className={`h-full rounded-full transition-all duration-300 ${level.color} ${level.width}`} />
             </div>
             <div className="flex items-baseline justify-between text-xs">
-                <span className={level.color.replace('bg-', 'text-')}>{level.label}</span>
+                <span className={level.textColor}>{level.label}</span>
                 <span className="text-zinc-500">{level.tip}</span>
             </div>
         </div>

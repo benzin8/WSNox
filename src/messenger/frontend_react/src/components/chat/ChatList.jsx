@@ -11,11 +11,12 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
 
   if (chats.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center text-zinc-500">
-        <div className="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
-          <User size={32} className="text-zinc-700" />
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+        <div className="w-16 h-16 rounded-full bg-lime-400/10 border border-lime-400/20 flex items-center justify-center mb-4">
+          <User size={32} className="text-lime-400" />
         </div>
-        <p className="text-sm">No chats yet</p>
+        <p className="text-sm font-medium text-zinc-400">Пока нет чатов</p>
+        <p className="text-xs text-zinc-500 mt-1">Найдите собеседника через поиск</p>
       </div>
     );
   }

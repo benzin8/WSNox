@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
 import PasswordStrengthBar from '../../components/auth/PasswordStrengthBar';
@@ -52,60 +53,75 @@ export default function RegisterPage() {
     }
 
     return (
-        <div className="flex min-h-dvh items-center justify-center p-4">
-            <div className="glass w-full max-w-md rounded-2xl p-8 shadow-2xl">
-                <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-bold tracking-tight text-lime-400">Заполните профиль</h1>
-                    <p className="mt-2 text-zinc-400">Почти готово! Последний штрих.</p>
+        <div className="min-h-dvh flex items-center justify-center p-4 bg-zinc-950 relative overflow-hidden">
+            {/* Glow */}
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-lime-400/[0.04] blur-[120px] pointer-events-none" />
+
+            <div className="relative w-full max-w-md">
+                {/* Pill badge */}
+                <div className="flex justify-center mb-6">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-700/60 bg-zinc-800/40 text-xs text-zinc-400 backdrop-blur-sm">
+                        <Sparkles className="w-3.5 h-3.5 text-lime-400" />
+                        <span>Шаг 3 из 3 — Профиль</span>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-300">Отображаемое имя</label>
-                        <input
-                            type="text"
-                            className="mt-1 w-full rounded-xl border-zinc-700 bg-zinc-900/50 p-4 text-zinc-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-500/20 transition-all"
-                            value={formData.name}
-                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-300">Юзернейм</label>
-                        <input
-                            type="text"
-                            className="mt-1 w-full rounded-xl border-zinc-700 bg-zinc-900/50 p-4 text-zinc-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-500/20 transition-all"
-                            value={formData.username}
-                            onChange={(e) => setFormData({...formData, username: e.target.value})}
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-300">Пароль</label>
-                        <input
-                            type="password"
-                            className="mt-1 w-full rounded-xl border-zinc-700 bg-zinc-900/50 p-4 text-zinc-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-500/20 transition-all"
-                            value={formData.password}
-                            onChange={(e) => setFormData({...formData, password: e.target.value})}
-                            required
-                        />
-                        <PasswordStrengthBar password={formData.password} />
+                {/* Card */}
+                <div className="p-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/50">
+                    <div className="mb-8 text-center">
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.08] text-zinc-100">Заполните профиль</h1>
+                        <p className="mt-3 text-zinc-400 leading-relaxed">Почти готово! Последний штрих.</p>
                     </div>
 
-                    {error && (
-                        <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
-                            {error}
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-300">Отображаемое имя</label>
+                            <input
+                                type="text"
+                                className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-800/30 p-4 text-zinc-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
+                                value={formData.name}
+                                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                required
+                            />
                         </div>
-                    )}
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-300">Юзернейм</label>
+                            <input
+                                type="text"
+                                className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-800/30 p-4 text-zinc-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
+                                value={formData.username}
+                                onChange={(e) => setFormData({...formData, username: e.target.value})}
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-300">Пароль</label>
+                            <input
+                                type="password"
+                                className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-800/30 p-4 text-zinc-100 focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
+                                value={formData.password}
+                                onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                required
+                            />
+                            <PasswordStrengthBar password={formData.password} />
+                        </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full rounded-xl bg-lime-400 p-4 font-bold text-zinc-900 hover:bg-lime-300 disabled:opacity-50 transition-all active:scale-[0.98] mt-4"
-                    >
-                        {loading ? 'Регистрация...' : 'Зарегистрироваться'}
-                    </button>
-                </form>
+                        {error && (
+                            <div className="rounded-xl bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
+                                {error}
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="group w-full flex items-center justify-center gap-2 rounded-xl bg-lime-400 p-4 font-semibold text-zinc-900 transition-all duration-300 hover:bg-lime-300 hover:shadow-[0_0_30px_rgba(163,230,53,0.25)] disabled:opacity-50 active:scale-[0.97] mt-4"
+                        >
+                            {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+                            {!loading && <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );

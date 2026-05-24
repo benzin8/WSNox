@@ -1,5 +1,5 @@
 import React from "react";
-import { User, Phone, MoreVertical, ChevronLeft, BellOff } from 'lucide-react';
+import { User, Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 import { ChatMuteToggle } from "../../features/notifications";
@@ -13,15 +13,23 @@ export const ChatWindow = ({
 }) => {
     if (!activeChat) {
         return (
-            <div className="flex-grow flex items-center justify-center bg-zinc-900 text-zinc-500">
-                Выберите чат, чтобы начать общение
+            <div className="flex-grow flex items-center justify-center bg-zinc-950 relative overflow-hidden">
+                {/* Glow */}
+                <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-lime-400/[0.04] blur-[120px] pointer-events-none" />
+                <div className="relative flex flex-col items-center text-center p-8">
+                    <div className="w-20 h-20 rounded-full bg-lime-400/10 border border-lime-400/20 flex items-center justify-center mb-6">
+                        <MessageCircle size={36} className="text-lime-400" />
+                    </div>
+                    <h3 className="text-xl font-bold tracking-tight text-zinc-100 mb-2">Выберите чат</h3>
+                    <p className="text-sm text-zinc-500 leading-relaxed max-w-xs">Выберите чат из списка слева, чтобы начать общение</p>
+                </div>
             </div>
         );
     }
     return (
-      <div className="flex-grow flex flex-col min-h-0 bg-zinc-900 shadow-2xl">
+      <div className="flex-grow flex flex-col min-h-0 bg-zinc-950 shadow-2xl">
         {/* Chat Header */}
-        <header className="h-20 flex-shrink-0 border-b border-zinc-800/80 flex items-center justify-between px-6 bg-zinc-900/90 backdrop-blur-md">
+        <header className="h-20 flex-shrink-0 border-b border-zinc-800/80 flex items-center justify-between px-6 bg-zinc-950/90 backdrop-blur-md">
           <div className="flex items-center gap-4 min-w-0">
             <button
               onClick={() => onBack?.()}

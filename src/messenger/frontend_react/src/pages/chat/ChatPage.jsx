@@ -502,7 +502,7 @@ function ChatPage() {
           <div
             ref={chatListRef}
             onClick={() => { if (chatListBlurred) setChatListBlurred(false); }}
-            className={`w-1/2 flex flex-col bg-zinc-900/50 backdrop-blur-xl border-r border-zinc-800 md:w-80 md:flex-shrink-0 transition-all duration-300 ${
+            className={`w-1/2 flex flex-col bg-zinc-950 backdrop-blur-xl border-r border-zinc-800/80 md:w-80 md:flex-shrink-0 transition-all duration-300 ${
               chatListBlurred ? 'blur-sm opacity-50 select-none' : ''
             }`}>
             <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
@@ -528,8 +528,8 @@ function ChatPage() {
                 <input
                   onChange={(e) => {searchChats(e.target.value); setSearchQuery(e.target.value)}}
                   type="text"
-                  placeholder="Search chats..."
-                  className="w-full bg-zinc-800/50 border border-zinc-700 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-lime-400/50 transition-all"
+                  placeholder="Поиск чатов..."
+                  className="w-full bg-zinc-800/30 border border-zinc-700/60 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-lime-400/50 focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
                 />
               </div>
             </div>

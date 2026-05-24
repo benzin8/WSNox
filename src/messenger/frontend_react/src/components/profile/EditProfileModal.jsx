@@ -41,27 +41,27 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
             onClick={onClose}
         >
             <div
-                className="relative w-[22rem] max-w-[95vw] max-h-[90vh] overflow-y-auto bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl p-6 flex flex-col gap-4 animate-popIn"
+                className="relative w-[22rem] max-w-[95vw] max-h-[90vh] overflow-y-auto bg-zinc-900/50 border border-zinc-800/80 rounded-2xl shadow-2xl p-6 flex flex-col gap-4 animate-popIn"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-zinc-100">Редактировать профиль</h3>
-                    <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 transition-colors">
+                    <h3 className="font-bold tracking-tight text-zinc-100">Редактировать профиль</h3>
+                    <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 transition-colors duration-300">
                         <X size={18} />
                     </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex gap-1 bg-zinc-800 rounded-xl p-1">
+                {/* Tabs — pill style with lime active */}
+                <div className="flex gap-1 rounded-xl p-1 border border-zinc-800/80 bg-zinc-900/50">
                     {tabs.map((t) => (
                         <button
                             key={t.id}
                             onClick={() => setActiveTab(t.id)}
-                            className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors ${
+                            className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-all duration-300 ${
                                 activeTab === t.id
-                                    ? "bg-zinc-700 text-zinc-100"
-                                    : "text-zinc-400 hover:text-zinc-200"
+                                    ? "bg-lime-400/10 text-lime-400 border border-lime-400/20"
+                                    : "text-zinc-400 hover:text-zinc-200 border border-transparent"
                             }`}
                         >
                             {t.label}
@@ -78,7 +78,7 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                                 value={displayName}
                                 onChange={(e) => setDisplayName(e.target.value)}
                                 maxLength={100}
-                                className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                                className="bg-zinc-800/30 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
                                 placeholder="Как тебя называть?"
                             />
                         </div>
@@ -90,7 +90,7 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                                 onChange={(e) => setBio(e.target.value)}
                                 maxLength={256}
                                 rows={3}
-                                className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all resize-none"
+                                className="bg-zinc-800/30 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 focus:ring-2 focus:ring-lime-400/40 transition-all duration-300 resize-none"
                                 placeholder="Расскажи о себе..."
                             />
                         </div>
@@ -100,7 +100,7 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                             <select
                                 value={presencePreference}
                                 onChange={(e) => setPresencePreference(e.target.value)}
-                                className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                                className="bg-zinc-800/30 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
                             >
                                 {PRESENCE_OPTIONS.map((o) => (
                                     <option key={o.value} value={o.value}>{o.label}</option>
@@ -114,14 +114,14 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                         <div className="flex gap-2 mt-2">
                             <button
                                 onClick={onClose}
-                                className="flex-1 bg-zinc-800 text-zinc-300 text-sm font-medium py-2 rounded-xl hover:bg-zinc-700 transition-colors"
+                                className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-xl font-medium text-sm text-zinc-300 border border-zinc-700/60 bg-zinc-800/30 backdrop-blur-sm transition-all duration-300 hover:border-zinc-600 hover:text-zinc-100 active:scale-[0.97]"
                             >
                                 Отмена
                             </button>
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="flex-1 flex items-center justify-center gap-2 bg-lime-400 text-zinc-900 text-sm font-semibold py-2 rounded-xl hover:bg-lime-300 active:scale-[0.98] transition-all disabled:opacity-50"
+                                className="flex-1 flex items-center justify-center gap-2 bg-lime-400 text-zinc-900 text-sm font-semibold py-2 rounded-xl hover:bg-lime-300 hover:shadow-[0_0_30px_rgba(163,230,53,0.25)] active:scale-[0.97] transition-all duration-300 disabled:opacity-50"
                             >
                                 <Save size={14} />
                                 {isSaving ? "Сохранение..." : "Сохранить"}
@@ -137,7 +137,7 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                         <NotificationSettingsTab />
                         <button
                             onClick={onClose}
-                            className="w-full mt-2 bg-zinc-800 text-zinc-300 text-sm font-medium py-2 rounded-xl hover:bg-zinc-700 transition-colors"
+                            className="w-full mt-2 inline-flex items-center justify-center px-4 py-2 rounded-xl font-medium text-sm text-zinc-300 border border-zinc-700/60 bg-zinc-800/30 backdrop-blur-sm transition-all duration-300 hover:border-zinc-600 hover:text-zinc-100 active:scale-[0.97]"
                         >
                             Закрыть
                         </button>
@@ -190,7 +190,7 @@ function SecurityTab({ onClose }) {
                     value={current}
                     onChange={(e) => setCurrent(e.target.value)}
                     autoComplete="current-password"
-                    className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                    className="bg-zinc-800/30 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
                     placeholder="••••••••"
                     required
                 />
@@ -203,7 +203,7 @@ function SecurityTab({ onClose }) {
                     value={next}
                     onChange={(e) => setNext(e.target.value)}
                     autoComplete="new-password"
-                    className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                    className="bg-zinc-800/30 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
                     placeholder="••••••••"
                     required
                 />
@@ -217,27 +217,27 @@ function SecurityTab({ onClose }) {
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     autoComplete="new-password"
-                    className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all"
+                    className="bg-zinc-800/30 border border-zinc-700/60 rounded-xl px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
                     placeholder="••••••••"
                     required
                 />
             </div>
 
             {error && <p className="text-xs text-red-400">{error}</p>}
-            {success && <p className="text-xs text-lime-400">Пароль обновлён ✓</p>}
+            {success && <p className="text-xs text-lime-400">Пароль обновлён</p>}
 
             <div className="flex gap-2 mt-1">
                 <button
                     type="button"
                     onClick={onClose}
-                    className="flex-1 bg-zinc-800 text-zinc-300 text-sm font-medium py-2 rounded-xl hover:bg-zinc-700 transition-colors"
+                    className="flex-1 inline-flex items-center justify-center px-4 py-2 rounded-xl font-medium text-sm text-zinc-300 border border-zinc-700/60 bg-zinc-800/30 backdrop-blur-sm transition-all duration-300 hover:border-zinc-600 hover:text-zinc-100 active:scale-[0.97]"
                 >
                     Закрыть
                 </button>
                 <button
                     type="submit"
                     disabled={busy}
-                    className="flex-1 bg-lime-400 text-zinc-900 text-sm font-semibold py-2 rounded-xl hover:bg-lime-300 active:scale-[0.98] transition-all disabled:opacity-50"
+                    className="flex-1 bg-lime-400 text-zinc-900 text-sm font-semibold py-2 rounded-xl hover:bg-lime-300 hover:shadow-[0_0_30px_rgba(163,230,53,0.25)] active:scale-[0.97] transition-all duration-300 disabled:opacity-50"
                 >
                     {busy ? "Сохранение..." : "Сменить"}
                 </button>

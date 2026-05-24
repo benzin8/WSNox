@@ -72,14 +72,14 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
         <div className="flex flex-wrap items-center justify-center gap-2 max-w-[calc(100vw-2rem)]">
           <button
             onClick={() => { onReply(message); onClose(); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-zinc-100 text-sm transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-zinc-800/60 border border-zinc-700/60 hover:border-zinc-600 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
           >
             <Reply size={16} className="text-lime-400" />
             <span>Ответить</span>
           </button>
           <button
             onClick={() => { onCopy(message.text); onClose(); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 rounded-xl text-zinc-100 text-sm transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-zinc-800/60 border border-zinc-700/60 hover:border-zinc-600 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
           >
             <Copy size={16} className="text-lime-400" />
             <span>Копировать</span>
@@ -87,7 +87,7 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
           {isOut && (
             <button
               onClick={() => { onDelete(message); onClose(); }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800 hover:bg-red-900/60 border border-zinc-700/60 rounded-xl text-zinc-100 text-sm transition-all active:scale-95"
+              className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-red-900/40 border border-zinc-700/60 hover:border-red-500/40 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
             >
               <Trash2 size={16} className="text-red-400" />
               <span>Удалить</span>

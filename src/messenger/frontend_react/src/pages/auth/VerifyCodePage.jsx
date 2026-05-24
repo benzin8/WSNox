@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Shield, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
 
@@ -46,53 +47,68 @@ export default function VerifyCodePage() {
     }
 
     return (
-        <div className="flex min-h-dvh items-center justify-center p-4">
-            <div className="glass w-full max-w-md rounded-2xl p-8 shadow-2xl">
-                <div className="mb-8 text-center">
-                    <h1 className="text-3xl font-bold tracking-tight text-lime-400">Введите код</h1>
-                    <p className="mt-2 text-zinc-400">Отправлен на <strong>{email}</strong></p>
+        <div className="min-h-dvh flex items-center justify-center p-4 bg-zinc-950 relative overflow-hidden">
+            {/* Glow */}
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-lime-400/[0.04] blur-[120px] pointer-events-none" />
+
+            <div className="relative w-full max-w-md">
+                {/* Pill badge */}
+                <div className="flex justify-center mb-6">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-700/60 bg-zinc-800/40 text-xs text-zinc-400 backdrop-blur-sm">
+                        <Shield className="w-3.5 h-3.5 text-lime-400" />
+                        <span>Шаг 2 из 3 — Подтверждение</span>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label htmlFor="code" className="block text-sm font-medium text-zinc-300">
-                            Код подтверждения
-                        </label>
-                        <input
-                            id="code"
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            placeholder="123456"
-                            className="mt-2 w-full rounded-xl border-zinc-700 bg-zinc-900/50 p-4 text-center tracking-[0.5em] text-2xl font-bold text-lime-400 placeholder:text-zinc-700 placeholder:tracking-normal focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-500/20 transition-all"
-                            value={code}
-                            onChange={(e) => setCode(e.target.value)}
-                            required
-                        />
+                {/* Card */}
+                <div className="p-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/50">
+                    <div className="mb-8 text-center">
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.08] text-zinc-100">Введите код</h1>
+                        <p className="mt-3 text-zinc-400 leading-relaxed">Отправлен на <strong className="text-zinc-300">{email}</strong></p>
                     </div>
 
-                    {error && (
-                        <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
-                            {error}
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div>
+                            <label htmlFor="code" className="block text-sm font-medium text-zinc-300">
+                                Код подтверждения
+                            </label>
+                            <input
+                                id="code"
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={6}
+                                placeholder="123456"
+                                className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-800/30 p-4 text-center tracking-[0.5em] text-2xl font-bold text-lime-400 placeholder:text-zinc-700 placeholder:tracking-normal focus:border-lime-400 focus:outline-none focus:ring-2 focus:ring-lime-400/40 transition-all duration-300"
+                                value={code}
+                                onChange={(e) => setCode(e.target.value)}
+                                required
+                            />
                         </div>
-                    )}
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full rounded-xl bg-lime-400 p-4 font-bold text-zinc-900 hover:bg-lime-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98] shadow-lg shadow-lime-500/20"
-                    >
-                        {loading ? 'Проверка...' : 'Проверить'}
-                    </button>
+                        {error && (
+                            <div className="rounded-xl bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
+                                {error}
+                            </div>
+                        )}
 
-                    <button
-                        type="button"
-                        onClick={() => navigate('/auth/send-code')}
-                        className="w-full text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                    >
-                        Сменить email
-                    </button>
-                </form>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="group w-full flex items-center justify-center gap-2 rounded-xl bg-lime-400 p-4 font-semibold text-zinc-900 transition-all duration-300 hover:bg-lime-300 hover:shadow-[0_0_30px_rgba(163,230,53,0.25)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]"
+                        >
+                            {loading ? 'Проверка...' : 'Проверить'}
+                            {!loading && <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => navigate('/auth/send-code')}
+                            className="w-full inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl font-semibold text-sm text-zinc-300 border border-zinc-700/60 bg-zinc-800/30 backdrop-blur-sm transition-all duration-300 hover:border-zinc-600 hover:text-zinc-100 active:scale-[0.97]"
+                        >
+                            Сменить email
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );

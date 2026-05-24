@@ -21,7 +21,7 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply }) 
     }, [replyTo]);
 
     return (
-        <div className="p-6 bg-zinc-900/50 border-t border-zinc-800">
+        <div className="p-6 bg-zinc-950/50 border-t border-zinc-800/80">
           {/* Reply preview bar */}
           {replyTo && (
             <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-zinc-800/80 border border-zinc-700/50 rounded-xl animate-fadeIn">
@@ -40,7 +40,7 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply }) 
           )}
           <form
             onSubmit={handleSubmit}
-            className="flex items-center gap-3 bg-zinc-800 rounded-2xl p-2 pl-4 border border-zinc-700 focus-within:border-lime-400/50 focus-within:ring-4 focus-within:ring-lime-500/10 transition-all"
+            className="flex items-center gap-3 bg-zinc-800/30 rounded-2xl p-2 pl-4 border border-zinc-700/60 focus-within:border-lime-400/50 focus-within:ring-4 focus-within:ring-lime-400/40 transition-all duration-300"
           >
             <input
               ref={inputRef}
@@ -53,7 +53,7 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply }) 
             <button
               type="submit"
               disabled={!inputText.trim() || !isConnected}
-              className="p-3 bg-lime-400 text-zinc-900 rounded-xl hover:bg-lime-300 transition-all disabled:grayscale disabled:opacity-50"
+              className="p-3 bg-lime-400 text-zinc-900 rounded-xl hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(163,230,53,0.25)] transition-all duration-300 active:scale-[0.97] disabled:grayscale disabled:opacity-50"
             >
               <Send size={18} />
             </button>

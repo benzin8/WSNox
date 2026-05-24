@@ -228,9 +228,12 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
         <div className="flex-grow min-h-0 overflow-y-auto scrollbar-hide">
           <div className="max-w-2xl mx-auto px-4 py-4 space-y-1">
             {messages.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 opacity-40 min-h-[60vh]">
-                <MessageSquare size={48} className="mb-4 text-lime-400" />
-                <p>Нет сообщений. Начните разговор!</p>
+              <div className="h-full flex flex-col items-center justify-center text-center p-8 min-h-[60vh]">
+                <div className="w-16 h-16 rounded-full bg-lime-400/10 border border-lime-400/20 flex items-center justify-center mb-4">
+                  <MessageSquare size={32} className="text-lime-400" />
+                </div>
+                <p className="font-medium text-zinc-300">Нет сообщений</p>
+                <p className="text-sm text-zinc-500 mt-1">Начните разговор!</p>
               </div>
             )}
             {itemsWithSeparators.map(({ msg, showDateSep }) => {
