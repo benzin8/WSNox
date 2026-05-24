@@ -11,6 +11,9 @@ export const DEFAULT_SETTINGS = {
   desktop:    { enabled: false },
   titleBadge: { enabled: true },
   mutedChats: [],
+  dnd:        false,
 };
+
+export const MIGRATION_FLAG_KEY = "wsnox.notifications.migratedToBackend";
 
 export const APP_TITLE = "WSNox";
