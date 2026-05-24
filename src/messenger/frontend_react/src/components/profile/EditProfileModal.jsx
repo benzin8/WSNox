@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { X, Save, Lock } from "lucide-react";
+import { X, Save, Lock, Sun, Moon, Monitor } from "lucide-react";
 import { NotificationSettingsTab } from "../../features/notifications";
+import { useTheme } from "../../features/theme";
 import PasswordStrengthBar from "../auth/PasswordStrengthBar";
 import { useProfile } from "../../hooks/useProfile";
 
@@ -31,6 +32,7 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
 
     const tabs = [
         { id: "profile",       label: "Профиль" },
+        { id: "appearance",    label: "Оформление" },
         { id: "security",      label: "Безопасность" },
         { id: "notifications", label: "Уведомления" },
     ];
@@ -130,6 +132,8 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                     </>
                 )}
 
+                {activeTab === "appearance" && <AppearanceTab onClose={onClose} />}
+
                 {activeTab === "security" && <SecurityTab onClose={onClose} />}
 
                 {activeTab === "notifications" && (
@@ -147,6 +151,51 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
         </div>
     );
 };
+
+const THEME_OPTIONS = [
+    { value: "dark",   label: "Тёмная",    icon: Moon,    desc: "Тёмный фон, яркий акцент" },
+    { value: "light",  label: "Светлая",   icon: Sun,     desc: "Светлый фон, мягкие тона" },
+    { value: "system", label: "Системная", icon: Monitor, desc: "Следовать за ОС" },
+];
+
+function AppearanceTab({ onClose }) {
+    const { preference, setPreference } = useTheme();
+
+    return (
+        <div className="flex flex-col gap-3">
+            <p className="text-xs text-zinc-400 font-medium">Тема оформления</p>
+            <div className="flex flex-col gap-2">
+                {THEME_OPTIONS.map((opt) => {
+                    const Icon = opt.icon;
+                    const active = preference === opt.value;
+                    return (
+                        <button
+                            key={opt.value}
+                            onClick={() => setPreference(opt.value)}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-300 border ${
+                                active
+                                    ? "bg-lime-400/10 border-lime-400/30 text-lime-400"
+                                    : "bg-zinc-800/30 border-zinc-700/60 text-zinc-300 hover:border-zinc-600 hover:text-zinc-100"
+                            }`}
+                        >
+                            <Icon size={18} className={active ? "text-lime-400" : "text-zinc-500"} />
+                            <div className="flex flex-col">
+                                <span className="text-sm font-semibold">{opt.label}</span>
+                                <span className={`text-[10px] ${active ? "text-lime-400/70" : "text-zinc-500"}`}>{opt.desc}</span>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+            <button
+                onClick={onClose}
+                className="w-full mt-2 inline-flex items-center justify-center px-4 py-2 rounded-xl font-medium text-sm text-zinc-300 border border-zinc-700/60 bg-zinc-800/30 backdrop-blur-sm transition-all duration-300 hover:border-zinc-600 hover:text-zinc-100 active:scale-[0.97]"
+            >
+                Закрыть
+            </button>
+        </div>
+    );
+}
 
 function SecurityTab({ onClose }) {
     const { changePassword } = useProfile();
@@ -182,6 +231,7 @@ function SecurityTab({ onClose }) {
                 <Lock size={14} className="text-zinc-500" />
                 <span>Смена пароля</span>
             </div>
+
 
             <div className="flex flex-col gap-1">
                 <label className="text-xs text-zinc-400 font-medium">Текущий пароль</label>

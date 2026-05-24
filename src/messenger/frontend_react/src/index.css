@@ -110,6 +110,36 @@
   }
 }
 
+/*
+ * Light theme — override Tailwind v4 color tokens.
+ *
+ * Strategy: invert the zinc scale so dark‑theme backgrounds become light
+ * and dark‑theme foreground text becomes dark. Lime accent is softened to
+ * a warmer green that reads well on light surfaces.
+ *
+ * The data-theme attribute is toggled by ThemeProvider.
+ */
+[data-theme="light"] {
+  /* Zinc scale — inverted + warm‑tinted for a beige‑white feel */
+  --color-zinc-950: oklch(97.5% .005 85);   /* was deepest dark → now lightest bg */
+  --color-zinc-900: oklch(96%   .007 85);   /* main background — warm off‑white */
+  --color-zinc-800: oklch(93%   .008 85);   /* elevated surfaces */
+  --color-zinc-700: oklch(87%   .008 80);   /* borders */
+  --color-zinc-600: oklch(73%   .010 75);   /* muted UI elements */
+  --color-zinc-500: oklch(55%   .012 285);  /* mid‑gray (unchanged) */
+  --color-zinc-400: oklch(44%   .012 285);  /* secondary text — darker */
+  --color-zinc-300: oklch(37%   .010 285);
+  --color-zinc-200: oklch(27%   .006 286);
+  --color-zinc-100: oklch(21%   .006 286);  /* primary text — near black */
+
+  /* Lime accent — softer, warmer green for light backgrounds */
+  --color-lime-300: oklch(80%   .155 145);
+  --color-lime-400: oklch(65%   .200 145);  /* primary accent */
+  --color-lime-500: oklch(56%   .185 145);  /* hover accent */
+
+  color-scheme: light;
+}
+
 /* Custom transitions and glass effects */
 .glass {
   @apply bg-zinc-800/60 backdrop-blur-md border border-zinc-700/50;
@@ -155,6 +185,10 @@
   backdrop-filter: var(--_nav-blur);
   background: rgba(24, 24, 27, 0.75);
   border-bottom: 1px solid rgba(63, 63, 70, 0.25);
+}
+[data-theme="light"] .nav-blur {
+  background: rgba(245, 243, 239, 0.8);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .hero-stagger {
