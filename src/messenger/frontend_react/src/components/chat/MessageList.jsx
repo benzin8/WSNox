@@ -57,7 +57,6 @@ function truncate(text, max = 60) {
 const MessageBubble = ({ msg, isOut, onReply, onActionMenu }) => {
     const time = formatTime(msg.created_at);
     const touchRef = useRef(null);
-    const swipeRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
 
     // --- Swipe to reply (horizontal swipe on message) ---
@@ -110,7 +109,7 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu }) => {
     const lastClickRef = useRef(0);
     const clickTimerRef = useRef(null);
 
-    const handleClick = useCallback((e) => {
+    const handleClick = useCallback(() => {
         const now = Date.now();
         const diff = now - lastClickRef.current;
         lastClickRef.current = now;
