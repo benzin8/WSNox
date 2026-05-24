@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import delete as sa_delete, func, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.core.crypto import decrypt_message, encrypt_message
@@ -30,9 +30,6 @@ class MessageCRUD:
 
     @staticmethod
     async def get_messages(db: AsyncSession, chat_id: int) -> list[Message]:
-        from sqlalchemy.orm import aliased
-
-        ReplyMsg = aliased(Message)
         query = (
             select(Message)
             .where(Message.chat_id == chat_id)
@@ -69,7 +66,6 @@ class MessageCRUD:
         message = result.scalar_one_or_none()
         if not message or message.sender_id != user_id:
             return False
-        chat_id = message.chat_id
         await db.delete(message)
         await db.commit()
         return True
