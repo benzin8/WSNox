@@ -19,6 +19,7 @@ class Message(Base):
     recipient_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     encrypted_data: Mapped[str] = mapped_column(Text, nullable=False)
+    reply_to_id: Mapped[Optional[int]] = mapped_column(ForeignKey("message.id"), nullable=True, default=None)
 
     msg_type: Mapped[str] = mapped_column(String(15), default="text")
 

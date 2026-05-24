@@ -34,6 +34,7 @@ function ChatPage() {
   const [mobileView, setMobileView] = useState('list');
   const [partnerPresencePreference, setPartnerPresencePreference] = useState(null);
   const [chatListBlurred, setChatListBlurred] = useState(false);
+  const [replyTo, setReplyTo] = useState(null);
 
   // Tracks the chat currently held in `activeChat` state — regardless of
   // whether it's visually on screen on mobile. Used by reconnect refetch.
@@ -133,6 +134,8 @@ function ChatPage() {
           ...m,
           text: m.text,
           type: m.sender_id === currentUser.id ? 'outgoing' : 'incoming',
+          reply_to_id: m.reply_to_id || null,
+          reply_to_text: m.reply_to_text || null,
         })));
       });
     }
@@ -240,7 +243,9 @@ function ChatPage() {
         const mappedMsgs = msgs.map(m => ({
           ...m,
           text: m.text,
-          type: m.sender_id === currentUser?.id ? 'outgoing' : 'incoming'
+          type: m.sender_id === currentUser?.id ? 'outgoing' : 'incoming',
+          reply_to_id: m.reply_to_id || null,
+          reply_to_text: m.reply_to_text || null,
         }));
         setMessages(mappedMsgs);
       });
@@ -259,7 +264,9 @@ function ChatPage() {
         const mappedMsgs = msgs.map(m => ({
           ...m,
           text: m.text,
-          type: m.sender_id === currentUser.id ? 'outgoing' : 'incoming'
+          type: m.sender_id === currentUser.id ? 'outgoing' : 'incoming',
+          reply_to_id: m.reply_to_id || null,
+          reply_to_text: m.reply_to_text || null,
         }));
         setMessages(mappedMsgs);
         // Send WS read receipt for the latest incoming message
@@ -295,18 +302,43 @@ function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeChat?.recipient_id]);
 
-  const handleSendMessage = (text) => {
+  const handleSendMessage = (text, replyMsg) => {
     if (!activeChat) return;
 
-    sendMessage(text, activeChat.id);
+    sendMessage(text, activeChat.id, replyMsg?.id ?? null);
 
     setMessages((prev) => [...prev, {
             text: text,
             type: 'outgoing',
             id: Date.now(),
             created_at: new Date().toISOString(),
+            reply_to_id: replyMsg?.id ?? null,
+            reply_to_text: replyMsg?.text ?? null,
         }]);
   }
+
+  const handleReply = useCallback((msg) => {
+    setReplyTo(msg);
+  }, []);
+
+  const handleCancelReply = useCallback(() => {
+    setReplyTo(null);
+  }, []);
+
+  const handleDeleteMessage = useCallback((msg) => {
+    // Only outgoing messages with a server-assigned id can be deleted
+    if (!msg.id || !activeChat?.id) return;
+    const ws = socketRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'delete_message',
+        message_id: msg.id,
+        chat_id: activeChat.id,
+      }));
+    }
+    // Optimistic removal
+    setMessages(prev => prev.filter(m => m.id !== msg.id));
+  }, [activeChat?.id, socketRef, setMessages]);
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
@@ -321,6 +353,7 @@ function ChatPage() {
       setActiveChat(selectedChat);
       setChatName(selectedChat.recipient.display_name || selectedChat.recipient.name);
       setMobileView('chat');
+      setReplyTo(null);
       setChats(prevChats => prevChats.map(c =>
         c.id === selectedChat.id ? { ...c, unread_count: 0 } : c
       ));
@@ -551,6 +584,10 @@ function ChatPage() {
              chatName={chatName}
              onOpenProfile={() => activeChat?.recipient_id && handleOpenUserProfile(activeChat.recipient_id)}
              onBack={() => setMobileView('list')}
+             replyTo={replyTo}
+             onReply={handleReply}
+             onCancelReply={handleCancelReply}
+             onDeleteMessage={handleDeleteMessage}
              />
           </div>
         </div>

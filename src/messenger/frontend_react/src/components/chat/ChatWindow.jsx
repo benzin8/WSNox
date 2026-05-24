@@ -8,7 +8,8 @@ export const ChatWindow = ({
     messages, setMessages, activeChat, sendMessage,
     isConnected, messagesEndRef, inputText, setInputText,
     chatName, onOpenProfile, onBack,
-    isPartnerOnline, partnerPresencePreference
+    isPartnerOnline, partnerPresencePreference,
+    replyTo, onReply, onCancelReply, onDeleteMessage,
 }) => {
     if (!activeChat) {
         return (
@@ -59,8 +60,21 @@ export const ChatWindow = ({
           </div>
         </header>
 
-        <MessageList messages={messages} setMessages={setMessages} messagesEndRef={messagesEndRef} />
-        <InputArea inputText={inputText} setInputText={setInputText} sendMessage={sendMessage} isConnected={isConnected} />
+        <MessageList
+          messages={messages}
+          setMessages={setMessages}
+          messagesEndRef={messagesEndRef}
+          onReply={onReply}
+          onDeleteMessage={onDeleteMessage}
+        />
+        <InputArea
+          inputText={inputText}
+          setInputText={setInputText}
+          sendMessage={sendMessage}
+          isConnected={isConnected}
+          replyTo={replyTo}
+          onCancelReply={onCancelReply}
+        />
       </div>
     );
 };

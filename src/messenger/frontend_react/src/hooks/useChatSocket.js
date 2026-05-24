@@ -85,12 +85,21 @@ export const useChatSocket = (token, activeChatIdRef) => {
                     return;
                 }
 
+                if (data.type === "message_deleted") {
+                    if (data.chat_id === activeChatIdRef?.current) {
+                        setMessages((prev) => prev.filter(m => m.id !== data.message_id));
+                    }
+                    return;
+                }
+
                 if (data.chat_id === activeChatIdRef?.current) {
                     setMessages((prev) => [...prev, {
                         ...data,
                         text: data.text,
                         type: data.sender_id === currentUserRef.current ? "outgoing" : "incoming",
-                        id: Date.now(),
+                        id: data.message_id || Date.now(),
+                        reply_to_id: data.reply_to_id || null,
+                        reply_to_text: data.reply_to_text || null,
                     }]);
                 }
                 setLastReceivedMessage(data);
@@ -122,13 +131,15 @@ export const useChatSocket = (token, activeChatIdRef) => {
         };
     }, [token]);
 
-    const sendMessage = (text, activeChatId) => {
+    const sendMessage = (text, activeChatId, replyToId = null) => {
         if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-            socketRef.current.send(JSON.stringify({
+            const payload = {
                 text,
                 chat_id: activeChatId,
                 timestamp: new Date().toISOString(),
-            }));
+            };
+            if (replyToId) payload.reply_to_id = replyToId;
+            socketRef.current.send(JSON.stringify(payload));
             setLastReceivedMessage({
                 chat_id: activeChatId,
                 text,

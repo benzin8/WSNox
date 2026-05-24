@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
-import { MessageSquare } from "lucide-react";
+import React, { useMemo, useState, useRef, useCallback } from "react";
+import { MessageSquare, Reply } from "lucide-react";
+import { MessageActionMenu } from "./MessageActionMenu";
 
 function formatTime(iso) {
     if (!iso) return "";
@@ -46,7 +47,158 @@ function DateSeparator({ label }) {
     );
 }
 
-export const MessageList = ({ messages, messagesEndRef }) => {
+// Truncate reply text for preview
+function truncate(text, max = 60) {
+    if (!text) return "";
+    return text.length > max ? text.slice(0, max) + "..." : text;
+}
+
+// Individual message bubble with swipe + click handlers
+const MessageBubble = ({ msg, isOut, onReply, onActionMenu }) => {
+    const time = formatTime(msg.created_at);
+    const touchRef = useRef(null);
+    const swipeRef = useRef(null);
+    const [swipeX, setSwipeX] = useState(0);
+
+    // --- Swipe to reply (horizontal swipe on message) ---
+    const handleTouchStart = useCallback((e) => {
+        const touch = e.touches[0];
+        touchRef.current = {
+            startX: touch.clientX,
+            startY: touch.clientY,
+            startTime: Date.now(),
+            locked: null,
+            swiping: false,
+        };
+    }, []);
+
+    const handleTouchMove = useCallback((e) => {
+        if (!touchRef.current) return;
+        const touch = e.touches[0];
+        const dx = touch.clientX - touchRef.current.startX;
+        const dy = touch.clientY - touchRef.current.startY;
+
+        // Direction lock after 8px
+        if (!touchRef.current.locked) {
+            if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+            touchRef.current.locked = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+        }
+        if (touchRef.current.locked === "v") return;
+
+        // Only allow swipe right (reply direction)
+        if (dx < 0) return;
+
+        e.preventDefault();
+        touchRef.current.swiping = true;
+        const clamped = Math.min(dx, 80);
+        setSwipeX(clamped);
+    }, []);
+
+    const handleTouchEnd = useCallback(() => {
+        if (!touchRef.current) return;
+        const wasSwiping = touchRef.current.swiping;
+        const finalX = swipeX;
+        touchRef.current = null;
+        setSwipeX(0);
+
+        if (wasSwiping && finalX >= 50) {
+            onReply(msg);
+        }
+    }, [swipeX, msg, onReply]);
+
+    // --- Double click to reply (desktop) ---
+    const lastClickRef = useRef(0);
+    const clickTimerRef = useRef(null);
+
+    const handleClick = useCallback((e) => {
+        const now = Date.now();
+        const diff = now - lastClickRef.current;
+        lastClickRef.current = now;
+
+        if (diff < 300) {
+            // Double click
+            clearTimeout(clickTimerRef.current);
+            onReply(msg);
+        } else {
+            // Single click — delayed to distinguish from double
+            clickTimerRef.current = setTimeout(() => {
+                onActionMenu(msg);
+            }, 300);
+        }
+    }, [msg, onReply, onActionMenu]);
+
+    // Swipe progress indicator opacity
+    const swipeProgress = Math.min(swipeX / 50, 1);
+
+    return (
+        <div
+            className={`flex w-full ${isOut ? "justify-end" : "justify-start"} animate-fadeIn`}
+        >
+            <div className="relative flex items-center gap-2" style={{ maxWidth: "75%" }}>
+                {/* Reply indicator (appears on swipe) */}
+                <div
+                    className="absolute -left-8 flex items-center justify-center transition-opacity"
+                    style={{ opacity: swipeProgress }}
+                >
+                    <Reply size={18} className="text-lime-400" />
+                </div>
+
+                <div
+                    onClick={handleClick}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                    className={`px-3.5 py-2 text-sm leading-relaxed shadow-md cursor-pointer select-none transition-transform ${
+                        isOut
+                            ? "bg-lime-400 text-zinc-900 font-medium rounded-2xl rounded-br-sm"
+                            : "bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-sm border border-zinc-700/60"
+                    }`}
+                    style={{
+                        transform: swipeX > 0 ? `translateX(${swipeX}px)` : undefined,
+                        transition: swipeX > 0 ? "none" : "transform 200ms ease-out",
+                    }}
+                >
+                    {/* Reply quote if this message is a reply */}
+                    {msg.reply_to_id && msg.reply_to_text && (
+                        <div
+                            className={`mb-1.5 px-2 py-1 rounded-lg text-xs border-l-2 ${
+                                isOut
+                                    ? "bg-lime-500/30 border-zinc-700 text-zinc-800"
+                                    : "bg-zinc-700/50 border-lime-400 text-zinc-400"
+                            }`}
+                        >
+                            <span className="line-clamp-1">{truncate(msg.reply_to_text)}</span>
+                        </div>
+                    )}
+                    <div className="flex items-end gap-2">
+                        <span className="whitespace-pre-wrap break-words">{msg.text}</span>
+                        <span className="flex items-center gap-1 shrink-0 self-end mb-0.5">
+                            {time && (
+                                <span className={`text-[10px] leading-none select-none ${
+                                    isOut ? "text-zinc-700/70" : "text-zinc-500"
+                                }`}>
+                                    {time}
+                                </span>
+                            )}
+                            {isOut && (
+                                <span
+                                    className={`inline-block w-1.5 h-1.5 rounded-full ${
+                                        msg.read_at ? "bg-zinc-900" : "bg-zinc-900/40"
+                                    }`}
+                                    title={msg.read_at ? "Прочитано" : "Доставлено"}
+                                />
+                            )}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage }) => {
+    const [actionMsg, setActionMsg] = useState(null);
+
     const itemsWithSeparators = useMemo(
         () => messages.map((msg, idx) => {
             const dateKey = getDateKey(msg.created_at);
@@ -56,6 +208,22 @@ export const MessageList = ({ messages, messagesEndRef }) => {
         }),
         [messages],
     );
+
+    const handleCopy = useCallback((text) => {
+        navigator.clipboard?.writeText(text);
+    }, []);
+
+    const handleReply = useCallback((msg) => {
+        onReply?.(msg);
+    }, [onReply]);
+
+    const handleDelete = useCallback((msg) => {
+        onDeleteMessage?.(msg);
+    }, [onDeleteMessage]);
+
+    const handleActionMenu = useCallback((msg) => {
+        setActionMsg(msg);
+    }, []);
 
     return (
         <div className="flex-grow min-h-0 overflow-y-auto scrollbar-hide">
@@ -67,50 +235,35 @@ export const MessageList = ({ messages, messagesEndRef }) => {
               </div>
             )}
             {itemsWithSeparators.map(({ msg, showDateSep }) => {
-              const isOut = msg.type === 'outgoing';
-              const time = formatTime(msg.created_at);
+              const isOut = msg.type === "outgoing";
               return (
                 <React.Fragment key={msg.id}>
                   {showDateSep && (
                     <DateSeparator label={formatDateLabel(msg.created_at)} />
                   )}
-                  <div
-                    className={`flex w-full ${isOut ? 'justify-end' : 'justify-start'} animate-fadeIn`}
-                  >
-                    <div
-                      className={`max-w-[75%] px-3.5 py-2 text-sm leading-relaxed shadow-md ${
-                        isOut
-                        ? 'bg-lime-400 text-zinc-900 font-medium rounded-2xl rounded-br-sm'
-                        : 'bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-sm border border-zinc-700/60'
-                      }`}
-                    >
-                      <div className="flex items-end gap-2">
-                        <span className="whitespace-pre-wrap break-words">{msg.text}</span>
-                        <span className="flex items-center gap-1 shrink-0 self-end mb-0.5">
-                          {time && (
-                            <span className={`text-[10px] leading-none select-none ${
-                              isOut ? 'text-zinc-700/70' : 'text-zinc-500'
-                            }`}>
-                              {time}
-                            </span>
-                          )}
-                          {isOut && (
-                            <span
-                              className={`inline-block w-1.5 h-1.5 rounded-full ${
-                                msg.read_at ? 'bg-zinc-900' : 'bg-zinc-900/40'
-                              }`}
-                              title={msg.read_at ? 'Прочитано' : 'Доставлено'}
-                            />
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  <MessageBubble
+                    msg={msg}
+                    isOut={isOut}
+                    onReply={handleReply}
+                    onActionMenu={handleActionMenu}
+                  />
                 </React.Fragment>
               );
             })}
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Action overlay */}
+          {actionMsg && (
+            <MessageActionMenu
+              message={actionMsg}
+              isOut={actionMsg.type === "outgoing"}
+              onReply={handleReply}
+              onDelete={handleDelete}
+              onCopy={handleCopy}
+              onClose={() => setActionMsg(null)}
+            />
+          )}
         </div>
     );
 };

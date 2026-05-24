@@ -85,6 +85,7 @@ class ConnectionManager:
         recipient_id: int,
         sender_id: int,
         db: AsyncSession,
+        reply_to_id: int | None = None,
     ) -> None:
         message = await MessageCRUD.create_text_message(
             db=db,
@@ -92,10 +93,22 @@ class ConnectionManager:
             sender_id=sender_id,
             recipient_id=recipient_id,
             text=text,
+            reply_to_id=reply_to_id,
         )
         from sqlalchemy.orm import selectinload as _selectinload
         sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
         sender_display_name = sender.profile.display_name if sender.profile else None
+        # Fetch reply-to text if this is a reply
+        reply_to_text = None
+        if message.reply_to_id:
+            from messenger.backend.core.crypto import decrypt_message as _decrypt
+            reply_msg = await db.get(Message, message.reply_to_id)
+            if reply_msg:
+                try:
+                    reply_to_text = _decrypt(reply_msg.encrypted_data)
+                except Exception:  # noqa: BLE001
+                    pass
+
         payload = json.dumps({
             "recipient_id": recipient_id,
             "encrypted_text": message.encrypted_data,
@@ -103,6 +116,8 @@ class ConnectionManager:
             "chat_id": chat_id,
             "created_at": message.created_at.isoformat() if message.created_at else None,
             "message_id": message.id,
+            "reply_to_id": message.reply_to_id,
+            "reply_to_text": reply_to_text,
             "chat_info": {
                 "id": chat_id,
                 "name": f"private_{min(sender_id, recipient_id)}_{max(sender_id, recipient_id)}",
@@ -159,6 +174,8 @@ class ConnectionManager:
                     "chat_info": chat_info,
                     "created_at": data.get("created_at"),
                     "message_id": data.get("message_id"),
+                    "reply_to_id": data.get("reply_to_id"),
+                    "reply_to_text": data.get("reply_to_text"),
                 }
                 dead = []
                 for ws in sockets:
@@ -192,6 +209,35 @@ class ConnectionManager:
                 for uid, sockets in list(self.active_connections.items()):
                     if uid == reader_id:
                         continue
+                    dead = []
+                    for ws in sockets:
+                        try:
+                            await ws.send_json(data)
+                        except Exception:  # noqa: BLE001
+                            dead.append(ws)
+                    for ws in dead:
+                        sockets.discard(ws)
+                    if not sockets and uid in self.active_connections:
+                        del self.active_connections[uid]
+        except asyncio.CancelledError:
+            await pubsub.unsubscribe(channel)
+
+    async def deletions_listener(self) -> None:
+        """Listen for message deletion events and fan out to chat participants."""
+        redis = get_redis()
+        pubsub = redis.pubsub()
+        channel = REDIS_CHAT_CHANNEL + ":deletions"
+        await pubsub.subscribe(channel)
+
+        try:
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                data = json.loads(message["data"])
+                if data.get("type") != "message_deleted":
+                    continue
+                # Send to all connected users — they filter by chat_id client-side
+                for uid, sockets in list(self.active_connections.items()):
                     dead = []
                     for ws in sockets:
                         try:
@@ -319,10 +365,39 @@ async def websocket_chat(websocket: WebSocket) -> None:
                         await publish_read_receipt(db, read_chat_id, user_id, last_message_id)
                 continue
 
+            if msg_type == "delete_message":
+                del_message_id = msg_data.get("message_id")
+                del_chat_id = msg_data.get("chat_id")
+                if del_message_id and del_chat_id:
+                    try:
+                        del_message_id = int(del_message_id)
+                        del_chat_id = int(del_chat_id)
+                    except (TypeError, ValueError):
+                        continue
+                    async with AsyncSessionLocal() as db:
+                        deleted = await MessageCRUD.delete_message(db, del_message_id, user_id)
+                        if deleted:
+                            other = await ChatCRUD.get_other_user_by_chat_id(db, del_chat_id, user_id)
+                            if other:
+                                del_payload = json.dumps({
+                                    "type": "message_deleted",
+                                    "chat_id": del_chat_id,
+                                    "message_id": del_message_id,
+                                })
+                                await redis.publish(REDIS_CHAT_CHANNEL + ":deletions", del_payload)
+                continue
+
             chat_id = msg_data.get("chat_id")
             text = msg_data.get("text")
             if not (chat_id and text):
                 continue
+
+            reply_to_id = msg_data.get("reply_to_id")
+            if reply_to_id is not None:
+                try:
+                    reply_to_id = int(reply_to_id)
+                except (TypeError, ValueError):
+                    reply_to_id = None
 
             async with AsyncSessionLocal() as db:
                 if not await ChatCRUD.is_chat_member(db, chat_id, user_id):
@@ -336,6 +411,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     recipient_id=other.user_id,
                     sender_id=user_id,
                     db=db,
+                    reply_to_id=reply_to_id,
                 )
 
     except WebSocketDisconnect:

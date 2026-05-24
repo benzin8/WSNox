@@ -13,6 +13,8 @@ class MessageBase(BaseModel):
     created_at: datetime
     msg_type: str
     read_at: Optional[datetime] = None
+    reply_to_id: Optional[int] = None
+    reply_to_text: Optional[str] = None
 
 class MessageCreate(MessageBase):
     pass

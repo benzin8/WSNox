@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete as sa_delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.core.crypto import decrypt_message, encrypt_message
@@ -9,13 +9,14 @@ from messenger.backend.models import Chat, Message
 
 class MessageCRUD:
     @staticmethod
-    async def create_text_message(db: AsyncSession, chat_id: int, sender_id: int, recipient_id: int, text: str) -> Message:
+    async def create_text_message(db: AsyncSession, chat_id: int, sender_id: int, recipient_id: int, text: str, reply_to_id: int | None = None) -> Message:
         encrypted_text = encrypt_message(text)
         message = Message(
             chat_id = chat_id,
             sender_id = sender_id,
             recipient_id = recipient_id,
-            encrypted_data = encrypted_text
+            encrypted_data = encrypted_text,
+            reply_to_id = reply_to_id,
         )
         db.add(message)
         await db.execute(
@@ -29,6 +30,9 @@ class MessageCRUD:
 
     @staticmethod
     async def get_messages(db: AsyncSession, chat_id: int) -> list[Message]:
+        from sqlalchemy.orm import aliased
+
+        ReplyMsg = aliased(Message)
         query = (
             select(Message)
             .where(Message.chat_id == chat_id)
@@ -37,9 +41,38 @@ class MessageCRUD:
         )
         result = await db.execute(query)
         messages = result.scalars().all()
+
+        # Collect reply_to_ids and batch-fetch them
+        reply_ids = {m.reply_to_id for m in messages if m.reply_to_id}
+        reply_map = {}
+        if reply_ids:
+            reply_result = await db.execute(
+                select(Message).where(Message.id.in_(reply_ids))
+            )
+            for rm in reply_result.scalars().all():
+                reply_map[rm.id] = decrypt_message(rm.encrypted_data)
+
         for message in messages:
             message.text = decrypt_message(message.encrypted_data)
+            if message.reply_to_id and message.reply_to_id in reply_map:
+                message.reply_to_text = reply_map[message.reply_to_id]
+            else:
+                message.reply_to_text = None
         return messages[::-1]
+
+    @staticmethod
+    async def delete_message(db: AsyncSession, message_id: int, user_id: int) -> bool:
+        """Delete a message if the user is the sender. Returns True if deleted."""
+        result = await db.execute(
+            select(Message).where(Message.id == message_id)
+        )
+        message = result.scalar_one_or_none()
+        if not message or message.sender_id != user_id:
+            return False
+        chat_id = message.chat_id
+        await db.delete(message)
+        await db.commit()
+        return True
 
     @staticmethod
     async def mark_as_read(db: AsyncSession, chat_id: int, user_id: int) -> int:
