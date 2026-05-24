@@ -45,7 +45,7 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-zinc-900 text-zinc-100 selection:bg-lime-400 selection:text-zinc-900">
+      <div className="min-h-dvh bg-zinc-900 text-zinc-100 selection:bg-lime-400 selection:text-zinc-900">
         <Routes>
           {/* Auth Routes — redirect to /chat if already logged in */}
           <Route path="/auth/send-code" element={<PublicOnlyRoute><SendCodePage /></PublicOnlyRoute>} />

@@ -13,13 +13,19 @@
       "src": "/WSNox_logo_128x128.svg",
       "sizes": "128x128",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/WSNox_logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/WSNox_logo_128x128.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }
