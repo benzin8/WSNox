@@ -38,7 +38,7 @@ function ChatPage() {
   // Mirror of chats state for reading inside effects without stale closure
   const chatsRef = useRef([]);
 
-  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, socketRef } = useChatSocket(token, activeChatIdRef);
+  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { settings: notificationSettings } = useNotificationSettings();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
@@ -133,6 +133,22 @@ function ChatPage() {
     activeChatIdRef.current = activeChat?.id ?? null;
   }, [activeChat?.id]);
 
+  // Realtime profile updates from other users
+  useEffect(() => {
+    if (!lastProfileEvent) return;
+    const { user_id, name, display_name } = lastProfileEvent;
+    setChats(prev => prev.map(c => (
+      c.recipient_id === user_id && c.recipient
+        ? { ...c, recipient: { ...c.recipient, name, display_name } }
+        : c
+    )));
+    if (activeChat?.recipient_id === user_id) {
+      setChatName(display_name || name);
+      setActiveChat(prev => prev ? { ...prev, recipient: { ...(prev.recipient || {}), name, display_name } } : prev);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastProfileEvent]);
+
   useEffect(() => {
     chatsRef.current = chats;
   }, [chats]);
@@ -176,7 +192,8 @@ function ChatPage() {
     setMessages((prev) => [...prev, {
             text: text,
             type: 'outgoing',
-            id: Date.now()
+            id: Date.now(),
+            created_at: new Date().toISOString(),
         }]);
   }
 
@@ -190,7 +207,7 @@ function ChatPage() {
   const handleSelectChat = async (selectedChat) => {
     if (selectedChat.recipient) {
       setActiveChat(selectedChat);
-      setChatName(selectedChat.recipient.name);
+      setChatName(selectedChat.recipient.display_name || selectedChat.recipient.name);
       setMobileView('chat');
       setChats(prevChats => prevChats.map(c =>
         c.id === selectedChat.id ? { ...c, unread_count: 0 } : c
@@ -201,7 +218,7 @@ function ChatPage() {
         setActiveChat(chat);
         setSearchQuery('');
         const userData = await getUserDataByChatId(chat.id);
-        setChatName(userData.name);
+        setChatName(userData.display_name || userData.name);
         const allChats = await getAllChats();
         setChats(allChats);
         setMobileView('chat');

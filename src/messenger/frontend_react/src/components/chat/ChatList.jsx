@@ -24,7 +24,7 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
     <div className="flex-grow overflow-y-auto p-2 space-y-1 scrollbar-hide">
       {sortedChats.map((chat) => {
         const isSelected = activeChatId === chat.id;
-        const displayName = chat.recipient?.name || chat.name || "Чат";
+        const displayName = chat.recipient?.display_name || chat.recipient?.name || chat.name || "Чат";
         const lastMsg = chat.last_message || "Нет сообщений";
         const time = chat.last_message_time || chat.updated_at;
         const formattedTime = time 
