@@ -39,7 +39,7 @@ function ChatPage() {
   // Mirror of chats state for reading inside effects without stale closure
   const chatsRef = useRef([]);
 
-  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastReadReceiptEvent, socketRef } = useChatSocket(token, activeChatIdRef);
+  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { settings: notificationSettings } = useNotificationSettings();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
