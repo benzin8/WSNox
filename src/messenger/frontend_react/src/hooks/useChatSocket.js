@@ -9,6 +9,7 @@ const RECONNECT_DELAYS_MS = [2000, 4000, 8000, 16000, 30000];
 export const useChatSocket = (token, activeChatIdRef) => {
     const [messages, setMessages] = useState([]);
     const [isConnected, setIsConnected] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(false);
     const [lastReceivedMessage, setLastReceivedMessage] = useState(null);
     const [lastPresenceEvent, setLastPresenceEvent] = useState(null);
     const [lastProfileEvent, setLastProfileEvent] = useState(null);
@@ -35,6 +36,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
                 return;
             }
 
+            setIsConnecting(true);
             const ws = new WebSocket(`${WS_BASE}/chat`);
             socketRef.current = ws;
 
@@ -52,6 +54,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
 
                 if (data.type === "auth_ok") {
                     setIsConnected(true);
+                    setIsConnecting(false);
                     reconnectAttemptRef.current = 0;
                     return;
                 }
@@ -118,6 +121,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
 
             ws.onclose = (event) => {
                 setIsConnected(false);
+                setIsConnecting(false);
                 if (cancelled || manualCloseRef.current) return;
                 if (event.code === 4401) return;  // auth failed — don't loop forever
 
@@ -166,6 +170,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
         setMessages,
         sendMessage,
         isConnected,
+        isConnecting,
         lastReceivedMessage,
         lastPresenceEvent,
         lastProfileEvent,

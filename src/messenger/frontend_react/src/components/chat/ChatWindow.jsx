@@ -6,7 +6,7 @@ import { ChatMuteToggle } from "../../features/notifications";
 
 export const ChatWindow = ({
     messages, setMessages, activeChat, sendMessage,
-    isConnected, messagesEndRef, inputText, setInputText,
+    isConnected, isConnecting, messagesEndRef, inputText, setInputText,
     chatName, onOpenProfile, onBack,
     isPartnerOnline, partnerPresencePreference,
     replyTo, onReply, onCancelReply, onDeleteMessage,
@@ -67,6 +67,16 @@ export const ChatWindow = ({
             <MoreVertical size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
           </div>
         </header>
+
+        {!isConnected && (
+          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-400/10 border-b border-amber-400/20 text-amber-400 text-xs font-medium animate-pulse">
+            <svg className="w-3.5 h-3.5 animate-spin shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            {isConnecting ? 'Подключение к серверу...' : 'Нет соединения. Переподключение...'}
+          </div>
+        )}
 
         <MessageList
           messages={messages}

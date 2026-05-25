@@ -63,7 +63,7 @@ function ChatPage() {
     return () => mql.removeEventListener?.('change', onChange);
   }, []);
 
-  const { messages, setMessages, sendMessage, isConnected, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
+  const { messages, setMessages, sendMessage, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { settings: notificationSettings } = useNotificationSettings();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
@@ -522,6 +522,16 @@ function ChatPage() {
               </button>
             </div>
 
+            {!isConnected && (
+              <div className="mx-4 mb-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-400 text-xs font-medium animate-pulse">
+                <svg className="w-3.5 h-3.5 animate-spin shrink-0" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                {isConnecting ? 'Подключение к серверу...' : 'Нет соединения. Переподключение...'}
+              </div>
+            )}
+
             <div className="p-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
@@ -577,6 +587,7 @@ function ChatPage() {
              setMessages={setMessages}
              sendMessage={handleSendMessage}
              isConnected={isConnected}
+             isConnecting={isConnecting}
              isPartnerOnline={isPartnerOnline}
              partnerPresencePreference={partnerPresencePreference}
              messagesEndRef={messagesEndRef}
