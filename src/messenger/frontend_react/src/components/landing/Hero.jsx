@@ -37,7 +37,7 @@ export function Hero() {
         }}
       />
 
-      <div className="relative max-w-3xl mx-auto text-center">
+      <div className="relative z-10 max-w-3xl mx-auto text-center">
         <div className="flex justify-center mb-8">
           <div
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs text-zinc-400"
