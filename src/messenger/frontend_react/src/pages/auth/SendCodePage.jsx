@@ -4,6 +4,7 @@ import { Mail, MessageCircle, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
 import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
+import { AuthCardWrapper } from '../../components/auth/AuthCardWrapper';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -37,7 +38,7 @@ export default function SendCodePage() {
         <div className="min-h-dvh flex items-center justify-center p-4 bg-zinc-950 relative overflow-hidden">
             <AuthBackdrop step="email" />
 
-            <div className="relative w-full max-w-md">
+            <AuthCardWrapper>
                 {/* Pill badge */}
                 <div className="flex justify-center mb-6">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-700/60 bg-zinc-800/40 text-xs text-zinc-400 backdrop-blur-sm">
@@ -97,7 +98,7 @@ export default function SendCodePage() {
                         Продолжая, вы соглашаетесь с Условиями и Политикой конфиденциальности.
                     </div>
                 </div>
-            </div>
+            </AuthCardWrapper>
         </div>
     );
 }
