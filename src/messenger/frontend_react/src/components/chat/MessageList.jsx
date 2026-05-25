@@ -37,6 +37,27 @@ function getDateKey(iso) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function getMessageGap(prev, curr) {
+    if (!prev) return 0;
+
+    // Time-based gap
+    const prevTime = new Date(prev.created_at).getTime();
+    const currTime = new Date(curr.created_at).getTime();
+    const diffMin = (currTime - prevTime) / 60000;
+
+    let timeGap;
+    if (diffMin < 1) timeGap = 2;
+    else if (diffMin < 5) timeGap = 4;
+    else if (diffMin < 15) timeGap = 8;
+    else if (diffMin < 60) timeGap = 12;
+    else timeGap = 16;
+
+    // Sender change bonus
+    const senderChanged = prev.type !== curr.type;
+
+    return timeGap + (senderChanged ? 6 : 0);
+}
+
 function DateSeparator({ label }) {
     return (
         <div className="flex items-center justify-center my-4">
@@ -54,7 +75,7 @@ function truncate(text, max = 60) {
 }
 
 // Individual message bubble with swipe + click handlers
-const MessageBubble = ({ msg, isOut, onReply, onActionMenu }) => {
+const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
     const time = formatTime(msg.created_at);
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
@@ -132,6 +153,7 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu }) => {
     return (
         <div
             className={`flex w-full ${isOut ? "justify-end" : "justify-start"} animate-fadeIn`}
+            style={gap > 0 ? { marginTop: `${gap}px` } : undefined}
         >
             <div className="relative flex items-center gap-2" style={{ maxWidth: "75%" }}>
                 {/* Reply indicator (appears on swipe) */}
@@ -203,7 +225,9 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
             const dateKey = getDateKey(msg.created_at);
             const prevDateKey = idx > 0 ? getDateKey(messages[idx - 1].created_at) : null;
             const showDateSep = !!(dateKey && dateKey !== prevDateKey);
-            return { msg, showDateSep };
+            const prev = idx > 0 ? messages[idx - 1] : null;
+            const gap = showDateSep ? 0 : getMessageGap(prev, msg);
+            return { msg, showDateSep, gap };
         }),
         [messages],
     );
@@ -226,7 +250,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
 
     return (
         <div className="flex-grow min-h-0 overflow-y-auto scrollbar-hide">
-          <div className="max-w-2xl mx-auto px-4 py-4 space-y-1">
+          <div className="max-w-2xl mx-auto px-4 py-4">
             {messages.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center p-8 min-h-[60vh]">
                 <div className="w-16 h-16 rounded-full bg-lime-400/10 border border-lime-400/20 flex items-center justify-center mb-4">
@@ -236,7 +260,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                 <p className="text-sm text-zinc-500 mt-1">Начните разговор!</p>
               </div>
             )}
-            {itemsWithSeparators.map(({ msg, showDateSep }) => {
+            {itemsWithSeparators.map(({ msg, showDateSep, gap }) => {
               const isOut = msg.type === "outgoing";
               return (
                 <React.Fragment key={msg.id}>
@@ -248,6 +272,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                     isOut={isOut}
                     onReply={handleReply}
                     onActionMenu={handleActionMenu}
+                    gap={gap}
                   />
                 </React.Fragment>
               );
