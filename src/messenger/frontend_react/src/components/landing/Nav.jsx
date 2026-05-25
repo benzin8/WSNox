@@ -1,0 +1,40 @@
+import { Link } from 'react-router-dom';
+import { MessageCircle } from 'lucide-react';
+
+export function Nav() {
+  return (
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-6 md:px-10"
+      style={{
+        background: 'rgba(9,9,11,0.72)',
+        backdropFilter: 'blur(14px) saturate(1.4)',
+        WebkitBackdropFilter: 'blur(14px) saturate(1.4)',
+        borderBottom: '1px solid rgba(63,63,70,0.25)',
+      }}
+    >
+      <Link to="/" className="flex items-center gap-2.5 group">
+        <div className="w-8 h-8 rounded-lg bg-lime-400 flex items-center justify-center transition-transform duration-300 group-hover:rotate-12">
+          <MessageCircle size={18} strokeWidth={2.5} className="text-zinc-900" />
+        </div>
+        <span className="text-lg font-semibold tracking-tight text-zinc-100">WSNox</span>
+      </Link>
+      <div className="hidden md:flex items-center gap-7 text-sm text-zinc-400">
+        <a href="#features" className="hover:text-zinc-200 transition-colors">Возможности</a>
+        <a href="#how" className="hover:text-zinc-200 transition-colors">Как работает</a>
+        <a href="#opensource" className="hover:text-zinc-200 transition-colors">Open source</a>
+        <Link
+          to="/auth/login"
+          className="px-4 py-1.5 rounded-lg bg-lime-400 text-zinc-900 font-semibold hover:bg-lime-300 transition-colors"
+        >
+          Войти
+        </Link>
+      </div>
+      <Link
+        to="/auth/login"
+        className="md:hidden px-4 py-1.5 rounded-lg bg-lime-400 text-zinc-900 font-semibold text-sm"
+      >
+        Войти
+      </Link>
+    </nav>
+  );
+}
