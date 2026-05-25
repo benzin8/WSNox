@@ -4,12 +4,14 @@ import { Lock, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
 import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
+import { useEnergy } from '../../features/energy';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function LoginPage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { beginTransit } = useEnergy();
     const email = location.state?.email || '';
 
     const [password, setPassword] = useState('');
@@ -34,7 +36,9 @@ export default function LoginPage() {
             localStorage.setItem('access_token', access_token);
             localStorage.setItem('refresh_token', refresh_token);
 
-            navigate('/chat');
+            beginTransit();
+            setTimeout(() => navigate('/chat'), 950);
+            return;
         } catch (err) {
             if (err.response?.data?.detail === 'Email not verified') {
                 navigate('/auth/send-code', { state: { email } });

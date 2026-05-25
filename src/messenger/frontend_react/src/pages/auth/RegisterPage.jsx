@@ -5,12 +5,14 @@ import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
 import PasswordStrengthBar from '../../components/auth/PasswordStrengthBar';
 import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
+import { useEnergy } from '../../features/energy';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function RegisterPage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { beginTransit } = useEnergy();
     const email = location.state?.email || '';
 
     const [formData, setFormData] = useState({ name: '', username: '', password: '' });
@@ -36,7 +38,9 @@ export default function RegisterPage() {
             localStorage.setItem('refresh_token', refresh_token);
 
             window.dispatchEvent(new Event('storage'));
-            navigate('/chat');
+            beginTransit();
+            setTimeout(() => navigate('/chat'), 950);
+            return;
         } catch (err) {
             if (err.response?.data?.detail === 'Email not verified') {
                 navigate('/auth/send-code', { state: { email } });
@@ -127,7 +131,8 @@ export default function RegisterPage() {
                                 localStorage.setItem('access_token', 'dev-skip');
                                 localStorage.setItem('refresh_token', 'dev-skip');
                                 window.dispatchEvent(new Event('storage'));
-                                navigate('/chat');
+                                beginTransit();
+                                setTimeout(() => navigate('/chat'), 950);
                             }}
                             className="w-full inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl font-semibold text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
                         >

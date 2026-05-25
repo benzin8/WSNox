@@ -6,6 +6,7 @@ import { useChatSocket } from '../../hooks/useChatSocket';
 import { usePresence } from '../../hooks/usePresence';
 import { useProfile } from '../../hooks/useProfile';
 import { useEdgeSwipe } from '../../hooks/useEdgeSwipe';
+import { useEnergy } from '../../features/energy';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
@@ -89,6 +90,11 @@ function ChatPage() {
   const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
+  const { settleInChat, randomInChat } = useEnergy();
+
+  useEffect(() => {
+    settleInChat();
+  }, [settleInChat]);
 
 
   // Auto-scroll. Skip when the chat panel is offscreen on mobile —
@@ -350,6 +356,7 @@ function ChatPage() {
   // Выбор чата
   const handleSelectChat = async (selectedChat) => {
     setChatListBlurred(false);
+    randomInChat();
     if (selectedChat.recipient) {
       setActiveChat(selectedChat);
       setChatName(selectedChat.recipient.display_name || selectedChat.recipient.name);
