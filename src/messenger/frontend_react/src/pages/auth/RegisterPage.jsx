@@ -4,6 +4,7 @@ import { Sparkles, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
 import PasswordStrengthBar from '../../components/auth/PasswordStrengthBar';
+import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -54,8 +55,7 @@ export default function RegisterPage() {
 
     return (
         <div className="min-h-dvh flex items-center justify-center p-4 bg-zinc-950 relative overflow-hidden">
-            {/* Glow */}
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-lime-400/[0.04] blur-[120px] pointer-events-none" />
+            <AuthBackdrop step="register" />
 
             <div className="relative w-full max-w-md">
                 {/* Pill badge */}
