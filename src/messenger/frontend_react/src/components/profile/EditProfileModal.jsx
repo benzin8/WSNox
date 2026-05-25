@@ -54,13 +54,13 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                     </button>
                 </div>
 
-                {/* Tabs — pill style with lime active */}
-                <div className="flex gap-1 rounded-xl p-1 border border-zinc-800/80 bg-zinc-900/50">
+                {/* Tabs — pill style with lime active, horizontal scroll on overflow */}
+                <div className="flex gap-1 rounded-xl p-1 border border-zinc-800/80 bg-zinc-900/50 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {tabs.map((t) => (
                         <button
                             key={t.id}
                             onClick={() => setActiveTab(t.id)}
-                            className={`flex-1 text-xs font-semibold py-1.5 rounded-lg transition-all duration-300 ${
+                            className={`flex-shrink-0 whitespace-nowrap text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-300 ${
                                 activeTab === t.id
                                     ? "bg-lime-400/10 text-lime-400 border border-lime-400/20"
                                     : "text-zinc-400 hover:text-zinc-200 border border-transparent"
