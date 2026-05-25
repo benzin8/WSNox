@@ -4,7 +4,7 @@ import { ChatPreview } from './ChatPreview';
 
 export function Hero() {
   return (
-    <section className="relative h-[900px] flex items-center justify-center px-6 pt-16 overflow-hidden">
+    <section className="relative h-[1000px] flex items-start justify-center px-6 pt-28 overflow-hidden">
       {/* Glow center */}
       <div
         className="absolute pointer-events-none rounded-full"
