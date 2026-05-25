@@ -31,7 +31,7 @@ export function Terminal() {
         <div className="pl-5 mb-1">
           <span className="text-lime-400">$</span>{' '}
           <span className="text-zinc-200">git clone </span>
-          <span className="text-amber-300">github.com/wsnox/wsnox</span>
+          <span className="text-amber-300">github.com/benzin8/WSNox</span>
         </div>
         <div className="pl-5 mb-1">
           <span className="text-lime-400">$</span>{' '}

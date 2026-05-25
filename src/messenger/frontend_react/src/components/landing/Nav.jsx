@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MessageCircle } from 'lucide-react';
+import { WSNoxLogo } from './WSNoxLogo';
 
 export function Nav() {
   return (
@@ -13,9 +13,10 @@ export function Nav() {
       }}
     >
       <Link to="/" className="flex items-center gap-2.5 group">
-        <div className="w-8 h-8 rounded-lg bg-lime-400 flex items-center justify-center transition-transform duration-300 group-hover:rotate-12">
-          <MessageCircle size={18} strokeWidth={2.5} className="text-zinc-900" />
-        </div>
+        <WSNoxLogo
+          size={32}
+          className="text-lime-400 transition-transform duration-300 group-hover:rotate-12"
+        />
         <span className="text-lg font-semibold tracking-tight text-zinc-100">WSNox</span>
       </Link>
       <div className="hidden md:flex items-center gap-7 text-sm text-zinc-400">

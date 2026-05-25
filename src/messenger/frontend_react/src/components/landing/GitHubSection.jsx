@@ -2,7 +2,7 @@ import { Github, Star, GitFork, Users, Code, Heart, ArrowUpRight } from 'lucide-
 import { Eyebrow } from './Eyebrow';
 import { Terminal } from './Terminal';
 
-const GITHUB_URL = 'https://github.com/wsnox/wsnox';
+const GITHUB_URL = 'https://github.com/benzin8/WSNox';
 
 export function GitHubSection() {
   return (
@@ -85,7 +85,7 @@ export function GitHubSection() {
                     <span className="text-[10px] uppercase tracking-[0.18em] text-zinc-800/80 font-mono">
                       github.com
                     </span>
-                    <span className="font-bold text-sm">wsnox / wsnox</span>
+                    <span className="font-bold text-sm">benzin8 / WSNox</span>
                   </span>
                   <span
                     className="ml-2 w-9 h-9 rounded-lg flex items-center justify-center"
