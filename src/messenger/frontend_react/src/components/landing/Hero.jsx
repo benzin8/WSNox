@@ -79,7 +79,7 @@ export function Hero() {
             className="group inline-flex items-center justify-center gap-2 rounded-xl font-semibold text-sm bg-lime-400 text-zinc-900 px-7 py-3.5 hover:bg-lime-300 transition-colors"
             style={{ boxShadow: '0 12px 32px rgba(163,230,53,0.30)' }}
           >
-            Начать общение
+            Попробовать
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
           </Link>
           <a
