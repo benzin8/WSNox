@@ -15,18 +15,15 @@ function getSystemTheme() {
     : "light";
 }
 
-function resolveTheme(preference) {
-  if (preference === "system") return getSystemTheme();
-  return preference;
-}
-
 function loadPreference() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "dark" || stored === "light" || stored === "system") {
       return stored;
     }
-  } catch {}
+  } catch {
+    // localStorage unavailable (private mode / disabled) — fall through to default
+  }
   return "dark";
 }
 
@@ -64,7 +61,9 @@ export function ThemeProvider({ children }) {
     setPreferenceState(pref);
     try {
       localStorage.setItem(STORAGE_KEY, pref);
-    } catch {}
+    } catch {
+      // localStorage write rejected (private mode / quota) — preference still lives in state
+    }
   }, []);
 
   const value = useMemo(
