@@ -23,19 +23,27 @@ export function Nav() {
         <a href="#features" className="hover:text-zinc-200 transition-colors">Возможности</a>
         <a href="#how" className="hover:text-zinc-200 transition-colors">Как работает</a>
         <a href="#opensource" className="hover:text-zinc-200 transition-colors">Open source</a>
-        <Link
-          to="/auth/login"
-          className="px-4 py-1.5 rounded-lg bg-lime-400 text-zinc-900 font-semibold hover:bg-lime-300 transition-colors"
-        >
+        <Link to="/auth/login" className="text-zinc-300 hover:text-lime-400 transition-colors">
           Войти
         </Link>
+        <Link
+          to="/auth/send-code"
+          className="px-4 py-1.5 rounded-lg bg-lime-400 text-zinc-900 font-semibold hover:bg-lime-300 transition-colors"
+        >
+          Попробовать
+        </Link>
       </div>
-      <Link
-        to="/auth/login"
-        className="md:hidden px-4 py-1.5 rounded-lg bg-lime-400 text-zinc-900 font-semibold text-sm"
-      >
-        Войти
-      </Link>
+      <div className="md:hidden flex items-center gap-3 text-sm">
+        <Link to="/auth/login" className="text-zinc-300 hover:text-lime-400 transition-colors">
+          Войти
+        </Link>
+        <Link
+          to="/auth/send-code"
+          className="px-4 py-1.5 rounded-lg bg-lime-400 text-zinc-900 font-semibold"
+        >
+          Попробовать
+        </Link>
+      </div>
     </nav>
   );
 }
