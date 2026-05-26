@@ -38,7 +38,7 @@ export function Hero() {
       />
 
       <div className="relative z-10 max-w-3xl mx-auto text-center">
-        <div className="flex justify-center mb-8">
+        <div className="hero-enter flex justify-center mb-8">
           <div
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs text-zinc-400"
             style={{
@@ -55,7 +55,7 @@ export function Hero() {
         </div>
 
         <h1
-          className="font-bold tracking-tight mb-6 text-zinc-100 text-5xl md:text-[86px]"
+          className="hero-enter font-bold tracking-tight mb-6 text-zinc-100 text-5xl md:text-[86px]"
           style={{ lineHeight: 1.04, letterSpacing: '-0.03em' }}
         >
           Общение без{' '}
@@ -68,12 +68,12 @@ export function Hero() {
           </span>
         </h1>
 
-        <p className="text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed text-lg md:text-xl">
+        <p className="hero-enter text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed text-lg md:text-xl">
           Быстрый, приватный, минималистичный. WSNox — мессенджер,
           который не мешает вам думать и общаться.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+        <div className="hero-enter flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             to="/auth/send-code"
             className="group inline-flex items-center justify-center gap-2 rounded-xl font-semibold text-sm bg-lime-400 text-zinc-900 px-7 py-3.5 hover:bg-lime-300 transition-colors"
@@ -96,7 +96,7 @@ export function Hero() {
           </a>
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-xs text-zinc-500">
+        <div className="hero-enter mt-10 flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-xs text-zinc-500">
           <div className="flex items-center gap-1.5">
             <Check size={14} className="text-lime-400" />
             Без номера телефона

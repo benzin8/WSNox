@@ -1,3 +1,5 @@
+import { useReveal } from './useReveal';
+
 const STATS = [
   { k: '<30ms', v: 'Доставка сообщения' },
   { k: '0',     v: 'Трекеров и рекламы' },
@@ -6,11 +8,13 @@ const STATS = [
 ];
 
 export function Stats() {
+  const ref = useReveal(0.2);
   return (
     <section className="relative px-6 md:px-10 py-16">
       <div className="max-w-6xl mx-auto">
         <div
-          className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl overflow-hidden"
+          ref={ref}
+          className="reveal-scale grid grid-cols-2 md:grid-cols-4 gap-px rounded-2xl overflow-hidden"
           style={{
             background: 'rgba(63,63,70,0.4)',
             border: '1px solid rgba(63,63,70,0.4)',

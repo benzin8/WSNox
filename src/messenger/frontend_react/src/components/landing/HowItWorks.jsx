@@ -1,5 +1,6 @@
 import { Mail, Shield, MessageCircle, Sparkles } from 'lucide-react';
 import { Eyebrow } from './Eyebrow';
+import { useReveal } from './useReveal';
 
 const STEPS = [
   { n: '01', icon: Mail,           title: 'Email',  desc: 'Введите свой email. Без номера телефона.' },
@@ -7,11 +8,42 @@ const STEPS = [
   { n: '03', icon: MessageCircle,  title: 'Готово', desc: 'Заполните профиль и начинайте общение.' },
 ];
 
+function StepCard({ s, index }) {
+  const ref = useReveal(0.15);
+  return (
+    <div
+      ref={ref}
+      className="reveal-up relative flex flex-col items-center text-center"
+      style={{ transitionDelay: `${index * 120}ms` }}
+    >
+      <div
+        className="relative w-20 h-20 rounded-2xl flex items-center justify-center mb-5"
+        style={{
+          background: '#09090b',
+          border: '1px solid rgba(163,230,53,0.25)',
+          boxShadow: '0 0 40px rgba(163,230,53,0.10)',
+        }}
+      >
+        <s.icon size={28} className="text-lime-400" />
+        <div
+          className="absolute -top-2 -right-2 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold"
+          style={{ background: '#a3e635', color: '#18181b' }}
+        >
+          {s.n}
+        </div>
+      </div>
+      <h3 className="text-lg font-bold text-zinc-100 mb-1.5">{s.title}</h3>
+      <p className="text-sm text-zinc-500 max-w-[220px] leading-relaxed">{s.desc}</p>
+    </div>
+  );
+}
+
 export function HowItWorks() {
+  const headingRef = useReveal(0.15);
   return (
     <section id="how" className="relative px-6 md:px-10 py-24">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
+        <div ref={headingRef} className="reveal-up text-center mb-14">
           <div className="flex justify-center mb-4">
             <Eyebrow icon={Sparkles}>Регистрация за 30 секунд</Eyebrow>
           </div>
@@ -35,27 +67,8 @@ export function HowItWorks() {
                 'linear-gradient(to right, transparent, rgba(163,230,53,0.35) 20%, rgba(163,230,53,0.35) 80%, transparent)',
             }}
           />
-          {STEPS.map((s) => (
-            <div key={s.n} className="relative flex flex-col items-center text-center">
-              <div
-                className="relative w-20 h-20 rounded-2xl flex items-center justify-center mb-5"
-                style={{
-                  background: '#09090b',
-                  border: '1px solid rgba(163,230,53,0.25)',
-                  boxShadow: '0 0 40px rgba(163,230,53,0.10)',
-                }}
-              >
-                <s.icon size={28} className="text-lime-400" />
-                <div
-                  className="absolute -top-2 -right-2 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold"
-                  style={{ background: '#a3e635', color: '#18181b' }}
-                >
-                  {s.n}
-                </div>
-              </div>
-              <h3 className="text-lg font-bold text-zinc-100 mb-1.5">{s.title}</h3>
-              <p className="text-sm text-zinc-500 max-w-[220px] leading-relaxed">{s.desc}</p>
-            </div>
+          {STEPS.map((s, i) => (
+            <StepCard key={s.n} s={s} index={i} />
           ))}
         </div>
       </div>

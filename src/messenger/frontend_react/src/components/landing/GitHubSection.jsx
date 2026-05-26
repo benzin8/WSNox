@@ -1,15 +1,18 @@
 import { Github, Star, GitFork, Users, Code, Heart, ArrowUpRight } from 'lucide-react';
 import { Eyebrow } from './Eyebrow';
 import { Terminal } from './Terminal';
+import { useReveal } from './useReveal';
 
 const GITHUB_URL = 'https://github.com/benzin8/WSNox';
 
 export function GitHubSection() {
+  const ref = useReveal(0.1);
   return (
     <section id="opensource" className="relative px-6 md:px-10 py-32">
       <div className="max-w-6xl mx-auto">
         <div
-          className="relative rounded-3xl overflow-hidden"
+          ref={ref}
+          className="reveal-scale relative rounded-3xl overflow-hidden"
           style={{
             background:
               'radial-gradient(ellipse at top right, rgba(163,230,53,0.12) 0%, transparent 60%), linear-gradient(180deg, rgba(24,24,27,0.8) 0%, rgba(9,9,11,1) 100%)',
