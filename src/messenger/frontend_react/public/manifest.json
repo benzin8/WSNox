@@ -10,7 +10,7 @@
   "theme_color": "#09090b",
   "icons": [
     {
-      "src": "/WSNox_logo_128x128.svg",
+      "src": "/WSNox_logo_fresh.svg",
       "sizes": "128x128",
       "type": "image/svg+xml",
       "purpose": "any"
@@ -22,7 +22,7 @@
       "purpose": "any"
     },
     {
-      "src": "/WSNox_logo_128x128.svg",
+      "src": "/WSNox_logo_fresh.svg",
       "sizes": "128x128",
       "type": "image/svg+xml",
       "purpose": "maskable"
