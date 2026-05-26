@@ -1,20 +1,24 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, MessageCircle, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
 import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
 import { AuthCardWrapper } from '../../components/auth/AuthCardWrapper';
+import { useEnergy } from '../../features/energy';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function SendCodePage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { enterAuth } = useEnergy();
     const [email, setEmail] = useState(location.state?.email || '');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const isSubmitting = useRef(false);
+
+    useEffect(() => { enterAuth(); }, [enterAuth]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

@@ -1,21 +1,25 @@
 import { useState, useCallback, useMemo } from 'react';
 import { EnergyContext } from './EnergyContext';
 
-const INITIAL = {
+const AUTH_STATE = {
   x: 50,
   y: 50,
   size: 520,
-  opacity: 0,
-  blur: 130,
-  duration: 600,
-  phase: 'idle',
+  opacity: 0.18,
+  blur: 120,
+  duration: 800,
+  phase: 'auth',
 };
 
 export function EnergyProvider({ children }) {
-  const [orb, setOrb] = useState(INITIAL);
+  const [orb, setOrb] = useState(AUTH_STATE);
 
   const moveTo = useCallback((next) => {
     setOrb((prev) => ({ ...prev, ...next }));
+  }, []);
+
+  const enterAuth = useCallback(() => {
+    setOrb(AUTH_STATE);
   }, []);
 
   const beginTransit = useCallback(() => {
@@ -24,7 +28,7 @@ export function EnergyProvider({ children }) {
       size: 1900,
       opacity: 0.22,
       blur: 200,
-      duration: 950,
+      duration: 1100,
       phase: 'transit',
     });
   }, []);
@@ -54,8 +58,8 @@ export function EnergyProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ orb, moveTo, beginTransit, settleInChat, randomInChat }),
-    [orb, moveTo, beginTransit, settleInChat, randomInChat],
+    () => ({ orb, moveTo, enterAuth, beginTransit, settleInChat, randomInChat }),
+    [orb, moveTo, enterAuth, beginTransit, settleInChat, randomInChat],
   );
 
   return <EnergyContext.Provider value={value}>{children}</EnergyContext.Provider>;

@@ -27,7 +27,7 @@ export function EnergyOrb() {
           `filter ${transitDuration}ms ease`,
         ].join(', '),
         willChange: 'left, top, width, height, opacity',
-        zIndex: orb.phase === 'transit' ? 40 : 0,
+        zIndex: 0,
       }}
     />
   );

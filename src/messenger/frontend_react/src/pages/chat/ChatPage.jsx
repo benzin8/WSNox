@@ -90,10 +90,12 @@ function ChatPage() {
   const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
-  const { settleInChat, randomInChat } = useEnergy();
+  const { orb, settleInChat, randomInChat } = useEnergy();
+  const inTransit = orb.phase === 'transit';
 
   useEffect(() => {
-    settleInChat();
+    const t = setTimeout(() => settleInChat(), 0);
+    return () => clearTimeout(t);
   }, [settleInChat]);
 
 
@@ -480,10 +482,14 @@ function ChatPage() {
 
   return (
     <div
-      className="flex flex-col h-dvh bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
+      className="flex flex-col h-dvh text-zinc-100 overflow-hidden font-sans"
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
+        opacity: inTransit ? 0 : 1,
+        transform: inTransit ? 'scale(1.04)' : 'scale(1)',
+        transition: 'opacity 700ms ease 200ms, transform 900ms cubic-bezier(.4,0,.2,1) 200ms',
+        pointerEvents: inTransit ? 'none' : 'auto',
       }}
     >
       <PushPromptModal />

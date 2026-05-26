@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Lock, ArrowRight } from 'lucide-react';
 import axios from 'axios';
@@ -12,13 +12,15 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 export default function LoginPage() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { beginTransit } = useEnergy();
+    const { enterAuth, beginTransit } = useEnergy();
     const email = location.state?.email || '';
 
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const isSubmitting = useRef(false);
+
+    useEffect(() => { enterAuth(); }, [enterAuth]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

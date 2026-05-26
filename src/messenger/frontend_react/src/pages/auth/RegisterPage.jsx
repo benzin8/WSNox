@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Sparkles, ArrowRight } from 'lucide-react';
 import axios from 'axios';
@@ -13,13 +13,15 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 export default function RegisterPage() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { beginTransit } = useEnergy();
+    const { enterAuth, beginTransit } = useEnergy();
     const email = location.state?.email || '';
 
     const [formData, setFormData] = useState({ name: '', username: '', password: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const isSubmitting = useRef(false);
+
+    useEffect(() => { enterAuth(); }, [enterAuth]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
