@@ -1,6 +1,0 @@
-# Local dev override — exposes backend on host:8000 so vite proxy reaches it.
-# Not for production. Add to .gitignore if you don't want this committed.
-services:
-  backend:
-    ports:
-      - "8000:8000"
