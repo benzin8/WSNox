@@ -13,7 +13,7 @@ export const ChatWindow = ({
 }) => {
     if (!activeChat) {
         return (
-            <div className="flex-grow flex items-center justify-center bg-zinc-950 relative overflow-hidden">
+            <div className="flex-grow flex items-center justify-center relative overflow-hidden">
                 {/* Glow */}
                 <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-lime-400/[0.04] blur-[120px] pointer-events-none" />
                 <div className="relative flex flex-col items-center text-center p-8">
@@ -27,7 +27,7 @@ export const ChatWindow = ({
         );
     }
     return (
-      <div className="flex-grow flex flex-col min-h-0 bg-zinc-950 shadow-2xl">
+      <div className="flex-grow flex flex-col min-h-0 shadow-2xl">
         {/* Chat Header */}
         <header className="h-20 flex-shrink-0 border-b border-zinc-800/80 flex items-center justify-between px-6 bg-zinc-950/90 backdrop-blur-md">
           <div className="flex items-center gap-4 min-w-0">

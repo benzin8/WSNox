@@ -1,20 +1,26 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Shield, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
+import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
+import { AuthCardWrapper } from '../../components/auth/AuthCardWrapper';
+import { useEnergy } from '../../features/energy';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function VerifyCodePage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { enterAuth } = useEnergy();
     const email = location.state?.email || '';
 
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const isSubmitting = useRef(false);
+
+    useEffect(() => { enterAuth(); }, [enterAuth]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -48,10 +54,9 @@ export default function VerifyCodePage() {
 
     return (
         <div className="min-h-dvh flex items-center justify-center p-4 bg-zinc-950 relative overflow-hidden">
-            {/* Glow */}
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-lime-400/[0.04] blur-[120px] pointer-events-none" />
+            <AuthBackdrop step="code" />
 
-            <div className="relative w-full max-w-md">
+            <AuthCardWrapper>
                 {/* Pill badge */}
                 <div className="flex justify-center mb-6">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-700/60 bg-zinc-800/40 text-xs text-zinc-400 backdrop-blur-sm">
@@ -107,9 +112,17 @@ export default function VerifyCodePage() {
                         >
                             Сменить email
                         </button>
+
+                        <button
+                            type="button"
+                            onClick={() => navigate('/auth/register', { state: { email } })}
+                            className="w-full inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl font-semibold text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+                        >
+                            Пропустить →
+                        </button>
                     </form>
                 </div>
-            </div>
+            </AuthCardWrapper>
         </div>
     );
 }

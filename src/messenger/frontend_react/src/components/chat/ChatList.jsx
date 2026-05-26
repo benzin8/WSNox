@@ -1,7 +1,9 @@
 import React from 'react';
-import { User } from 'lucide-react';
+import { User, Sparkles } from 'lucide-react';
+import { useEnergy } from '../../features/energy';
 
 export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => {
+  const { randomInChat } = useEnergy();
   // Сортируем чаты по последнему сообщению или времени обновления
   const sortedChats = [...chats].sort((a, b) => {
     const timeA = new Date(a.last_message_time || a.updated_at || 0).getTime();
@@ -16,7 +18,15 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
           <User size={32} className="text-lime-400" />
         </div>
         <p className="text-sm font-medium text-zinc-400">Пока нет чатов</p>
-        <p className="text-xs text-zinc-500 mt-1">Найдите собеседника через поиск</p>
+        <p className="text-xs text-zinc-500 mt-1 mb-4">Найдите собеседника через поиск</p>
+        <button
+          type="button"
+          onClick={() => randomInChat()}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs text-zinc-400 border border-zinc-700/60 bg-zinc-800/40 hover:border-lime-400/40 hover:text-lime-400 transition-colors"
+        >
+          <Sparkles size={12} className="text-lime-400" />
+          Демо анимации энергии
+        </button>
       </div>
     );
   }

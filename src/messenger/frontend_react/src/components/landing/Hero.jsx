@@ -4,7 +4,7 @@ import { ChatPreview } from './ChatPreview';
 
 export function Hero() {
   return (
-    <section className="relative h-[900px] flex items-center justify-center px-6 pt-16 overflow-hidden">
+    <section className="relative h-[1000px] flex items-start justify-center px-6 pt-28 overflow-hidden">
       {/* Glow center */}
       <div
         className="absolute pointer-events-none rounded-full"
@@ -37,7 +37,7 @@ export function Hero() {
         }}
       />
 
-      <div className="relative max-w-3xl mx-auto text-center">
+      <div className="relative z-10 max-w-3xl mx-auto text-center">
         <div className="flex justify-center mb-8">
           <div
             className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs text-zinc-400"

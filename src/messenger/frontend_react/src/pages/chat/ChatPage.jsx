@@ -6,6 +6,7 @@ import { useChatSocket } from '../../hooks/useChatSocket';
 import { usePresence } from '../../hooks/usePresence';
 import { useProfile } from '../../hooks/useProfile';
 import { useEdgeSwipe } from '../../hooks/useEdgeSwipe';
+import { useEnergy } from '../../features/energy';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
@@ -89,6 +90,13 @@ function ChatPage() {
   const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
+  const { orb, settleInChat, randomInChat } = useEnergy();
+  const inTransit = orb.phase === 'transit';
+
+  useEffect(() => {
+    const t = setTimeout(() => settleInChat(), 0);
+    return () => clearTimeout(t);
+  }, [settleInChat]);
 
 
   // Auto-scroll. Skip when the chat panel is offscreen on mobile —
@@ -350,6 +358,7 @@ function ChatPage() {
   // Выбор чата
   const handleSelectChat = async (selectedChat) => {
     setChatListBlurred(false);
+    randomInChat();
     if (selectedChat.recipient) {
       setActiveChat(selectedChat);
       setChatName(selectedChat.recipient.display_name || selectedChat.recipient.name);
@@ -473,10 +482,14 @@ function ChatPage() {
 
   return (
     <div
-      className="flex flex-col h-dvh bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
+      className="flex flex-col h-dvh text-zinc-100 overflow-hidden font-sans"
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'env(safe-area-inset-bottom)',
+        opacity: inTransit ? 0 : 1,
+        transform: inTransit ? 'scale(1.04)' : 'scale(1)',
+        transition: 'opacity 700ms ease 200ms, transform 900ms cubic-bezier(.4,0,.2,1) 200ms',
+        pointerEvents: inTransit ? 'none' : 'auto',
       }}
     >
       <PushPromptModal />

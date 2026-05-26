@@ -1,20 +1,26 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Lock, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
+import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
+import { AuthCardWrapper } from '../../components/auth/AuthCardWrapper';
+import { useEnergy } from '../../features/energy';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 export default function LoginPage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const { enterAuth, beginTransit } = useEnergy();
     const email = location.state?.email || '';
 
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const isSubmitting = useRef(false);
+
+    useEffect(() => { enterAuth(); }, [enterAuth]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -33,7 +39,9 @@ export default function LoginPage() {
             localStorage.setItem('access_token', access_token);
             localStorage.setItem('refresh_token', refresh_token);
 
-            navigate('/chat');
+            beginTransit();
+            setTimeout(() => navigate('/chat'), 950);
+            return;
         } catch (err) {
             if (err.response?.data?.detail === 'Email not verified') {
                 navigate('/auth/send-code', { state: { email } });
@@ -52,10 +60,9 @@ export default function LoginPage() {
 
     return (
         <div className="min-h-dvh flex items-center justify-center p-4 bg-zinc-950 relative overflow-hidden">
-            {/* Glow */}
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-lime-400/[0.04] blur-[120px] pointer-events-none" />
+            <AuthBackdrop step="login" />
 
-            <div className="relative w-full max-w-md">
+            <AuthCardWrapper>
                 {/* Pill badge */}
                 <div className="flex justify-center mb-6">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-zinc-700/60 bg-zinc-800/40 text-xs text-zinc-400 backdrop-blur-sm">
@@ -116,7 +123,7 @@ export default function LoginPage() {
                         </button>
                     </form>
                 </div>
-            </div>
+            </AuthCardWrapper>
         </div>
     );
 }
