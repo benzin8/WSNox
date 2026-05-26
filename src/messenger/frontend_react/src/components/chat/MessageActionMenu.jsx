@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Reply, Trash2, Copy } from "lucide-react";
+import { Reply, Trash2, Copy, Pencil } from "lucide-react";
 
-export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, onClose }) => {
+export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, onEdit, onClose }) => {
   const overlayRef = useRef(null);
   const msgRef = useRef(null);
 
@@ -55,6 +55,13 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
           <div className="flex items-end gap-2">
             <span className="whitespace-pre-wrap break-words">{message.text}</span>
             <span className="flex items-center gap-1 shrink-0 self-end mb-0.5">
+              {message.edited_at && (
+                <span className={`text-[10px] leading-none select-none ${
+                  isOut ? "text-zinc-700/60" : "text-zinc-500/70"
+                }`}>
+                  ред.
+                </span>
+              )}
               {time && (
                 <span className={`text-[10px] leading-none select-none ${
                   isOut ? "text-zinc-700/70" : "text-zinc-500"
@@ -89,6 +96,15 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
             <Copy size={16} className="text-lime-400" />
             <span>Копировать</span>
           </button>
+          {isOut && (
+            <button
+              onClick={() => { onEdit(message); onClose(); }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-zinc-800/60 border border-zinc-700/60 hover:border-zinc-600 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
+            >
+              <Pencil size={16} className="text-lime-400" />
+              <span>Изменить</span>
+            </button>
+          )}
           {isOut && (
             <button
               onClick={() => { onDelete(message); onClose(); }}

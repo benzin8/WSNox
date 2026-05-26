@@ -106,6 +106,17 @@ export const useChatSocket = (token, activeChatIdRef) => {
                     return;
                 }
 
+                if (data.type === "message_edited") {
+                    if (data.chat_id === activeChatIdRef?.current) {
+                        setMessages((prev) => prev.map((m) =>
+                            m.id === data.message_id
+                                ? { ...m, text: data.text, edited_at: data.edited_at }
+                                : m
+                        ));
+                    }
+                    return;
+                }
+
                 if (data.chat_id === activeChatIdRef?.current) {
                     setMessages((prev) => [...prev, {
                         ...data,
@@ -165,10 +176,22 @@ export const useChatSocket = (token, activeChatIdRef) => {
         }
     };
 
+    const editMessage = (messageId, chatId, newText) => {
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({
+                type: "edit_message",
+                message_id: messageId,
+                chat_id: chatId,
+                text: newText,
+            }));
+        }
+    };
+
     return {
         messages,
         setMessages,
         sendMessage,
+        editMessage,
         isConnected,
         isConnecting,
         lastReceivedMessage,

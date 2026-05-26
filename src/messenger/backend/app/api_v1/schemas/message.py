@@ -29,10 +29,11 @@ class MessageBase(BaseModel):
     created_at: datetime
     msg_type: str
     read_at: Optional[datetime] = None
+    edited_at: Optional[datetime] = None
     reply_to_id: Optional[int] = None
     reply_to_text: Optional[str] = None
 
-    @field_serializer("created_at", "read_at", when_used="json")
+    @field_serializer("created_at", "read_at", "edited_at", when_used="json")
     def _serialize_dt(self, value: Optional[datetime]) -> Optional[str]:
         return _utc_iso(value)
 

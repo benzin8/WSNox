@@ -36,6 +36,7 @@ function ChatPage() {
   const [partnerPresencePreference, setPartnerPresencePreference] = useState(null);
   const [chatListBlurred, setChatListBlurred] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
+  const [editingMessage, setEditingMessage] = useState(null);
 
   // Tracks the chat currently held in `activeChat` state — regardless of
   // whether it's visually on screen on mobile. Used by reconnect refetch.
@@ -64,7 +65,7 @@ function ChatPage() {
     return () => mql.removeEventListener?.('change', onChange);
   }, []);
 
-  const { messages, setMessages, sendMessage, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
+  const { messages, setMessages, sendMessage, editMessage, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { settings: notificationSettings } = useNotificationSettings();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
@@ -144,6 +145,7 @@ function ChatPage() {
           type: m.sender_id === currentUser.id ? 'outgoing' : 'incoming',
           reply_to_id: m.reply_to_id || null,
           reply_to_text: m.reply_to_text || null,
+          edited_at: m.edited_at || null,
         })));
       });
     }
@@ -254,6 +256,7 @@ function ChatPage() {
           type: m.sender_id === currentUser?.id ? 'outgoing' : 'incoming',
           reply_to_id: m.reply_to_id || null,
           reply_to_text: m.reply_to_text || null,
+          edited_at: m.edited_at || null,
         }));
         setMessages(mappedMsgs);
       });
@@ -275,6 +278,7 @@ function ChatPage() {
           type: m.sender_id === currentUser.id ? 'outgoing' : 'incoming',
           reply_to_id: m.reply_to_id || null,
           reply_to_text: m.reply_to_text || null,
+          edited_at: m.edited_at || null,
         }));
         setMessages(mappedMsgs);
         // Send WS read receipt for the latest incoming message
@@ -334,6 +338,25 @@ function ChatPage() {
     setReplyTo(null);
   }, []);
 
+  const handleEditMessage = useCallback((msg) => {
+    setEditingMessage(msg);
+    setReplyTo(null);
+  }, []);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingMessage(null);
+  }, []);
+
+  const handleConfirmEdit = useCallback((msg, newText) => {
+    if (!activeChat?.id || !msg.id) return;
+    // Optimistic update
+    setMessages(prev => prev.map(m =>
+      m.id === msg.id ? { ...m, text: newText, edited_at: new Date().toISOString() } : m
+    ));
+    editMessage(msg.id, activeChat.id, newText);
+    setEditingMessage(null);
+  }, [activeChat?.id, editMessage, setMessages]);
+
   const handleDeleteMessage = useCallback((msg) => {
     // Only outgoing messages with a server-assigned id can be deleted
     if (!msg.id || !activeChat?.id) return;
@@ -364,6 +387,7 @@ function ChatPage() {
       setChatName(selectedChat.recipient.display_name || selectedChat.recipient.name);
       setMobileView('chat');
       setReplyTo(null);
+      setEditingMessage(null);
       setChats(prevChats => prevChats.map(c =>
         c.id === selectedChat.id ? { ...c, unread_count: 0 } : c
       ));
@@ -613,6 +637,10 @@ function ChatPage() {
              onReply={handleReply}
              onCancelReply={handleCancelReply}
              onDeleteMessage={handleDeleteMessage}
+             editingMessage={editingMessage}
+             onEditMessage={handleEditMessage}
+             onCancelEdit={handleCancelEdit}
+             onConfirmEdit={handleConfirmEdit}
              />
           </div>
         </div>

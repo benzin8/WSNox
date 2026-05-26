@@ -254,6 +254,34 @@ class ConnectionManager:
         except asyncio.CancelledError:
             await pubsub.unsubscribe(channel)
 
+    async def edits_listener(self) -> None:
+        """Listen for message edit events and fan out to chat participants."""
+        redis = get_redis()
+        pubsub = redis.pubsub()
+        channel = REDIS_CHAT_CHANNEL + ":edits"
+        await pubsub.subscribe(channel)
+
+        try:
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                data = json.loads(message["data"])
+                if data.get("type") != "message_edited":
+                    continue
+                for uid, sockets in list(self.active_connections.items()):
+                    dead = []
+                    for ws in sockets:
+                        try:
+                            await ws.send_json(data)
+                        except Exception:  # noqa: BLE001
+                            dead.append(ws)
+                    for ws in dead:
+                        sockets.discard(ws)
+                    if not sockets and uid in self.active_connections:
+                        del self.active_connections[uid]
+        except asyncio.CancelledError:
+            await pubsub.unsubscribe(channel)
+
     async def _should_push(self, recipient_id: int, chat_id: int) -> bool:
         """Apply notification preferences before sending a push.
 
@@ -388,6 +416,29 @@ async def websocket_chat(websocket: WebSocket) -> None:
                                     "message_id": del_message_id,
                                 })
                                 await redis.publish(REDIS_CHAT_CHANNEL + ":deletions", del_payload)
+                continue
+
+            if msg_type == "edit_message":
+                edit_message_id = msg_data.get("message_id")
+                edit_chat_id = msg_data.get("chat_id")
+                edit_text = msg_data.get("text")
+                if edit_message_id and edit_chat_id and edit_text:
+                    try:
+                        edit_message_id = int(edit_message_id)
+                        edit_chat_id = int(edit_chat_id)
+                    except (TypeError, ValueError):
+                        continue
+                    async with AsyncSessionLocal() as db:
+                        updated_msg = await MessageCRUD.edit_message(db, edit_message_id, user_id, edit_text)
+                        if updated_msg:
+                            edit_payload = json.dumps({
+                                "type": "message_edited",
+                                "chat_id": edit_chat_id,
+                                "message_id": edit_message_id,
+                                "text": edit_text,
+                                "edited_at": _utc_iso(updated_msg.edited_at),
+                            })
+                            await redis.publish(REDIS_CHAT_CHANNEL + ":edits", edit_payload)
                 continue
 
             chat_id = msg_data.get("chat_id")

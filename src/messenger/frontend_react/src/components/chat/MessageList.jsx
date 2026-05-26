@@ -194,6 +194,13 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
                     <div className="flex items-end gap-2">
                         <span className="whitespace-pre-wrap break-words">{msg.text}</span>
                         <span className="flex items-center gap-1 shrink-0 self-end mb-0.5">
+                            {msg.edited_at && (
+                                <span className={`text-[10px] leading-none select-none ${
+                                    isOut ? "text-zinc-700/60" : "text-zinc-500/70"
+                                }`}>
+                                    ред.
+                                </span>
+                            )}
                             {time && (
                                 <span className={`text-[10px] leading-none select-none ${
                                     isOut ? "text-zinc-700/70" : "text-zinc-500"
@@ -217,7 +224,7 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
     );
 };
 
-export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage }) => {
+export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage, onEditMessage }) => {
     const [actionMsg, setActionMsg] = useState(null);
 
     const itemsWithSeparators = useMemo(
@@ -232,9 +239,19 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
         [messages],
     );
 
+    const [toast, setToast] = useState(null);
+    const toastTimerRef = useRef(null);
+
+    const showToast = useCallback((text) => {
+        if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+        setToast(text);
+        toastTimerRef.current = setTimeout(() => setToast(null), 2000);
+    }, []);
+
     const handleCopy = useCallback((text) => {
         navigator.clipboard?.writeText(text);
-    }, []);
+        showToast("Скопировано");
+    }, [showToast]);
 
     const handleReply = useCallback((msg) => {
         onReply?.(msg);
@@ -242,7 +259,12 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
 
     const handleDelete = useCallback((msg) => {
         onDeleteMessage?.(msg);
-    }, [onDeleteMessage]);
+        showToast("Удалено");
+    }, [onDeleteMessage, showToast]);
+
+    const handleEdit = useCallback((msg) => {
+        onEditMessage?.(msg);
+    }, [onEditMessage]);
 
     const handleActionMenu = useCallback((msg) => {
         setActionMsg(msg);
@@ -280,6 +302,15 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Toast notification */}
+          {toast && (
+            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-fadeIn">
+              <div className="px-4 py-2 bg-zinc-800/90 border border-zinc-700/60 rounded-xl text-zinc-100 text-sm font-medium backdrop-blur-sm shadow-lg">
+                {toast}
+              </div>
+            </div>
+          )}
+
           {/* Action overlay */}
           {actionMsg && (
             <MessageActionMenu
@@ -288,6 +319,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
               onReply={handleReply}
               onDelete={handleDelete}
               onCopy={handleCopy}
+              onEdit={handleEdit}
               onClose={() => setActionMsg(null)}
             />
           )}

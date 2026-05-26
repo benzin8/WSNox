@@ -26,6 +26,7 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), index=True)
     is_read: Mapped[bool] = mapped_column(default=False)
     read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
+    edited_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
 
     chat: Mapped["Chat"] = relationship(
         "Chat",

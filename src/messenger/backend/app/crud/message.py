@@ -71,6 +71,21 @@ class MessageCRUD:
         return True
 
     @staticmethod
+    async def edit_message(db: AsyncSession, message_id: int, user_id: int, new_text: str) -> Message | None:
+        """Edit a message if the user is the sender. Returns updated Message or None."""
+        result = await db.execute(
+            select(Message).where(Message.id == message_id)
+        )
+        message = result.scalar_one_or_none()
+        if not message or message.sender_id != user_id:
+            return None
+        message.encrypted_data = encrypt_message(new_text)
+        message.edited_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(message)
+        return message
+
+    @staticmethod
     async def mark_as_read(db: AsyncSession, chat_id: int, user_id: int) -> int:
         """Mark all unread messages in the chat as read.
 
