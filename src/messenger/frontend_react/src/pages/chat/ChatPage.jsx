@@ -506,7 +506,7 @@ function ChatPage() {
 
   return (
     <div
-      className="flex flex-col h-dvh bg-zinc-950 text-zinc-100 overflow-hidden font-sans"
+      className="flex flex-col h-dvh text-zinc-100 overflow-hidden font-sans"
       style={{
         paddingTop: 'env(safe-area-inset-top)',
         paddingBottom: 'calc(env(safe-area-inset-bottom) / 2)',
