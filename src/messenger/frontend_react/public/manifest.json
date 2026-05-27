@@ -11,19 +11,13 @@
   "icons": [
     {
       "src": "/WSNox_logo_fresh.svg",
-      "sizes": "128x128",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/WSNox_logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
       "src": "/WSNox_logo_fresh.svg",
-      "sizes": "128x128",
+      "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
