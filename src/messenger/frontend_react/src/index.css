@@ -90,6 +90,8 @@
   html {
     height: 100%;
     overflow: hidden;
+    /* Pure black behind safe-area insets on iOS PWA (OLED-friendly) */
+    background-color: #000;
     /* Prevent iOS overscroll / bounce that exposes white/black bg */
     overscroll-behavior: none;
     -webkit-text-size-adjust: 100%;
