@@ -509,7 +509,7 @@ function ChatPage() {
       className="flex flex-col h-dvh text-zinc-100 overflow-hidden font-sans"
       style={{
         paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) / 2)',
         opacity: inTransit ? 0 : 1,
         transform: inTransit ? 'scale(1.04)' : 'scale(1)',
         transition: 'opacity 700ms ease 200ms, transform 900ms cubic-bezier(.4,0,.2,1) 200ms',
