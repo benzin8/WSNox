@@ -645,8 +645,8 @@ function ChatPage() {
           </div>
         </div>
 
-        {/* Profile view modal */}
-        {profileModal && (
+        {/* Profile view modal — hidden while edit modal is open (edit replaces it) */}
+        {profileModal && !showEditModal && (
           <ProfileModal
             profile={profileModal.profile}
             isOwnProfile={profileModal.isOwnProfile}
@@ -655,7 +655,7 @@ function ChatPage() {
           />
         )}
 
-        {/* Edit profile modal — shown on top of ProfileModal */}
+        {/* Edit profile modal — replaces ProfileModal; closing returns to it */}
         {showEditModal && profileModal && (
           <EditProfileModal
             profile={profileModal.profile}
