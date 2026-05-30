@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { X, Save, Lock, Sun, Moon, Monitor } from "lucide-react";
+import { useRef, useState } from "react";
+import { X, Save, Lock, Sun, Moon, Monitor, Upload, Trash2 } from "lucide-react";
 import { NotificationSettingsTab } from "../../features/notifications";
 import { useTheme } from "../../features/theme";
 import PasswordStrengthBar from "../auth/PasswordStrengthBar";
 import { useProfile } from "../../hooks/useProfile";
+import { Avatar } from "./Avatar";
+import { AvatarCropper } from "./AvatarCropper";
 
 const PRESENCE_OPTIONS = [
     { value: "",          label: "Обычный" },
@@ -18,6 +20,66 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
     const [bio, setBio] = useState(profile?.bio || "");
     const [presencePreference, setPresencePreference] = useState(profile?.presence_preference ?? "");
     const [isSaving, setIsSaving] = useState(false);
+
+    const { uploadAvatar, deleteAvatar } = useProfile();
+    const fileInputRef = useRef(null);
+    const [cropSrc, setCropSrc] = useState(null);
+    const [avatarBusy, setAvatarBusy] = useState(false);
+    const [avatarError, setAvatarError] = useState("");
+    const [localAvatar, setLocalAvatar] = useState({
+        url: profile?.avatar_url,
+        thumb: profile?.avatar_thumb_url,
+        uploadedAt: profile?.avatar_uploaded_at,
+    });
+
+    const initials = (profile?.display_name || profile?.name || profile?.username || "")
+        .split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
+
+    const openPicker = () => fileInputRef.current?.click();
+
+    const onFileChange = (e) => {
+        const f = e.target.files?.[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => setCropSrc(reader.result);
+        reader.readAsDataURL(f);
+        e.target.value = "";
+    };
+
+    const handleCropConfirm = async (blob) => {
+        setAvatarBusy(true);
+        setAvatarError("");
+        try {
+            const updated = await uploadAvatar(blob);
+            setLocalAvatar({
+                url: updated.avatar_url,
+                thumb: updated.avatar_thumb_url,
+                uploadedAt: updated.avatar_uploaded_at,
+            });
+            setCropSrc(null);
+        } catch (e) {
+            setAvatarError(String(e));
+        } finally {
+            setAvatarBusy(false);
+        }
+    };
+
+    const handleAvatarDelete = async () => {
+        setAvatarBusy(true);
+        setAvatarError("");
+        try {
+            const updated = await deleteAvatar();
+            setLocalAvatar({
+                url: updated.avatar_url,
+                thumb: updated.avatar_thumb_url,
+                uploadedAt: updated.avatar_uploaded_at,
+            });
+        } catch (e) {
+            setAvatarError(String(e));
+        } finally {
+            setAvatarBusy(false);
+        }
+    };
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -74,6 +136,42 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                 {/* Profile tab */}
                 {activeTab === "profile" && (
                     <>
+                        <div className="flex items-center gap-4">
+                            <Avatar url={localAvatar.url} initials={initials} size={80} />
+                            <div className="flex flex-col gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={openPicker}
+                                    disabled={avatarBusy}
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-lime-400/10 text-lime-400 border border-lime-400/20 hover:bg-lime-400/15 transition-all disabled:opacity-50"
+                                >
+                                    <Upload size={12} />
+                                    {localAvatar.url ? "Изменить фото" : "Загрузить фото"}
+                                </button>
+                                {localAvatar.url && (
+                                    <button
+                                        type="button"
+                                        onClick={handleAvatarDelete}
+                                        disabled={avatarBusy}
+                                        className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-50"
+                                    >
+                                        <Trash2 size={12} />
+                                        Удалить
+                                    </button>
+                                )}
+                                {avatarError && (
+                                    <p className="text-[10px] text-red-400">{avatarError}</p>
+                                )}
+                            </div>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                className="hidden"
+                                onChange={onFileChange}
+                            />
+                        </div>
+
                         <div className="flex flex-col gap-1">
                             <label className="text-xs text-zinc-400 font-medium">Отображаемое имя</label>
                             <input
@@ -148,6 +246,14 @@ export const EditProfileModal = ({ profile, onClose, onSave }) => {
                     </div>
                 )}
             </div>
+
+            {cropSrc && (
+                <AvatarCropper
+                    src={cropSrc}
+                    onCancel={() => setCropSrc(null)}
+                    onConfirm={handleCropConfirm}
+                />
+            )}
         </div>
     );
 };
