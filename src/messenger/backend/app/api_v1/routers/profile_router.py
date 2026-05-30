@@ -54,7 +54,6 @@ async def _build_response(user, viewer_id: int) -> UserProfileResponse:
         bio=p.bio if p else None,
         presence_preference=visible_pref,
         online=online,
-        profile_photos=p.profile_photos if p else [],
         created_at=getattr(user, "created_at", None),
     )
 

@@ -1,4 +1,5 @@
-from sqlalchemy import JSON, Boolean, ForeignKey, String, Text
+from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from messenger.backend.db import Base
@@ -18,6 +19,6 @@ class Profile(Base):
     read_receipts_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
-    profile_photos: Mapped[list] = mapped_column(JSON, default=list)
+    avatar: Mapped[dict | None] = mapped_column(JSONB, nullable=True, default=None)
 
     user: Mapped["User"] = relationship(back_populates="profile")
