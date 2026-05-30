@@ -1,11 +1,14 @@
 from contextlib import asynccontextmanager
 
+import aioboto3
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from messenger import PROJECT_ROOT
+from messenger.backend.core.config import settings
 from messenger.backend.core.redis import close_redis, init_redis
+from messenger.backend.services.storage import S3Storage
 
 from .api_v1.routers import frontend_router
 from .api_v1.routers.auth_router import auth_router
@@ -19,6 +22,21 @@ from .ws.router import ws_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_redis()
+
+    if settings.s3_bucket and settings.s3_access_key_id and settings.s3_secret_access_key:
+        session = aioboto3.Session(
+            aws_access_key_id=settings.s3_access_key_id,
+            aws_secret_access_key=settings.s3_secret_access_key,
+        )
+        app.state.storage = S3Storage(
+            session,
+            endpoint_url=settings.s3_endpoint_url,
+            region=settings.s3_region,
+            bucket=settings.s3_bucket,
+            prefix=settings.s3_prefix,
+        )
+    else:
+        app.state.storage = None
 
     import asyncio
 
