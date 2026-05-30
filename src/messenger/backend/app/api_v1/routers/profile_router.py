@@ -16,7 +16,10 @@ from messenger.backend.app.crud.user import UserCRUD
 from messenger.backend.app.ws.presence import is_visible_online
 from messenger.backend.app.ws.profile_events import publish_profile_event
 from messenger.backend.core.config import settings
-from messenger.backend.core.rate_limit import rate_limit_avatar_upload, rate_limit_send_code
+from messenger.backend.core.rate_limit import (
+    rate_limit_avatar_upload,
+    rate_limit_send_code,
+)
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
 from messenger.backend.models.user import User
