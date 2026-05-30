@@ -14,6 +14,7 @@ class ChatCRUD:
     async def search_chats(session: AsyncSession, search_query: str, user_id: str) -> list[User]:
         query = (
             select(User)
+            .options(selectinload(User.profile))
             .where(User.username.ilike(f"%{search_query}%"))
             .where(User.id != user_id)
         )
