@@ -27,11 +27,33 @@ class ProfileCRUD:
             display_name=display_name,
             bio="",
             presence_preference=None,
-            profile_photos=[],
+            avatar=None,
         )
         session.add(profile)
         await session.flush()  # persist within the caller's open transaction
         return profile
+
+    @staticmethod
+    async def set_avatar(
+        session: AsyncSession,
+        user_id: int,
+        avatar: dict | None,
+    ) -> tuple[Profile | None, dict | None]:
+        """Atomically swap profile.avatar. Returns (new_profile, old_avatar_dict).
+
+        Old dict is the value that was in profile.avatar BEFORE the swap — used
+        by callers to clean up the prior S3 keys.
+        """
+        query = select(Profile).where(Profile.user_id == user_id)
+        result = await session.execute(query)
+        profile = result.scalar_one_or_none()
+        if profile is None:
+            return None, None
+        old_avatar = profile.avatar
+        profile.avatar = avatar
+        await session.commit()
+        await session.refresh(profile)
+        return profile, old_avatar
 
     @staticmethod
     async def update_profile(session: AsyncSession, user_id: int, data: ProfileUpdate) -> Profile | None:

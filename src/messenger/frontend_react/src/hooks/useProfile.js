@@ -80,5 +80,37 @@ export const useProfile = () => {
         }
     };
 
-    return { isLoading, fetchMyProfile, fetchUserProfile, updateMyProfile, sendPhoneCode, verifyPhoneCode, changePassword };
+    const uploadAvatar = async (blob) => {
+        const fd = new FormData();
+        fd.append("file", blob, "avatar.jpg");
+        try {
+            const res = await axios.post(`${API_BASE}/profiles/me/avatar`, fd, {
+                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+            });
+            return res.data;
+        } catch (err) {
+            throw err.response?.data?.detail || 'Не удалось загрузить фото';
+        }
+    };
+
+    const deleteAvatar = async () => {
+        try {
+            const res = await axios.delete(`${API_BASE}/profiles/me/avatar`, getAuthConfig());
+            return res.data;
+        } catch (err) {
+            throw err.response?.data?.detail || 'Не удалось удалить фото';
+        }
+    };
+
+    return {
+        isLoading,
+        fetchMyProfile,
+        fetchUserProfile,
+        updateMyProfile,
+        sendPhoneCode,
+        verifyPhoneCode,
+        changePassword,
+        uploadAvatar,
+        deleteAvatar,
+    };
 };

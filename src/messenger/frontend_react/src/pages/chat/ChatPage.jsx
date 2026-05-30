@@ -12,6 +12,7 @@ import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
 import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
+import { Avatar } from '../../components/profile/Avatar';
 import {
   NotificationSettingsProvider,
   PushPromptModal,
@@ -234,16 +235,16 @@ function ChatPage() {
   // Realtime profile updates from other users
   useEffect(() => {
     if (!lastProfileEvent) return;
-    const { user_id, name, display_name, read_receipts_changed } = lastProfileEvent;
-    if (name || display_name) {
+    const { user_id, name, display_name, avatar_thumb_url, avatar_uploaded_at, read_receipts_changed } = lastProfileEvent;
+    if (name || display_name || avatar_thumb_url !== undefined) {
       setChats(prev => prev.map(c => (
         c.recipient_id === user_id && c.recipient
-          ? { ...c, recipient: { ...c.recipient, name, display_name } }
+          ? { ...c, recipient: { ...c.recipient, name, display_name, avatar_thumb_url } }
           : c
       )));
       if (activeChat?.recipient_id === user_id) {
         setChatName(display_name || name);
-        setActiveChat(prev => prev ? { ...prev, recipient: { ...(prev.recipient || {}), name, display_name } } : prev);
+        setActiveChat(prev => prev ? { ...prev, recipient: { ...(prev.recipient || {}), name, display_name, avatar_thumb_url, avatar_uploaded_at } } : prev);
       }
     }
     // When partner changes read receipts, refresh messages to update read_at visibility
@@ -549,9 +550,12 @@ function ChatPage() {
                 className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl hover:bg-zinc-800/50 active:scale-[0.98] transition-all"
                 title="Мой профиль"
               >
-                <div className="w-10 h-10 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 font-bold group-hover:bg-lime-300 transition-colors">
-                  {(myProfile?.display_name || myProfile?.name || currentUser?.name)?.slice(0, 1)?.toUpperCase()}
-                </div>
+                <Avatar
+                  url={myProfile?.avatar_thumb_url}
+                  initials={(myProfile?.display_name || myProfile?.name || currentUser?.name || "?").slice(0, 1).toUpperCase()}
+                  size={40}
+                  className="group-hover:ring-2 group-hover:ring-lime-300 transition-all"
+                />
                 <span className="font-bold text-lg tracking-tight group-hover:text-lime-400 transition-colors">Чаты</span>
               </button>
               <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">

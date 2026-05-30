@@ -1,4 +1,5 @@
 import { X, Edit3, Calendar, Hash, Mail } from "lucide-react";
+import { Avatar } from "./Avatar";
 
 const MONTHS_RU = [
     'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
@@ -46,17 +47,13 @@ export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit }) => {
                 </div>
 
                 <div className="px-6 pb-6 -mt-12 flex flex-col items-center gap-3">
-                    <div className="relative">
-                        <div className="w-24 h-24 rounded-full bg-lime-400 flex items-center justify-center text-zinc-900 text-3xl font-bold select-none border-4 border-zinc-900 shadow-xl shadow-lime-400/20">
-                            {initials}
-                        </div>
-                        <span
-                            className={`absolute bottom-1 right-1 w-4 h-4 rounded-full border-2 border-zinc-900 ${
-                                profile.online ? "bg-lime-400" : "bg-zinc-600"
-                            }`}
-                            title={profile.online ? "в сети" : "не в сети"}
-                        />
-                    </div>
+                    <Avatar
+                        url={profile.avatar_url}
+                        initials={initials}
+                        online={profile.online}
+                        size={96}
+                        className="border-4 border-zinc-900 shadow-xl shadow-lime-400/20"
+                    />
 
                     <div className="text-center">
                         <h2 className="text-xl font-bold tracking-tight text-zinc-100">

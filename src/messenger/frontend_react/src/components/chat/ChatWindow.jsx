@@ -3,6 +3,7 @@ import { User, Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle } from '
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 import { ChatMuteToggle } from "../../features/notifications";
+import { Avatar } from "../profile/Avatar";
 
 export const ChatWindow = ({
     messages, setMessages, activeChat, sendMessage,
@@ -44,9 +45,13 @@ export const ChatWindow = ({
               className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl hover:bg-zinc-800/50 active:scale-[0.98] transition-all min-w-0"
               title="Открыть профиль"
             >
-              <div className="w-11 h-11 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/60 transition-colors shrink-0">
-                <User size={22} className="text-lime-400" />
-              </div>
+              <Avatar
+                url={activeChat?.recipient?.avatar_thumb_url}
+                initials={(chatName || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")}
+                online={isPartnerOnline}
+                size={44}
+                className="shrink-0 group-hover:ring-2 group-hover:ring-lime-400/60 transition-all"
+              />
               <div className="text-left min-w-0">
                 <h3 className="font-bold leading-tight group-hover:text-lime-400 transition-colors truncate">
                   {chatName}

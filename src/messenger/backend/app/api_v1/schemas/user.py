@@ -12,7 +12,6 @@ class ProfileBase(BaseModel):
     display_name: Optional[str] = Field(None, max_length=32)
     bio: Optional[str] = Field(None, max_length=256)
     presence_preference: Optional[PresencePreference] = None
-    profile_photos: List[str] = []
 
 
 class ProfileRead(ProfileBase):
@@ -68,6 +67,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     created_at: datetime
     display_name: Optional[str] = None
+    avatar_thumb_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -101,7 +101,9 @@ class UserProfileResponse(BaseModel):
     bio: Optional[str] = None
     presence_preference: Optional[PresencePreference] = None
     online: bool = False
-    profile_photos: List[str] = []
+    avatar_url: Optional[str] = None
+    avatar_thumb_url: Optional[str] = None
+    avatar_uploaded_at: Optional[str] = None
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

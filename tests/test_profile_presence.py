@@ -35,7 +35,7 @@ async def test_invisible_target_appears_offline_to_others(patch_redis, fake_redi
                 display_name="Bob",
                 bio="hi",
                 presence_preference="invisible",
-                profile_photos=[],
+                avatar=None,
             ),
         )
 
@@ -68,7 +68,7 @@ async def test_dnd_target_shows_online_with_pref_visible(patch_redis, fake_redis
         return SimpleNamespace(
             id=user_id, username="alice", name="Alice", phone_number=None,
             profile=SimpleNamespace(
-                display_name="Alice", bio="hi", presence_preference="dnd", profile_photos=[],
+                display_name="Alice", bio="hi", presence_preference="dnd", avatar=None,
             ),
         )
 
@@ -100,7 +100,7 @@ async def test_self_invisible_sees_real_state(patch_redis, fake_redis, monkeypat
         return SimpleNamespace(
             id=uid, username="self", name="Self", phone_number=None,
             profile=SimpleNamespace(
-                display_name="Self", bio="", presence_preference="invisible", profile_photos=[],
+                display_name="Self", bio="", presence_preference="invisible", avatar=None,
             ),
         )
 

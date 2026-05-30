@@ -31,6 +31,13 @@ class Settings(BaseSettings):
 
     frontend_base_url: str = "https://wsnox.urldot.ru"
 
+    s3_endpoint_url: str = "https://storage.yandexcloud.net"
+    s3_region: str = "ru-central1"
+    s3_bucket: str = ""
+    s3_prefix: str = "dev"
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+
     DOCKER_MODE: bool = os.getenv("DOCKER_MODE", "false").lower() == "true"
 
     @computed_field
