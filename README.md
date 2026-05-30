@@ -152,3 +152,4 @@ GitHub Actions (`.github/workflows/`):
 - [Раунд 1 — IV, bcrypt](docs/troubleshooting/security-fixes.md)
 - [Раунд 2 — static mount, --reload, IDOR](docs/troubleshooting/fixes-round2.md)
 - [Раунд 3 — auth race, Vite proxy, мобильная адаптация](docs/troubleshooting/fixes-round3.md)
+- [Cache-headers — белый экран у возвращающихся юзеров после деплоя](docs/troubleshooting/cache-headers.md)
