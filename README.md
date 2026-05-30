@@ -78,6 +78,7 @@ tests/                  # pytest
 - **Аутентификация**: email-код + JWT, [восстановление и смена пароля](docs/features/password-reset.md)
 - **Чат**: WebSocket, история, поиск пользователей, последнее сообщение и счётчик непрочитанных в списке
 - **Профили**: `display_name`, `bio`, фото; модалка с табами «Личные данные» / «Безопасность»
+- **[Аватарки](docs/features/avatars.md)**: Yandex S3 (приватный bucket + presigned GET), client-side круговой crop, server-side resize в WebP, realtime через `profile_update`
 - **[Онлайн-статус в реал-тайме](docs/features/online-status.md)**: Redis TTL + heartbeat, режимы «не беспокоить» и «невидимка»
 - **[Уведомления](docs/features/notifications.md)**: 4 канала (звук / title-бейдж / browser / push), per-chat mute, глобальный DND, suppression для активного чата
 - **[Отметки о прочтении](docs/features/read-receipts.md)** с взаимной приватностью: серая/зелёная точка под исходящим
@@ -132,6 +133,7 @@ GitHub Actions (`.github/workflows/`):
 - [Отметки о прочтении](docs/features/read-receipts.md) — gray/green точка, серверный gate взаимной приватности
 - [Мобильная навигация](docs/features/mobile-navigation.md) — слайд между списком и чатом, edge-swipe back
 - [Профили](docs/features/profiles.md) — модель, API, редактирование
+- [Аватарки](docs/features/avatars.md) — S3-хранение, presigned URLs, круговой crop, realtime
 - [Восстановление и смена пароля](docs/features/password-reset.md) — reset по email-ссылке, смена через профиль, SMTP-конфиг
 
 **Деплой**
