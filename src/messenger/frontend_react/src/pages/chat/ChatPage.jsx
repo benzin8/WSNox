@@ -235,16 +235,16 @@ function ChatPage() {
   // Realtime profile updates from other users
   useEffect(() => {
     if (!lastProfileEvent) return;
-    const { user_id, name, display_name, read_receipts_changed } = lastProfileEvent;
-    if (name || display_name) {
+    const { user_id, name, display_name, avatar_thumb_url, avatar_uploaded_at, read_receipts_changed } = lastProfileEvent;
+    if (name || display_name || avatar_thumb_url !== undefined) {
       setChats(prev => prev.map(c => (
         c.recipient_id === user_id && c.recipient
-          ? { ...c, recipient: { ...c.recipient, name, display_name } }
+          ? { ...c, recipient: { ...c.recipient, name, display_name, avatar_thumb_url } }
           : c
       )));
       if (activeChat?.recipient_id === user_id) {
         setChatName(display_name || name);
-        setActiveChat(prev => prev ? { ...prev, recipient: { ...(prev.recipient || {}), name, display_name } } : prev);
+        setActiveChat(prev => prev ? { ...prev, recipient: { ...(prev.recipient || {}), name, display_name, avatar_thumb_url, avatar_uploaded_at } } : prev);
       }
     }
     // When partner changes read receipts, refresh messages to update read_at visibility
