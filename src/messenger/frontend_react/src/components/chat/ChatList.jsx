@@ -1,6 +1,7 @@
 import React from 'react';
 import { User, Sparkles } from 'lucide-react';
 import { useEnergy } from '../../features/energy';
+import { Avatar } from '../profile/Avatar';
 
 export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => {
   const { randomInChat } = useEnergy();
@@ -56,14 +57,15 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-lime-400 rounded-r-full shadow-[0_0_10px_rgba(163,230,53,0.5)]" />
             )}
             
-            <div className={`relative w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-300 ${
-              isSelected ? 'bg-lime-400 scale-105 shadow-lg shadow-lime-400/20' : 'bg-zinc-800 border border-zinc-700 group-hover:border-zinc-500'
-            }`}>
-              <User size={24} className={isSelected ? 'text-zinc-950' : 'text-zinc-400 group-hover:text-zinc-200'} />
-              {onlineUsers?.has(chat.recipient_id) && (
-                <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-lime-400 border-2 border-zinc-900" />
-              )}
-            </div>
+            <Avatar
+              url={chat.recipient?.avatar_thumb_url}
+              initials={(displayName || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")}
+              online={onlineUsers?.has(chat.recipient_id)}
+              size={48}
+              className={`flex-shrink-0 transition-all duration-300 ${
+                isSelected ? 'scale-105 shadow-lg shadow-lime-400/20' : ''
+              }`}
+            />
 
             <div className="flex-grow min-w-0">
               <div className="flex justify-between items-baseline mb-1">
