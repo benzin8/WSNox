@@ -143,6 +143,7 @@ class ChatCRUD:
                 Chat,
                 OtherUser,
                 Profile.display_name.label("rcpt_display_name"),
+                Profile.avatar.label("rcpt_avatar"),
                 last_msg.c.encrypted_data,
                 last_msg.c.created_at.label("last_msg_time"),
                 unread_sub.c.cnt,

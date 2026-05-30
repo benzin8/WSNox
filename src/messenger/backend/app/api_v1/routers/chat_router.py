@@ -19,15 +19,30 @@ from messenger.backend.app.ws.router import publish_read_receipt
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
+from messenger.backend.services.avatar_urls import resolve_avatar_urls
+from messenger.backend.services.deps import get_storage_optional
+from messenger.backend.services.storage import S3Storage
 
 logging.basicConfig(level=logging.INFO)
 
 chat_router = APIRouter(prefix="/chats", tags=["chats"])
 
 @chat_router.get("/search", response_model=UserSearchResponse)
-async def search_users(query: str, db: AsyncSession = Depends(get_db_session), user=Depends(get_current_user)):
+async def search_users(
+    query: str,
+    db: AsyncSession = Depends(get_db_session),
+    storage: S3Storage | None = Depends(get_storage_optional),
+    user=Depends(get_current_user),
+):
     chats = await ChatCRUD.search_chats(db, query, user.id)
-    return UserSearchResponse(chats=chats)
+    enriched = []
+    for u in chats:
+        resp = UserResponse.model_validate(u)
+        avatar = getattr(getattr(u, "profile", None), "avatar", None)
+        urls = await resolve_avatar_urls(storage, avatar)
+        resp.avatar_thumb_url = urls.thumb
+        enriched.append(resp)
+    return UserSearchResponse(chats=enriched)
 
 @chat_router.post("/get-or-create", response_model=ChatResponse)
 async def get_or_create_chat(request: ChatCreateRequest, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
@@ -48,7 +63,12 @@ async def get_or_create_chat(request: ChatCreateRequest, db: AsyncSession = Depe
     return ChatResponse.model_validate(new_chat)
 
 @chat_router.get("/{chat_id}/user", response_model=UserResponse)
-async def get_user_data_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
+async def get_user_data_by_chat_id(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    storage: S3Storage | None = Depends(get_storage_optional),
+    current_user=Depends(get_current_user),
+):
     if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     user = await ChatCRUD.get_user_data_by_chat_id(db, chat_id, current_user.id)
@@ -56,6 +76,9 @@ async def get_user_data_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
     resp = UserResponse.model_validate(user)
     resp.display_name = user.profile.display_name if user.profile else None
+    avatar = user.profile.avatar if user.profile else None
+    urls = await resolve_avatar_urls(storage, avatar)
+    resp.avatar_thumb_url = urls.thumb
     return resp
 
 @chat_router.get("/me", response_model=UserResponse)
@@ -63,14 +86,20 @@ async def get_my_data(db: AsyncSession = Depends(get_db_session), current_user=D
     return UserResponse.model_validate(current_user)
 
 @chat_router.get("/", response_model=list[ChatResponse])
-async def get_chats(db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
+async def get_chats(
+    db: AsyncSession = Depends(get_db_session),
+    storage: S3Storage | None = Depends(get_storage_optional),
+    current_user=Depends(get_current_user),
+):
     result = await ChatCRUD.get_chats(db, current_user.id)
     chats = []
-    for chat, other_user, rcpt_display_name, encrypted_data, last_msg_time, unread_cnt in result:
+    for chat, other_user, rcpt_display_name, rcpt_avatar, encrypted_data, last_msg_time, unread_cnt in result:
         chat_resp = ChatResponse.model_validate(chat)
         chat_resp.recipient = UserResponse.model_validate(other_user)
         chat_resp.recipient.display_name = rcpt_display_name
         chat_resp.recipient_id = other_user.id
+        urls = await resolve_avatar_urls(storage, rcpt_avatar)
+        chat_resp.recipient.avatar_thumb_url = urls.thumb
         if encrypted_data:
             try:
                 chat_resp.last_message = decrypt_message(encrypted_data)
