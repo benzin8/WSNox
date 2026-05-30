@@ -21,7 +21,7 @@ export function AvatarCropper({ src, onCancel, onConfirm }) {
     try {
       const blob = await getCroppedBlob(src, croppedAreaPixels, 512, 0.92);
       onConfirm(blob);
-    } catch (e) {
+    } catch {
       setError("Не удалось обрезать изображение");
       setBusy(false);
     }
