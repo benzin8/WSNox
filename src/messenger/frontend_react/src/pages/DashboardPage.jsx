@@ -48,27 +48,27 @@ export default function DashboardPage() {
       <AmbientGlow />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <header
-          className="sticky top-0 z-40 flex items-center justify-between px-8 h-16"
+          className="sticky top-0 z-40 flex items-center justify-between gap-3 px-4 sm:px-8 h-16"
           style={{ background: 'rgba(9,9,11,0.78)', backdropFilter: 'blur(14px) saturate(1.4)', borderBottom: '1px solid rgba(39,39,42,0.6)' }}
         >
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/chat')} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#a3e635' }} aria-label="Вернуться в чат">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button onClick={() => navigate('/chat')} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#a3e635' }} aria-label="Вернуться в чат">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#18181b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
-            <span className="text-lg font-semibold tracking-tight">WSNox</span>
-            <span className="text-zinc-600">/</span>
-            <span className="text-sm text-zinc-400">Дашборд основателя</span>
+            <span className="text-base sm:text-lg font-semibold tracking-tight">WSNox</span>
+            <span className="text-zinc-600 hidden sm:inline">/</span>
+            <span className="text-sm text-zinc-400 hidden sm:inline">Дашборд</span>
           </div>
           <PeriodSwitch days={days} onChange={setDays} />
         </header>
 
-        <main className="px-8 py-8 max-w-[1400px] mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold tracking-tight" style={{ letterSpacing: '-0.02em' }}>Привет 👋</h1>
-            <p className="text-zinc-500 mt-1.5">Вот как поживает WSNox за последние {days} дней.</p>
+        <main className="px-4 sm:px-8 py-6 sm:py-8 max-w-[1400px] mx-auto">
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ letterSpacing: '-0.02em' }}>Привет 👋</h1>
+            <p className="text-zinc-500 mt-1.5 text-sm sm:text-base">Вот как поживает WSNox за последние {days} дней.</p>
           </div>
 
-          <section className="grid grid-cols-4 gap-4 mb-4">
+          <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <KpiCard
               icon={ICONS.users}
               label="Регистраций"
@@ -134,17 +134,17 @@ export default function DashboardPage() {
             details={stats.kpis.dau.details}
           />
 
-          <section className="grid grid-cols-3 gap-4 mb-4">
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
             <GrowthPanel regs={stats.regs} labels={stats.labels} days={days} />
             <LivePanel live={stats.live} />
           </section>
 
-          <section className="grid grid-cols-3 gap-4 mb-4">
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
             <ActivityPanel msgs={stats.msgs} labels={stats.labels} days={days} />
             <FunnelPanel />
           </section>
 
-          <section className="grid grid-cols-3 gap-4 mb-4">
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
             <HealthPanel />
             <GeoPanel />
             <FeedPanel />

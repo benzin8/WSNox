@@ -4,7 +4,7 @@ import { fmt } from '../charts/smoothPath';
 export default function GrowthPanel({ regs, labels, days }) {
   const sum = regs.reduce((a, b) => a + b, 0);
   return (
-    <div className="p-6 col-span-2" style={{ background: 'linear-gradient(160deg, rgba(24,24,27,0.7), rgba(24,24,27,0.4))', border: '1px solid rgba(39,39,42,0.85)', borderRadius: 18 }}>
+    <div className="p-6 lg:col-span-2" style={{ background: 'linear-gradient(160deg, rgba(24,24,27,0.7), rgba(24,24,27,0.4))', border: '1px solid rgba(39,39,42,0.85)', borderRadius: 18 }}>
       <div className="flex items-start justify-between mb-5">
         <div>
           <div className="text-[11px] uppercase text-zinc-500 mb-1.5" style={{ letterSpacing: '0.16em' }}>Рост базы</div>
