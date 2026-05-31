@@ -13,6 +13,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import ChatPage from './pages/chat/ChatPage';
 import DashboardPage from './pages/DashboardPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import AdminRoute from './components/AdminRoute';
 
 const ProtectedRoute = ({ children }) => {
@@ -78,6 +79,14 @@ function App() {
             element={
               <AdminRoute>
                 <DashboardPage />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/dashboard/users"
+            element={
+              <AdminRoute>
+                <AdminUsersPage />
               </AdminRoute>
             }
           />

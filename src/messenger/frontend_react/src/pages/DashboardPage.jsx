@@ -59,7 +59,22 @@ export default function DashboardPage() {
             <span className="text-zinc-600 hidden sm:inline">/</span>
             <span className="text-sm text-zinc-400 hidden sm:inline">Дашборд</span>
           </div>
-          <PeriodSwitch days={days} onChange={setDays} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/dashboard/users')}
+              title="Управление юзерами"
+              aria-label="Открыть список юзеров"
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-lime-400 hover:bg-zinc-800 transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </button>
+            <PeriodSwitch days={days} onChange={setDays} />
+          </div>
         </header>
 
         <main className="px-4 sm:px-8 py-6 sm:py-8 max-w-[1400px] mx-auto">
