@@ -97,11 +97,19 @@ async def _total(session: AsyncSession, model_cls) -> int:
     return result.scalar() or 0
 
 
+def _fmt_ru(n: int | float) -> str:
+    """Russian locale formatting for thousand-separated ints."""
+    if isinstance(n, float) and n != int(n):
+        return f"{n:,.1f}".replace(",", " ").replace(".", ",")
+    return f"{int(n):,}".replace(",", " ")
+
+
 async def _kpi_with_deltas(
     session: AsyncSession, model_cls, ts_column, now: datetime
 ) -> dict:
     total = await _total(session, model_cls)
     deltas = {}
+    counts = {}
     for window in (7, 30, 90):
         end = now
         mid = now - timedelta(days=window)
@@ -109,7 +117,16 @@ async def _kpi_with_deltas(
         cur = await _count_in_window(session, ts_column, mid, end)
         prev = await _count_in_window(session, ts_column, start, mid)
         deltas[str(window)] = pct_change(cur, prev)
-    return {"total": total, "deltas": deltas}
+        counts[window] = cur
+    today = await _count_in_window(session, ts_column, now - timedelta(days=1), now)
+    daily_avg = round(counts[30] / 30, 1) if counts[30] else 0
+    details = [
+        {"label": "Сегодня", "value": _fmt_ru(today)},
+        {"label": "За 7 дней", "value": _fmt_ru(counts[7])},
+        {"label": "За 30 дней", "value": _fmt_ru(counts[30])},
+        {"label": "Ср. в день", "value": _fmt_ru(daily_avg)},
+    ]
+    return {"total": total, "deltas": deltas, "details": details}
 
 
 async def kpi_users(session: AsyncSession, now: datetime | None = None) -> dict:
@@ -129,11 +146,14 @@ async def kpi_dau(session: AsyncSession, now: datetime | None = None) -> dict:
     if now is None:
         now = datetime.now(timezone.utc)
     day_ago = now - timedelta(days=1)
+    week_ago = now - timedelta(days=7)
     month_ago = now - timedelta(days=30)
 
     dau_stmt = select(func.count()).where(User.last_seen >= day_ago)
+    wau_stmt = select(func.count()).where(User.last_seen >= week_ago)
     mau_stmt = select(func.count()).where(User.last_seen >= month_ago)
     dau = (await session.execute(dau_stmt)).scalar() or 0
+    wau = (await session.execute(wau_stmt)).scalar() or 0
     mau = (await session.execute(mau_stmt)).scalar() or 0
     stickiness = round(dau / mau * 100, 1) if mau else 0.0
 
@@ -146,7 +166,16 @@ async def kpi_dau(session: AsyncSession, now: datetime | None = None) -> dict:
         prev = await _count_in_window(session, User.last_seen, start, mid)
         deltas[str(window)] = pct_change(cur, prev)
 
-    return {"value": dau, "mau": mau, "stickiness": stickiness, "deltas": deltas}
+    details = [
+        {"label": "DAU", "value": _fmt_ru(dau)},
+        {"label": "WAU", "value": _fmt_ru(wau)},
+        {"label": "MAU", "value": _fmt_ru(mau)},
+        {"label": "Stickiness", "value": f"{stickiness}%"},
+    ]
+    return {
+        "value": dau, "mau": mau, "stickiness": stickiness,
+        "deltas": deltas, "details": details,
+    }
 
 
 async def live_online(redis: Redis) -> int:

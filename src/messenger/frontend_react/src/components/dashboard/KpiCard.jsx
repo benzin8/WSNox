@@ -18,7 +18,10 @@ export default function KpiCard({
   return (
     <div
       onClick={interactive ? onClick : undefined}
-      className="p-5 relative overflow-hidden"
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
+      className={`p-5 relative overflow-hidden transition-all ${interactive ? 'hover:-translate-y-0.5 hover:border-lime-400/40' : ''}`}
       style={{
         background: 'linear-gradient(160deg, rgba(24,24,27,0.7), rgba(24,24,27,0.4))',
         border: '1px solid rgba(39,39,42,0.85)',
@@ -26,6 +29,11 @@ export default function KpiCard({
         cursor: interactive ? 'pointer' : 'default',
       }}
     >
+      {interactive && (
+        <span className="absolute top-3.5 right-3.5 text-lime-400 opacity-0 hover:opacity-100 transition-opacity" aria-hidden>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" /></svg>
+        </span>
+      )}
       <div className="flex items-center justify-between mb-3">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center"

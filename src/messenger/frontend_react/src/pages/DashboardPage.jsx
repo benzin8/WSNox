@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import AmbientGlow from '../components/dashboard/AmbientGlow';
 import PeriodSwitch from '../components/dashboard/PeriodSwitch';
 import KpiCard from '../components/dashboard/KpiCard';
+import KpiDetailModal from '../components/dashboard/KpiDetailModal';
 import ComingSoon from '../components/dashboard/ComingSoon';
 import GrowthPanel from '../components/dashboard/panels/GrowthPanel';
 import ActivityPanel from '../components/dashboard/panels/ActivityPanel';
@@ -24,6 +26,7 @@ const ICONS = {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { stats, loading, error, days, setDays } = useAdminStats(30);
+  const [activeKpi, setActiveKpi] = useState(null);
 
   if (loading) {
     return (
@@ -41,7 +44,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-zinc-950" style={{ position: 'relative' }}>
+    <div className="h-full w-full bg-zinc-950 overflow-y-auto" style={{ position: 'relative' }}>
       <AmbientGlow />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <header
@@ -74,6 +77,8 @@ export default function DashboardPage() {
               delta={stats.kpis.users.deltas[String(days)] ?? 0}
               series={stats.regs}
               days={days}
+              detailsAvailable={!!stats.kpis.users.details}
+              onClick={() => setActiveKpi('users')}
             />
             <KpiCard
               icon={ICONS.msg}
@@ -84,6 +89,8 @@ export default function DashboardPage() {
               delta={stats.kpis.msgs.deltas[String(days)] ?? 0}
               series={stats.msgs}
               days={days}
+              detailsAvailable={!!stats.kpis.msgs.details}
+              onClick={() => setActiveKpi('msgs')}
             />
             <KpiCard
               icon={ICONS.act}
@@ -93,9 +100,39 @@ export default function DashboardPage() {
               delta={stats.kpis.dau.deltas[String(days)] ?? 0}
               series={stats.dau}
               days={days}
+              detailsAvailable={!!stats.kpis.dau.details}
+              onClick={() => setActiveKpi('dau')}
             />
             <ComingSoon title="Проблемы" reason="Появится после интеграции Sentry SDK" />
           </section>
+
+          <KpiDetailModal
+            open={activeKpi === 'users'}
+            onClose={() => setActiveKpi(null)}
+            title="Регистрации"
+            icon={ICONS.users}
+            headline={stats.kpis.users.total.toLocaleString('ru-RU')}
+            headSub="всего пользователей"
+            details={stats.kpis.users.details}
+          />
+          <KpiDetailModal
+            open={activeKpi === 'msgs'}
+            onClose={() => setActiveKpi(null)}
+            title="Сообщения"
+            icon={ICONS.msg}
+            headline={stats.kpis.msgs.total.toLocaleString('ru-RU')}
+            headSub="всего отправлено"
+            details={stats.kpis.msgs.details}
+          />
+          <KpiDetailModal
+            open={activeKpi === 'dau'}
+            onClose={() => setActiveKpi(null)}
+            title="Daily Active Users"
+            icon={ICONS.act}
+            headline={stats.kpis.dau.value.toLocaleString('ru-RU')}
+            headSub={`MAU ${stats.kpis.dau.mau} · stickiness ${stats.kpis.dau.stickiness}%`}
+            details={stats.kpis.dau.details}
+          />
 
           <section className="grid grid-cols-3 gap-4 mb-4">
             <GrowthPanel regs={stats.regs} labels={stats.labels} days={days} />

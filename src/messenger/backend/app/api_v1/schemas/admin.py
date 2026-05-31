@@ -8,14 +8,21 @@ class AdminMeResponse(BaseModel):
     is_admin: bool
 
 
+class StatItem(BaseModel):
+    label: str
+    value: str
+
+
 class KpiUsersBlock(BaseModel):
     total: int
     deltas: dict[str, float]
+    details: list[StatItem] | None = None
 
 
 class KpiMsgsBlock(BaseModel):
     total: int
     deltas: dict[str, float]
+    details: list[StatItem] | None = None
 
 
 class KpiDauBlock(BaseModel):
@@ -23,6 +30,7 @@ class KpiDauBlock(BaseModel):
     mau: int
     stickiness: float
     deltas: dict[str, float]
+    details: list[StatItem] | None = None
 
 
 class KpisBlock(BaseModel):
