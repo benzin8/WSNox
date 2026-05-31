@@ -120,12 +120,14 @@ def _mock_session_scalars(values):
 
 
 @pytest.mark.asyncio
-async def test_kpi_users_returns_total_and_three_deltas():
+async def test_kpi_users_returns_total_deltas_and_details():
+    # order: total, (7d cur, 7d prev), (30d cur, 30d prev), (90d cur, 90d prev), today
     session = _mock_session_scalars([
         12847,
         628, 530,
         2184, 1538,
         7300, 3200,
+        85,  # today
     ])
     kpi = await kpi_users(session, now=NOW)
     assert kpi["total"] == 12847
@@ -134,20 +136,27 @@ async def test_kpi_users_returns_total_and_three_deltas():
         "30": round((2184 - 1538) / 1538 * 100, 1),
         "90": round((7300 - 3200) / 3200 * 100, 1),
     }
+    assert kpi["details"] is not None
+    labels = [d["label"] for d in kpi["details"]]
+    assert labels == ["Сегодня", "За 7 дней", "За 30 дней", "Ср. в день"]
 
 
 @pytest.mark.asyncio
 async def test_kpi_msgs_smoke():
-    session = _mock_session_scalars([100, 10, 5, 30, 20, 90, 60])
+    session = _mock_session_scalars([100, 10, 5, 30, 20, 90, 60, 7])
     kpi = await kpi_msgs(session, now=NOW)
     assert kpi["total"] == 100
     assert set(kpi["deltas"].keys()) == {"7", "30", "90"}
+    assert kpi["details"] is not None
+    assert len(kpi["details"]) == 4
 
 
 @pytest.mark.asyncio
 async def test_kpi_dau_with_real_mau():
+    # order: DAU, WAU, MAU, (7d cur, prev), (30d cur, prev), (90d cur, prev)
     session = _mock_session_scalars([
         120,  # DAU
+        220,  # WAU
         400,  # MAU
         100, 80,
         300, 250,
@@ -158,11 +167,14 @@ async def test_kpi_dau_with_real_mau():
     assert kpi["mau"] == 400
     assert kpi["stickiness"] == 30.0
     assert set(kpi["deltas"].keys()) == {"7", "30", "90"}
+    assert kpi["details"] is not None
+    labels = [d["label"] for d in kpi["details"]]
+    assert labels == ["DAU", "WAU", "MAU", "Stickiness"]
 
 
 @pytest.mark.asyncio
 async def test_kpi_dau_mau_zero_yields_zero_stickiness():
-    session = _mock_session_scalars([0] * 8)
+    session = _mock_session_scalars([0] * 9)
     kpi = await kpi_dau(session, now=NOW)
     assert kpi["stickiness"] == 0.0
 

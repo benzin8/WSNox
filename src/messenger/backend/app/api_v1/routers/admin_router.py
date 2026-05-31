@@ -48,3 +48,20 @@ async def admin_stats(
             msgs_per_min=await analytics.live_msgs_per_min(session),
         ),
     )
+
+
+@admin_router.get("/live", response_model=LiveBlock)
+async def admin_live(
+    _admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db_session),
+) -> LiveBlock:
+    """Лёгкий polling-endpoint для live-секции (online + msgs/min).
+
+    Отделён от /stats чтобы клиент мог дёргать его каждые 10s без перерасчёта
+    тяжёлых 90-дневных агрегатов.
+    """
+    redis = get_redis()
+    return LiveBlock(
+        online=await analytics.live_online(redis),
+        msgs_per_min=await analytics.live_msgs_per_min(session),
+    )
