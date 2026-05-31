@@ -2,10 +2,10 @@ import ComingSoon from '../ComingSoon';
 
 export default function LivePanel({ live }) {
   return (
-    <div className="p-6 flex flex-col" style={{ background: 'linear-gradient(160deg, rgba(24,24,27,0.7), rgba(24,24,27,0.4))', border: '1px solid rgba(39,39,42,0.85)', borderRadius: 18 }}>
+    <div className="p-6" style={{ background: 'linear-gradient(160deg, rgba(24,24,27,0.7), rgba(24,24,27,0.4))', border: '1px solid rgba(39,39,42,0.85)', borderRadius: 18 }}>
       <div className="text-[11px] uppercase text-zinc-500 mb-1.5" style={{ letterSpacing: '0.16em' }}>Прямо сейчас</div>
       <h3 className="text-lg font-bold mb-5">Live</h3>
-      <div className="space-y-4 flex-grow">
+      <div className="space-y-4">
         <div className="flex items-center justify-between p-4 rounded-2xl" style={{ background: 'rgba(163,230,53,0.06)', border: '1px solid rgba(163,230,53,0.18)' }}>
           <div>
             <div className="text-xs text-zinc-400 mb-0.5">Онлайн юзеров</div>
@@ -21,7 +21,9 @@ export default function LivePanel({ live }) {
           <div className="text-xl font-bold" style={{ fontFamily: 'ui-monospace,monospace' }}>{live.msgs_per_min}</div>
         </div>
         {live.ws_connections === null && (
-          <ComingSoon title="WS-соединения и latency" reason="Появится после prometheus-metrics middleware" />
+          <div className="min-h-[140px]">
+            <ComingSoon title="WS-соединения и latency" reason="Появится после prometheus-metrics middleware" />
+          </div>
         )}
       </div>
     </div>
