@@ -1,4 +1,5 @@
 """Pydantic-схемы для /api/admin/*."""
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel
@@ -6,6 +7,21 @@ from pydantic import BaseModel
 
 class AdminMeResponse(BaseModel):
     is_admin: bool
+
+
+class AdminUserRow(BaseModel):
+    id: int
+    name: str
+    email: str
+    username: str
+    is_admin: bool
+    created_at: datetime | None
+    last_seen: datetime | None
+
+
+class AdminSetRoleRequest(BaseModel):
+    is_admin: bool
+    confirm_email: str  # должен совпасть с email целевого юзера
 
 
 class StatItem(BaseModel):

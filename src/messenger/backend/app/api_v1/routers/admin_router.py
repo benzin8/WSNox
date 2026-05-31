@@ -1,5 +1,8 @@
 """Founder dashboard endpoints. Gated by `users.is_admin`."""
-from fastapi import APIRouter, Depends
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.api_v1.auth.dependencies import (
@@ -8,6 +11,8 @@ from messenger.backend.app.api_v1.auth.dependencies import (
 )
 from messenger.backend.app.api_v1.schemas.admin import (
     AdminMeResponse,
+    AdminSetRoleRequest,
+    AdminUserRow,
     DashboardStats,
     KpisBlock,
     LiveBlock,
@@ -16,6 +21,8 @@ from messenger.backend.core.redis import get_redis
 from messenger.backend.db import get_db_session
 from messenger.backend.models.user import User
 from messenger.backend.services import analytics
+
+logger = logging.getLogger(__name__)
 
 admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -64,4 +71,75 @@ async def admin_live(
     return LiveBlock(
         online=await analytics.live_online(redis),
         msgs_per_min=await analytics.live_msgs_per_min(session),
+    )
+
+
+@admin_router.get("/users", response_model=list[AdminUserRow])
+async def admin_list_users(
+    _admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[AdminUserRow]:
+    """Список всех юзеров для admin-панели."""
+    result = await session.execute(select(User).order_by(User.created_at.desc()))
+    users = result.scalars().all()
+    return [
+        AdminUserRow(
+            id=u.id, name=u.name, email=u.email, username=u.username,
+            is_admin=u.is_admin, created_at=u.created_at, last_seen=u.last_seen,
+        )
+        for u in users
+    ]
+
+
+@admin_router.patch("/users/{user_id}/admin", response_model=AdminUserRow)
+async def admin_set_role(
+    user_id: int,
+    payload: AdminSetRoleRequest,
+    current_admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_db_session),
+) -> AdminUserRow:
+    """Выдать или снять `is_admin`. Требует подтверждения email цели.
+
+    Защиты:
+    - confirm_email должен exact match с user.email
+    - запрещено снимать админку с себя (защита от lock-out)
+    """
+    if user_id == current_admin.id and not payload.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Нельзя снять админку с самого себя",
+        )
+
+    result = await session.execute(select(User).where(User.id == user_id))
+    target = result.scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Юзер не найден")
+
+    if payload.confirm_email.strip().lower() != target.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email подтверждения не совпадает с email юзера",
+        )
+
+    if target.is_admin == payload.is_admin:
+        # no-op, но возвращаем актуальную строку — фронт переиспользует
+        return AdminUserRow(
+            id=target.id, name=target.name, email=target.email, username=target.username,
+            is_admin=target.is_admin, created_at=target.created_at, last_seen=target.last_seen,
+        )
+
+    target.is_admin = payload.is_admin
+    await session.commit()
+    await session.refresh(target)
+
+    action = "granted" if payload.is_admin else "revoked"
+    logger.warning(
+        "admin role %s: by=%s(%s) target=%s(%s)",
+        action, current_admin.id, current_admin.email,
+        target.id, target.email,
+    )
+
+    return AdminUserRow(
+        id=target.id, name=target.name, email=target.email, username=target.username,
+        is_admin=target.is_admin, created_at=target.created_at, last_seen=target.last_seen,
     )
