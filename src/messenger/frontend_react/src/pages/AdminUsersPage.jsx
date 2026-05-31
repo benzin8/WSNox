@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import AmbientGlow from '../components/dashboard/AmbientGlow';
 import RoleConfirmModal from '../components/dashboard/RoleConfirmModal';
+import { Avatar } from '../components/profile/Avatar';
 import { useAdminUsers } from '../hooks/useAdminUsers';
 
 function formatDate(iso) {
@@ -88,12 +89,12 @@ export default function AdminUsersPage() {
                   border: '1px solid rgba(39,39,42,0.85)',
                 }}
               >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0"
-                  style={{ background: u.is_admin ? '#a3e635' : '#3f3f46', color: u.is_admin ? '#09090b' : '#f4f4f5' }}
-                >
-                  {initials(u.name)}
-                </div>
+                <Avatar
+                  url={u.avatar_thumb_url}
+                  initials={initials(u.name)}
+                  size={40}
+                  className={u.is_admin ? 'ring-2 ring-lime-400/60' : ''}
+                />
                 <div className="flex-grow min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-zinc-100 truncate">{u.name}</span>

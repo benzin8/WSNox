@@ -4,6 +4,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from messenger.backend.app.api_v1.auth.dependencies import (
     get_current_admin,
@@ -21,6 +22,9 @@ from messenger.backend.core.redis import get_redis
 from messenger.backend.db import get_db_session
 from messenger.backend.models.user import User
 from messenger.backend.services import analytics
+from messenger.backend.services.avatar_urls import resolve_avatar_urls
+from messenger.backend.services.deps import get_storage_optional
+from messenger.backend.services.storage import S3Storage
 
 logger = logging.getLogger(__name__)
 
@@ -78,17 +82,22 @@ async def admin_live(
 async def admin_list_users(
     _admin: User = Depends(get_current_admin),
     session: AsyncSession = Depends(get_db_session),
+    storage: S3Storage | None = Depends(get_storage_optional),
 ) -> list[AdminUserRow]:
-    """Список всех юзеров для admin-панели."""
-    result = await session.execute(select(User).order_by(User.created_at.desc()))
+    """Список всех юзеров для admin-панели (с presigned avatar thumb URLs)."""
+    stmt = select(User).options(selectinload(User.profile)).order_by(User.created_at.desc())
+    result = await session.execute(stmt)
     users = result.scalars().all()
-    return [
-        AdminUserRow(
+    rows: list[AdminUserRow] = []
+    for u in users:
+        avatar = u.profile.avatar if u.profile else None
+        urls = await resolve_avatar_urls(storage, avatar)
+        rows.append(AdminUserRow(
             id=u.id, name=u.name, email=u.email, username=u.username,
             is_admin=u.is_admin, created_at=u.created_at, last_seen=u.last_seen,
-        )
-        for u in users
-    ]
+            avatar_thumb_url=urls.thumb,
+        ))
+    return rows
 
 
 @admin_router.patch("/users/{user_id}/admin", response_model=AdminUserRow)
