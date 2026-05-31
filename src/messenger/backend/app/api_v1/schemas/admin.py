@@ -17,6 +17,7 @@ class AdminUserRow(BaseModel):
     is_admin: bool
     created_at: datetime | None
     last_seen: datetime | None
+    avatar_thumb_url: str | None = None
 
 
 class AdminSetRoleRequest(BaseModel):
