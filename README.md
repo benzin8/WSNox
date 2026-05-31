@@ -79,6 +79,7 @@ tests/                  # pytest
 - **Чат**: WebSocket, история, поиск пользователей, последнее сообщение и счётчик непрочитанных в списке
 - **Профили**: `display_name`, `bio`, фото; модалка с табами «Личные данные» / «Безопасность»
 - **[Аватарки](docs/features/avatars.md)**: Yandex S3 (приватный bucket + presigned GET), client-side круговой crop, server-side resize в WebP, realtime через `profile_update`
+- **[Дашборд основателя](docs/features/founder-dashboard.md)**: защищённая `/dashboard` с метриками (регистрации, сообщения, DAU, online), `users.is_admin` гейт, placeholder'ы под будущие секции
 - **[Онлайн-статус в реал-тайме](docs/features/online-status.md)**: Redis TTL + heartbeat, режимы «не беспокоить» и «невидимка»
 - **[Уведомления](docs/features/notifications.md)**: 4 канала (звук / title-бейдж / browser / push), per-chat mute, глобальный DND, suppression для активного чата
 - **[Отметки о прочтении](docs/features/read-receipts.md)** с взаимной приватностью: серая/зелёная точка под исходящим
@@ -134,6 +135,7 @@ GitHub Actions (`.github/workflows/`):
 - [Мобильная навигация](docs/features/mobile-navigation.md) — слайд между списком и чатом, edge-swipe back
 - [Профили](docs/features/profiles.md) — модель, API, редактирование
 - [Аватарки](docs/features/avatars.md) — S3-хранение, presigned URLs, круговой crop, realtime
+- [Дашборд основателя](docs/features/founder-dashboard.md) — `/dashboard`, метрики из БД + presence, placeholder'ы под Sentry/GeoIP/events
 - [Восстановление и смена пароля](docs/features/password-reset.md) — reset по email-ссылке, смена через профиль, SMTP-конфиг
 
 **Деплой**
