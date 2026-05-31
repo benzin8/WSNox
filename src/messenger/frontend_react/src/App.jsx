@@ -12,6 +12,8 @@ import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import ChatPage from './pages/chat/ChatPage';
+import DashboardPage from './pages/DashboardPage';
+import AdminRoute from './components/AdminRoute';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('access_token');
@@ -61,13 +63,23 @@ function App() {
           <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
           {/* Protected Chat Route */}
-          <Route 
-            path="/chat" 
+          <Route
+            path="/chat"
             element={
               <ProtectedRoute>
                 <ChatPage />
               </ProtectedRoute>
-            } 
+            }
+          />
+
+          {/* Admin-only Dashboard */}
+          <Route
+            path="/dashboard"
+            element={
+              <AdminRoute>
+                <DashboardPage />
+              </AdminRoute>
+            }
           />
 
           {/* Root — landing or chat */}

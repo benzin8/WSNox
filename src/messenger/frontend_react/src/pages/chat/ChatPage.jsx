@@ -5,6 +5,7 @@ import { useChatAction } from '../../hooks/useChatAction';
 import { useChatSocket } from '../../hooks/useChatSocket';
 import { usePresence } from '../../hooks/usePresence';
 import { useProfile } from '../../hooks/useProfile';
+import { useIsAdmin } from '../../hooks/useIsAdmin';
 import { useEdgeSwipe } from '../../hooks/useEdgeSwipe';
 import { useEnergy } from '../../features/energy';
 
@@ -90,6 +91,7 @@ function ChatPage() {
           markChatAsRead
   } = useChatAction();
   const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
+  const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const { orb, settleInChat, randomInChat } = useEnergy();
@@ -558,9 +560,26 @@ function ChatPage() {
                 />
                 <span className="font-bold text-lg tracking-tight group-hover:text-lime-400 transition-colors">Чаты</span>
               </button>
-              <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">
-                <LogOut size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    title="Дашборд основателя"
+                    aria-label="Открыть дашборд"
+                    className="p-1.5 rounded-lg text-lime-400 hover:bg-zinc-800 transition-colors"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="7" height="9" />
+                      <rect x="14" y="3" width="7" height="5" />
+                      <rect x="14" y="12" width="7" height="9" />
+                      <rect x="3" y="16" width="7" height="5" />
+                    </svg>
+                  </button>
+                )}
+                <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">
+                  <LogOut size={20} />
+                </button>
+              </div>
             </div>
 
             {!isConnected && (
