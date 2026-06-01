@@ -354,6 +354,9 @@ function ChatPage() {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('caption', caption || '');
+    // Server uses this to send back a WS `message_ack` so the optimistic
+    // upload still flips to "sent" even if the HTTP response is lost.
+    fd.append('client_msg_id', String(tempId));
     if (meta) fd.append('client_meta', JSON.stringify(meta));
     return axios.post(`${API_BASE_URL}/chats/${chatId}/media`, fd, {
       headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
@@ -413,11 +416,17 @@ function ChatPage() {
       URL.revokeObjectURL(localUrl);
     } catch (err) {
       console.error('media upload failed', err);
-      setMessages((prev) => prev.map((m) =>
-        m.id === tempId
-          ? { ...m, client_status: 'failed' }
-          : m,
-      ));
+      // Wait briefly — the server may have processed the upload and is
+      // sending a WS `message_ack` even though our HTTP response was
+      // lost (slow link / proxy timeout / network blip). If the ack
+      // beats us, tempId no longer exists and this map is a no-op.
+      setTimeout(() => {
+        setMessages((prev) => prev.map((m) =>
+          m.id === tempId
+            ? { ...m, client_status: 'failed' }
+            : m,
+        ));
+      }, 2500);
     }
   }, [activeChat?.id, setMessages, uploadMediaToChat]);
 

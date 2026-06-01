@@ -34,6 +34,45 @@ AUTH_TIMEOUT_SECONDS = 10
 WS_AUTH_FAILED = 4401  # custom 4xxx code, equivalent to HTTP 401
 
 
+async def send_media_ack_to_sender(
+    sender_id: int,
+    temp_id: str,
+    message_id: int,
+    chat_id: int,
+    attachment_url: str | None,
+    attachment_thumb_url: str | None,
+    attachment_meta: dict | None,
+) -> None:
+    """Push a `message_ack` directly to the sender's WS sockets.
+
+    For text the WS handler echoes the ack on the same socket it received
+    the send on. Media uploads go through HTTP — but the sender is still
+    holding an open WS, so we look its sockets up in `manager` and emit
+    the ack there. If the HTTP response is lost (slow link, proxy timeout)
+    this is what flips the optimistic message from `uploading` to `sent`.
+    """
+    sockets = manager.active_connections.get(sender_id)
+    if not sockets:
+        return
+    payload = {
+        "type": "message_ack",
+        "temp_id": temp_id,
+        "message_id": message_id,
+        "chat_id": chat_id,
+        "attachment_url": attachment_url,
+        "attachment_thumb_url": attachment_thumb_url,
+        "attachment_meta": attachment_meta,
+    }
+    dead = []
+    for ws in list(sockets):
+        try:
+            await ws.send_json(payload)
+        except Exception:  # noqa: BLE001
+            dead.append(ws)
+    for ws in dead:
+        sockets.discard(ws)
+
+
 async def publish_media_message(
     db: AsyncSession,
     chat_id: int,

@@ -119,6 +119,7 @@ class ChatCRUD:
             select(
                 Message.chat_id,
                 Message.encrypted_data,
+                Message.msg_type,
                 Message.created_at,
                 func.row_number().over(
                     partition_by=Message.chat_id,
@@ -146,6 +147,7 @@ class ChatCRUD:
                 Profile.display_name.label("rcpt_display_name"),
                 Profile.avatar.label("rcpt_avatar"),
                 last_msg.c.encrypted_data,
+                last_msg.c.msg_type.label("last_msg_type"),
                 last_msg.c.created_at.label("last_msg_time"),
                 unread_sub.c.cnt,
             )

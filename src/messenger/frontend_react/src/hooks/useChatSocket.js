@@ -90,11 +90,30 @@ export const useChatSocket = (token, activeChatIdRef) => {
 
                 if (data.type === "message_ack") {
                     if (data.temp_id != null) {
-                        setMessages((prev) => prev.map((m) =>
-                            m.id === data.temp_id
-                                ? { ...m, id: data.message_id, client_status: "sent" }
-                                : m
-                        ));
+                        setMessages((prev) => prev.map((m) => {
+                            if (m.id !== data.temp_id) return m;
+                            const next = {
+                                ...m,
+                                id: data.message_id,
+                                client_status: "sent",
+                                upload_progress: undefined,
+                            };
+                            // Media uploads include presigned URLs in the ack so
+                            // the local blob URL can be swapped for the real one
+                            // even when the HTTP response is lost.
+                            if (data.attachment_url !== undefined) {
+                                next.attachment_url = data.attachment_url;
+                            }
+                            if (data.attachment_thumb_url !== undefined) {
+                                next.attachment_thumb_url = data.attachment_thumb_url
+                                    || data.attachment_url
+                                    || next.attachment_thumb_url;
+                            }
+                            if (data.attachment_meta !== undefined) {
+                                next.attachment_meta = data.attachment_meta || next.attachment_meta;
+                            }
+                            return next;
+                        }));
                     }
                     return;
                 }
