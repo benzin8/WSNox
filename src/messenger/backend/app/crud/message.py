@@ -81,20 +81,23 @@ class MessageCRUD:
 
         # Collect reply_to_ids and batch-fetch them
         reply_ids = {m.reply_to_id for m in messages if m.reply_to_id}
-        reply_map = {}
+        reply_map: dict[int, tuple[str, str]] = {}
         if reply_ids:
             reply_result = await db.execute(
                 select(Message).where(Message.id.in_(reply_ids))
             )
             for rm in reply_result.scalars().all():
-                reply_map[rm.id] = decrypt_message(rm.encrypted_data)
+                reply_map[rm.id] = (decrypt_message(rm.encrypted_data), rm.msg_type)
 
         for message in messages:
             message.text = decrypt_message(message.encrypted_data)
             if message.reply_to_id and message.reply_to_id in reply_map:
-                message.reply_to_text = reply_map[message.reply_to_id]
+                reply_text, reply_type = reply_map[message.reply_to_id]
+                message.reply_to_text = reply_text
+                message.reply_to_msg_type = reply_type
             else:
                 message.reply_to_text = None
+                message.reply_to_msg_type = None
         return messages[::-1]
 
     @staticmethod

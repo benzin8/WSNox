@@ -32,6 +32,7 @@ class MessageBase(BaseModel):
     edited_at: Optional[datetime] = None
     reply_to_id: Optional[int] = None
     reply_to_text: Optional[str] = None
+    reply_to_msg_type: Optional[str] = None
     # Attachment fields — None for plain text messages. URLs are presigned at
     # read-time (TTL 1h); clients should refresh by re-fetching messages.
     attachment_url: Optional[str] = None

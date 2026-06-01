@@ -56,6 +56,7 @@ async def publish_media_message(
     sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
     sender_display_name = sender.profile.display_name if sender.profile else None
     reply_to_text = None
+    reply_to_msg_type = None
     if message.reply_to_id:
         from messenger.backend.core.crypto import decrypt_message as _decrypt
         reply_msg = await db.get(Message, message.reply_to_id)
@@ -64,6 +65,7 @@ async def publish_media_message(
                 reply_to_text = _decrypt(reply_msg.encrypted_data)
             except Exception:  # noqa: BLE001
                 pass
+            reply_to_msg_type = reply_msg.msg_type
 
     payload = json.dumps({
         "recipient_id": recipient_id,
@@ -74,6 +76,7 @@ async def publish_media_message(
         "message_id": message.id,
         "reply_to_id": message.reply_to_id,
         "reply_to_text": reply_to_text,
+        "reply_to_msg_type": reply_to_msg_type,
         "msg_type": message.msg_type,
         "attachment_url": attachment_url,
         "attachment_thumb_url": attachment_thumb_url,
@@ -163,6 +166,7 @@ class ConnectionManager:
         sender_display_name = sender.profile.display_name if sender.profile else None
         # Fetch reply-to text if this is a reply
         reply_to_text = None
+        reply_to_msg_type = None
         if message.reply_to_id:
             from messenger.backend.core.crypto import decrypt_message as _decrypt
             reply_msg = await db.get(Message, message.reply_to_id)
@@ -171,6 +175,7 @@ class ConnectionManager:
                     reply_to_text = _decrypt(reply_msg.encrypted_data)
                 except Exception:  # noqa: BLE001
                     pass
+                reply_to_msg_type = reply_msg.msg_type
 
         payload = json.dumps({
             "recipient_id": recipient_id,
@@ -181,6 +186,7 @@ class ConnectionManager:
             "message_id": message.id,
             "reply_to_id": message.reply_to_id,
             "reply_to_text": reply_to_text,
+            "reply_to_msg_type": reply_to_msg_type,
             "chat_info": {
                 "id": chat_id,
                 "name": f"private_{min(sender_id, recipient_id)}_{max(sender_id, recipient_id)}",
@@ -240,6 +246,7 @@ class ConnectionManager:
                     "message_id": data.get("message_id"),
                     "reply_to_id": data.get("reply_to_id"),
                     "reply_to_text": data.get("reply_to_text"),
+                    "reply_to_msg_type": data.get("reply_to_msg_type"),
                     "msg_type": data.get("msg_type", "text"),
                     "attachment_url": data.get("attachment_url"),
                     "attachment_thumb_url": data.get("attachment_thumb_url"),

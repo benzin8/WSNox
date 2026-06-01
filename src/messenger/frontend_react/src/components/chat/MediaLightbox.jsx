@@ -1,41 +1,73 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 /**
- * Full-screen viewer for an image or video. Renders to a real fixed overlay
- * (not a button) so default UA button styles can't bleed in. Esc closes the
- * viewer, backdrop click closes it, and the media itself stops propagation
- * so clicking on the photo doesn't dismiss.
+ * Full-screen viewer for an image or video.
+ *
+ * Renders via Portal directly into document.body so it cannot be clipped or
+ * mis-positioned by ancestor `transform`/`filter`/`contain` (which break
+ * `position: fixed` in CSS — easy to hit when a chat bubble has an active
+ * swipe transform). While open the page scroll is locked so the page behind
+ * doesn't move when scrolling on a tall image.
  */
 export function MediaLightbox({ open, type, url, onClose }) {
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    // Lock the body / html scroll while the viewer is open.
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
   }, [open, onClose]);
 
-  if (!open || !url) return null;
+  if (!open || !url || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Просмотр медиа"
       onClick={onClose}
-      className="fixed inset-0 z-[100] flex items-center justify-center animate-fadeIn"
+      className="animate-fadeIn"
       style={{
-        background: "rgba(0,0,0,0.85)",
-        backdropFilter: "blur(16px) saturate(1.2)",
-        WebkitBackdropFilter: "blur(16px) saturate(1.2)",
+        position: "fixed",
+        inset: 0,
+        zIndex: 2000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "rgba(0,0,0,0.88)",
+        backdropFilter: "blur(18px) saturate(1.2)",
+        WebkitBackdropFilter: "blur(18px) saturate(1.2)",
       }}
     >
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onClose(); }}
         aria-label="Закрыть"
-        className="absolute top-4 right-4 w-10 h-10 grid place-items-center rounded-full text-zinc-200 hover:text-white hover:bg-white/10 transition-colors"
-        style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)" }}
+        className="text-zinc-100 hover:text-white transition-colors"
+        style={{
+          position: "absolute",
+          top: "max(env(safe-area-inset-top), 16px)",
+          right: "max(env(safe-area-inset-right), 16px)",
+          width: 42,
+          height: 42,
+          display: "grid",
+          placeItems: "center",
+          borderRadius: "9999px",
+          background: "rgba(0,0,0,0.45)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
       >
         <X size={20} />
       </button>
@@ -47,18 +79,28 @@ export function MediaLightbox({ open, type, url, onClose }) {
           autoPlay
           playsInline
           onClick={(e) => e.stopPropagation()}
-          className="max-w-[95vw] max-h-[90vh] rounded-lg shadow-2xl"
-          style={{ background: "#000" }}
+          style={{
+            maxWidth: "100vw",
+            maxHeight: "100vh",
+            background: "#000",
+            outline: "none",
+          }}
         />
       ) : (
         <img
           src={url}
           alt=""
           onClick={(e) => e.stopPropagation()}
-          className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
           draggable={false}
+          style={{
+            maxWidth: "100vw",
+            maxHeight: "100vh",
+            objectFit: "contain",
+            userSelect: "none",
+          }}
         />
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
