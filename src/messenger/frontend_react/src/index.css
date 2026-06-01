@@ -257,4 +257,50 @@
   animation: cursorBlink 1s steps(1) infinite;
 }
 
+/* ── Avatar online indicator ── */
+/* Smooth fade-in when user comes online, then slow breathing glow */
+.avatar-online {
+  animation:
+    avatarOnlineEnter 0.6s ease-out forwards,
+    avatarBreathe 2.8s ease-in-out 0.6s infinite;
+}
+
+@keyframes avatarOnlineEnter {
+  from {
+    box-shadow:
+      0 0 0 0 rgba(163, 230, 53, 0),
+      0 0 0 0 rgba(163, 230, 53, 0);
+  }
+  to {
+    box-shadow:
+      0 0 0 2px #a3e635,
+      0 0 12px 2px rgba(163, 230, 53, 0.55),
+      0 0 22px 4px rgba(163, 230, 53, 0.22);
+  }
+}
+
+@keyframes avatarBreathe {
+  0%, 100% {
+    box-shadow:
+      0 0 0 2px #a3e635,
+      0 0 12px 2px rgba(163, 230, 53, 0.55),
+      0 0 22px 4px rgba(163, 230, 53, 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px #a3e635,
+      0 0 20px 4px rgba(163, 230, 53, 0.85),
+      0 0 36px 10px rgba(163, 230, 53, 0.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-online {
+    animation: none;
+    box-shadow:
+      0 0 0 2px #a3e635,
+      0 0 12px 2px rgba(163, 230, 53, 0.55);
+  }
+}
+
 
