@@ -34,6 +34,67 @@ AUTH_TIMEOUT_SECONDS = 10
 WS_AUTH_FAILED = 4401  # custom 4xxx code, equivalent to HTTP 401
 
 
+async def publish_media_message(
+    db: AsyncSession,
+    chat_id: int,
+    sender_id: int,
+    recipient_id: int,
+    message: Message,
+    caption: str,
+    attachment_url: str | None,
+    attachment_thumb_url: str | None,
+) -> None:
+    """Fan out a media message to the recipient via the existing pubsub channel.
+
+    Mirrors the text-message flow in ``ConnectionManager.send_personal_message``
+    but carries attachment fields. The recipient's WS handler in
+    ``pubsub_listener`` already forwards every published payload — adding the
+    attachment_* keys here is backwards-compatible for older clients that
+    ignore unknown fields.
+    """
+    from sqlalchemy.orm import selectinload as _selectinload
+    sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
+    sender_display_name = sender.profile.display_name if sender.profile else None
+    reply_to_text = None
+    if message.reply_to_id:
+        from messenger.backend.core.crypto import decrypt_message as _decrypt
+        reply_msg = await db.get(Message, message.reply_to_id)
+        if reply_msg:
+            try:
+                reply_to_text = _decrypt(reply_msg.encrypted_data)
+            except Exception:  # noqa: BLE001
+                pass
+
+    payload = json.dumps({
+        "recipient_id": recipient_id,
+        "encrypted_text": message.encrypted_data,
+        "sender_id": sender_id,
+        "chat_id": chat_id,
+        "created_at": _utc_iso(message.created_at),
+        "message_id": message.id,
+        "reply_to_id": message.reply_to_id,
+        "reply_to_text": reply_to_text,
+        "msg_type": message.msg_type,
+        "attachment_url": attachment_url,
+        "attachment_thumb_url": attachment_thumb_url,
+        "attachment_meta": message.attachment_meta,
+        "chat_info": {
+            "id": chat_id,
+            "name": f"private_{min(sender_id, recipient_id)}_{max(sender_id, recipient_id)}",
+            "chat_type": "private",
+            "recipient_id": sender_id,
+            "recipient": {
+                "id": sender.id,
+                "name": sender.name,
+                "username": sender.username,
+                "display_name": sender_display_name,
+            },
+        },
+    })
+    redis = get_redis()
+    await redis.publish(REDIS_CHAT_CHANNEL, payload)
+
+
 async def publish_read_receipt(
     db: AsyncSession,
     chat_id: int,
@@ -179,6 +240,10 @@ class ConnectionManager:
                     "message_id": data.get("message_id"),
                     "reply_to_id": data.get("reply_to_id"),
                     "reply_to_text": data.get("reply_to_text"),
+                    "msg_type": data.get("msg_type", "text"),
+                    "attachment_url": data.get("attachment_url"),
+                    "attachment_thumb_url": data.get("attachment_thumb_url"),
+                    "attachment_meta": data.get("attachment_meta"),
                 }
                 dead = []
                 for ws in sockets:

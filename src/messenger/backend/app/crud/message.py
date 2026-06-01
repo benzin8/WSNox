@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,45 @@ class MessageCRUD:
             recipient_id = recipient_id,
             encrypted_data = encrypted_text,
             reply_to_id = reply_to_id,
+        )
+        db.add(message)
+        await db.execute(
+            update(Chat)
+            .where(Chat.id == chat_id)
+            .values(updated_at=datetime.now(timezone.utc))
+        )
+        await db.commit()
+        await db.refresh(message)
+        return message
+
+    @staticmethod
+    async def create_media_message(
+        db: AsyncSession,
+        *,
+        chat_id: int,
+        sender_id: int,
+        recipient_id: int,
+        msg_type: str,
+        attachment_key: str,
+        attachment_thumb_key: str | None,
+        attachment_meta: dict[str, Any] | None,
+        caption: str = "",
+        reply_to_id: int | None = None,
+    ) -> Message:
+        """Persist a media message. Caption is encrypted just like text bodies
+        (so an empty caption still produces a valid ciphertext) — callers that
+        want NO caption pass an empty string."""
+        encrypted_caption = encrypt_message(caption or "")
+        message = Message(
+            chat_id=chat_id,
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+            encrypted_data=encrypted_caption,
+            msg_type=msg_type,
+            reply_to_id=reply_to_id,
+            attachment_key=attachment_key,
+            attachment_thumb_key=attachment_thumb_key,
+            attachment_meta=attachment_meta,
         )
         db.add(message)
         await db.execute(
