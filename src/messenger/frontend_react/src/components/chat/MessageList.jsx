@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useRef, useCallback } from "react";
 import { MessageSquare, Reply } from "lucide-react";
 import { MessageActionMenu } from "./MessageActionMenu";
+import { MediaMessage } from "./MediaMessage";
+import { MessageStatus } from "./MessageStatus";
 
 function formatTime(iso) {
     if (!iso) return "";
@@ -75,7 +77,7 @@ function truncate(text, max = 60) {
 }
 
 // Individual message bubble with swipe + click handlers
-const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
+const MessageBubble = ({ msg, isOut, onReply, onActionMenu, onRetry, gap = 0 }) => {
     const time = formatTime(msg.created_at);
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
@@ -169,7 +171,11 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
-                    className={`px-3.5 py-2 text-sm leading-relaxed shadow-md cursor-pointer select-none transition-transform ${
+                    className={`text-sm leading-relaxed shadow-md cursor-pointer select-none transition-transform ${
+                        msg.msg_type === "image" || msg.msg_type === "video"
+                            ? "p-1"
+                            : "px-3.5 py-2"
+                    } ${
                         isOut
                             ? "bg-lime-400 text-zinc-900 font-medium rounded-2xl rounded-br-sm"
                             : "bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-sm border border-zinc-700/60"
@@ -182,7 +188,7 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
                     {/* Reply quote if this message is a reply */}
                     {msg.reply_to_id && msg.reply_to_text && (
                         <div
-                            className={`mb-1.5 px-2 py-1 rounded-lg text-xs border-l-2 ${
+                            className={`mb-1.5 mx-1 px-2 py-1 rounded-lg text-xs border-l-2 ${
                                 isOut
                                     ? "bg-lime-500/30 border-zinc-700 text-zinc-800"
                                     : "bg-zinc-700/50 border-lime-400 text-zinc-400"
@@ -191,9 +197,22 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
                             <span className="line-clamp-1">{truncate(msg.reply_to_text)}</span>
                         </div>
                     )}
-                    <div className="flex items-end gap-2">
-                        <span className="whitespace-pre-wrap break-words">{msg.text}</span>
-                        <span className="flex items-center gap-1 shrink-0 self-end mb-0.5">
+
+                    {(msg.msg_type === "image" || msg.msg_type === "video") && (
+                        <MediaMessage
+                            type={msg.msg_type}
+                            fullUrl={msg.attachment_url}
+                            thumbUrl={msg.attachment_thumb_url}
+                            meta={msg.attachment_meta}
+                            isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
+                        />
+                    )}
+
+                    <div className={`flex items-end gap-2 ${msg.msg_type === "image" || msg.msg_type === "video" ? "px-2 pt-1 pb-0.5" : ""}`}>
+                        {msg.text && (
+                            <span className="whitespace-pre-wrap break-words">{msg.text}</span>
+                        )}
+                        <span className={`flex items-center gap-1 shrink-0 self-end mb-0.5 ${msg.text ? "" : "ml-auto"}`}>
                             {msg.edited_at && (
                                 <span className={`text-[10px] leading-none select-none ${
                                     isOut ? "text-zinc-700/60" : "text-zinc-500/70"
@@ -209,11 +228,12 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
                                 </span>
                             )}
                             {isOut && (
-                                <span
-                                    className={`inline-block w-1.5 h-1.5 rounded-full ${
-                                        msg.read_at ? "bg-zinc-900" : "bg-zinc-900/40"
-                                    }`}
-                                    title={msg.read_at ? "Прочитано" : "Доставлено"}
+                                <MessageStatus
+                                    status={msg.client_status}
+                                    readAt={msg.read_at}
+                                    progress={msg.upload_progress}
+                                    onRetry={() => onRetry?.(msg)}
+                                    isOutMode={true}
                                 />
                             )}
                         </span>
@@ -224,7 +244,7 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
     );
 };
 
-export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage, onEditMessage }) => {
+export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage, onEditMessage, onRetryMedia }) => {
     const [actionMsg, setActionMsg] = useState(null);
 
     const itemsWithSeparators = useMemo(
@@ -294,6 +314,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                     isOut={isOut}
                     onReply={handleReply}
                     onActionMenu={handleActionMenu}
+                    onRetry={onRetryMedia}
                     gap={gap}
                   />
                 </React.Fragment>

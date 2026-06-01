@@ -11,9 +11,13 @@ import { useEnergy } from '../../features/energy';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
+import { MediaPreviewModal } from '../../components/chat/MediaPreviewModal';
 import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import { Avatar } from '../../components/profile/Avatar';
+import axios from 'axios';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 import {
   NotificationSettingsProvider,
   PushPromptModal,
@@ -330,8 +334,93 @@ function ChatPage() {
             created_at: new Date().toISOString(),
             reply_to_id: replyMsg?.id ?? null,
             reply_to_text: replyMsg?.text ?? null,
+            client_status: 'pending',
         }]);
   }
+
+  // ── media flow ─────────────────────────────────────────────────────
+  const [pendingMediaFile, setPendingMediaFile] = useState(null);
+
+  const handlePickMedia = useCallback((file) => {
+    setPendingMediaFile(file);
+  }, []);
+
+  const uploadMediaToChat = useCallback(async (chatId, tempId, file, caption, meta) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('caption', caption || '');
+    if (meta) fd.append('client_meta', JSON.stringify(meta));
+    return axios.post(`${API_BASE_URL}/chats/${chatId}/media`, fd, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
+      onUploadProgress: (e) => {
+        if (!e.total) return;
+        const pct = Math.round((e.loaded * 100) / e.total);
+        setMessages((prev) => prev.map((m) =>
+          m.id === tempId ? { ...m, upload_progress: pct } : m,
+        ));
+      },
+    });
+  }, [setMessages]);
+
+  const handleSendMedia = useCallback(async (file, caption, meta) => {
+    if (!activeChat?.id) return;
+    const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const localUrl = URL.createObjectURL(file);
+    const msgType = file.type.startsWith('image/') ? 'image' : 'video';
+
+    setPendingMediaFile(null);
+    setMessages((prev) => [...prev, {
+      id: tempId,
+      type: 'outgoing',
+      text: caption || '',
+      created_at: new Date().toISOString(),
+      msg_type: msgType,
+      attachment_url: localUrl,
+      attachment_thumb_url: localUrl,
+      attachment_meta: meta || null,
+      client_status: 'uploading',
+      upload_progress: 0,
+      // squirreled away so we can rebuild the upload on retry
+      _retry_file: file,
+      _retry_caption: caption,
+      _retry_meta: meta,
+    }]);
+
+    try {
+      const res = await uploadMediaToChat(activeChat.id, tempId, file, caption, meta);
+      const server = res.data;
+      setMessages((prev) => prev.map((m) =>
+        m.id === tempId
+          ? {
+              ...m,
+              id: server.id,
+              attachment_url: server.attachment_url,
+              attachment_thumb_url: server.attachment_thumb_url || server.attachment_url,
+              attachment_meta: server.attachment_meta || m.attachment_meta,
+              client_status: 'sent',
+              upload_progress: undefined,
+              _retry_file: undefined,
+              _retry_caption: undefined,
+              _retry_meta: undefined,
+            }
+          : m,
+      ));
+      URL.revokeObjectURL(localUrl);
+    } catch (err) {
+      console.error('media upload failed', err);
+      setMessages((prev) => prev.map((m) =>
+        m.id === tempId
+          ? { ...m, client_status: 'failed' }
+          : m,
+      ));
+    }
+  }, [activeChat?.id, setMessages, uploadMediaToChat]);
+
+  const handleRetryMedia = useCallback((msg) => {
+    if (!msg?._retry_file) return;
+    setMessages((prev) => prev.filter((m) => m.id !== msg.id));
+    handleSendMedia(msg._retry_file, msg._retry_caption || '', msg._retry_meta || null);
+  }, [handleSendMedia, setMessages]);
 
   const handleReply = useCallback((msg) => {
     setReplyTo(msg);
@@ -664,6 +753,8 @@ function ChatPage() {
              onEditMessage={handleEditMessage}
              onCancelEdit={handleCancelEdit}
              onConfirmEdit={handleConfirmEdit}
+             onPickMedia={handlePickMedia}
+             onRetryMedia={handleRetryMedia}
              />
           </div>
         </div>
@@ -684,6 +775,15 @@ function ChatPage() {
             profile={profileModal.profile}
             onClose={() => setShowEditModal(false)}
             onSave={handleSaveProfile}
+          />
+        )}
+
+        {/* Media preview before send */}
+        {pendingMediaFile && (
+          <MediaPreviewModal
+            file={pendingMediaFile}
+            onCancel={() => setPendingMediaFile(null)}
+            onSend={handleSendMedia}
           />
         )}
       </div>
