@@ -334,6 +334,11 @@ function ChatPage() {
             created_at: new Date().toISOString(),
             reply_to_id: replyMsg?.id ?? null,
             reply_to_text: replyMsg?.text ?? null,
+            // Persist the original message's msg_type so the quote can render
+            // "Фото"/"Видео" immediately for our own optimistic copy — without
+            // this we'd only see the proper label after a page refresh once
+            // the server-side reply_to_msg_type comes back via GET /messages.
+            reply_to_msg_type: replyMsg?.msg_type ?? null,
             client_status: 'pending',
         }]);
   }

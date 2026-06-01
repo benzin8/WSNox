@@ -77,6 +77,7 @@ tests/                  # pytest
 
 - **Аутентификация**: email-код + JWT, [восстановление и смена пароля](docs/features/password-reset.md)
 - **Чат**: WebSocket, история, поиск пользователей, последнее сообщение и счётчик непрочитанных в списке
+- **[Media-сообщения](docs/features/media-messages.md)**: фото и видео с подписью, серверный resize фото (Pillow), presigned S3 URLs, оптимистичный UI с прогрессом, фуллскрин-просмотрщик через React Portal, scroll-to-reply по клику на quote
 - **Профили**: `display_name`, `bio`, фото; модалка с табами «Личные данные» / «Безопасность»
 - **[Аватарки](docs/features/avatars.md)**: Yandex S3 (приватный bucket + presigned GET), client-side круговой crop, server-side resize в WebP, realtime через `profile_update`
 - **[Дашборд основателя](docs/features/founder-dashboard.md)**: защищённая `/dashboard` с метриками (регистрации, сообщения, DAU, online), `users.is_admin` гейт, placeholder'ы под будущие секции
@@ -137,6 +138,7 @@ GitHub Actions (`.github/workflows/`):
 - [Аватарки](docs/features/avatars.md) — S3-хранение, presigned URLs, круговой crop, realtime
 - [Дашборд основателя](docs/features/founder-dashboard.md) — `/dashboard`, метрики из БД + presence, placeholder'ы под Sentry/GeoIP/events
 - [Восстановление и смена пароля](docs/features/password-reset.md) — reset по email-ссылке, смена через профиль, SMTP-конфиг
+- [Media-сообщения](docs/features/media-messages.md) — фото/видео в чат, optimistic upload с прогрессом, лимиты, lightbox-портал, reply-to-photo
 
 **Деплой**
 
