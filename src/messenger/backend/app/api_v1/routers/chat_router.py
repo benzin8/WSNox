@@ -18,6 +18,7 @@ from messenger.backend.app.ws.presence import is_present
 from messenger.backend.app.ws.router import (
     publish_media_message,
     publish_read_receipt,
+    send_media_ack_to_sender,
 )
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
@@ -28,6 +29,7 @@ from messenger.backend.services.deps import get_storage, get_storage_optional
 from messenger.backend.services.storage import S3Storage
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 chat_router = APIRouter(prefix="/chats", tags=["chats"])
 
@@ -97,18 +99,26 @@ async def get_chats(
 ):
     result = await ChatCRUD.get_chats(db, current_user.id)
     chats = []
-    for chat, other_user, rcpt_display_name, rcpt_avatar, encrypted_data, last_msg_time, unread_cnt in result:
+    for chat, other_user, rcpt_display_name, rcpt_avatar, encrypted_data, last_msg_type, last_msg_time, unread_cnt in result:
         chat_resp = ChatResponse.model_validate(chat)
         chat_resp.recipient = UserResponse.model_validate(other_user)
         chat_resp.recipient.display_name = rcpt_display_name
         chat_resp.recipient_id = other_user.id
         urls = await resolve_avatar_urls(storage, rcpt_avatar)
         chat_resp.recipient.avatar_thumb_url = urls.thumb
+        decoded = None
         if encrypted_data:
             try:
-                chat_resp.last_message = decrypt_message(encrypted_data)
+                decoded = decrypt_message(encrypted_data)
             except Exception:
-                chat_resp.last_message = None
+                decoded = None
+        # Media without caption decrypts to an empty string — fall back to a
+        # short type label so the chat list doesn't say "Нет сообщений".
+        if not decoded and last_msg_type == "image":
+            decoded = "📷 Фото"
+        elif not decoded and last_msg_type == "video":
+            decoded = "🎥 Видео"
+        chat_resp.last_message = decoded
         chat_resp.last_message_time = last_msg_time
         chat_resp.unread_count = unread_cnt or 0
         chats.append(chat_resp)
@@ -179,6 +189,7 @@ async def upload_chat_media(
     caption: str = Form(""),
     reply_to_id: int | None = Form(None),
     client_meta: str = Form(""),
+    client_msg_id: str | None = Form(None),
     db: AsyncSession = Depends(get_db_session),
     storage: S3Storage = Depends(get_storage),
     current_user=Depends(get_current_user),
@@ -231,17 +242,39 @@ async def upload_chat_media(
         storage, message.attachment_key, message.attachment_thumb_key
     )
 
-    # Fan out to the recipient via the existing WS pubsub channel.
-    await publish_media_message(
-        db=db,
-        chat_id=chat_id,
-        sender_id=current_user.id,
-        recipient_id=other.user_id,
-        message=message,
-        caption=caption,
-        attachment_url=full_url,
-        attachment_thumb_url=thumb_url,
-    )
+    # Fan out to the recipient via the existing WS pubsub channel. We
+    # swallow publish errors here — the message is already persisted, and
+    # a recipient who misses the live event will see it on next refresh.
+    try:
+        await publish_media_message(
+            db=db,
+            chat_id=chat_id,
+            sender_id=current_user.id,
+            recipient_id=other.user_id,
+            message=message,
+            caption=caption,
+            attachment_url=full_url,
+            attachment_thumb_url=thumb_url,
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("publish_media_message failed (message persisted)")
+
+    # Direct WS ack to the sender — if the HTTP response is lost (slow
+    # link / proxy timeout) this is what flips the optimistic upload
+    # from "uploading" to "sent" without requiring a chat refresh.
+    if client_msg_id:
+        try:
+            await send_media_ack_to_sender(
+                sender_id=current_user.id,
+                temp_id=client_msg_id,
+                message_id=message.id,
+                chat_id=chat_id,
+                attachment_url=full_url,
+                attachment_thumb_url=thumb_url,
+                attachment_meta=message.attachment_meta,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("send_media_ack_to_sender failed")
 
     # MessageBase.text is required; the Message ORM object doesn't carry it,
     # so we attach the cleartext caption before validation.
