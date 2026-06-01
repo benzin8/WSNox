@@ -5,7 +5,9 @@ export function Avatar({ url, initials, online, size = 40, className = "" }) {
   const showImage = url && !failed;
   return (
     <div
-      className={`relative rounded-full overflow-hidden bg-lime-400 flex items-center justify-center select-none ${className}`}
+      className={`relative rounded-full overflow-hidden bg-lime-400 flex items-center justify-center select-none ${
+        online ? "avatar-online" : ""
+      } ${className}`}
       style={{ width: size, height: size }}
     >
       {showImage && (
@@ -25,14 +27,6 @@ export function Avatar({ url, initials, online, size = 40, className = "" }) {
         >
           {initials}
         </span>
-      )}
-      {online !== undefined && (
-        <span
-          className={`absolute bottom-0 right-0 rounded-full border-2 border-zinc-900 ${
-            online ? "bg-lime-400" : "bg-zinc-600"
-          }`}
-          style={{ width: size * 0.22, height: size * 0.22 }}
-        />
       )}
     </div>
   );
