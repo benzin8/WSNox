@@ -1,6 +1,30 @@
 import React, { useMemo, useState, useRef, useCallback } from "react";
-import { MessageSquare, Reply } from "lucide-react";
+import { Image as ImageIcon, MessageSquare, Reply, Video as VideoIcon } from "lucide-react";
 import { MessageActionMenu } from "./MessageActionMenu";
+import { MediaMessage } from "./MediaMessage";
+import { MessageStatus } from "./MessageStatus";
+
+function replyQuotePreview(msg) {
+    // The replied-to message may have been a media post without a caption;
+    // in that case the backend returns reply_to_text="" — surface a clear
+    // "Фото"/"Видео" label so the quote isn't an empty box.
+    if (msg.reply_to_text) return { text: msg.reply_to_text, icon: null };
+    if (msg.reply_to_msg_type === "image") return { text: "Фото", icon: "image" };
+    if (msg.reply_to_msg_type === "video") return { text: "Видео", icon: "video" };
+    return null;
+}
+
+function scrollToMessage(id) {
+    if (id == null) return;
+    const el = document.getElementById(`msg-${id}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.remove("message-flash");
+    // Force reflow so the animation restarts on repeated clicks.
+    void el.offsetWidth;
+    el.classList.add("message-flash");
+    setTimeout(() => el.classList.remove("message-flash"), 1600);
+}
 
 function formatTime(iso) {
     if (!iso) return "";
@@ -75,10 +99,13 @@ function truncate(text, max = 60) {
 }
 
 // Individual message bubble with swipe + click handlers
-const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
+const MessageBubble = ({ msg, isOut, onReply, onActionMenu, onRetry, gap = 0 }) => {
     const time = formatTime(msg.created_at);
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
+
+    const isMedia = msg.msg_type === "image" || msg.msg_type === "video";
+    const replyPreview = msg.reply_to_id ? replyQuotePreview(msg) : null;
 
     // --- Swipe to reply (horizontal swipe on message) ---
     const handleTouchStart = useCallback((e) => {
@@ -165,11 +192,16 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
                 </div>
 
                 <div
+                    id={`msg-${msg.id}`}
                     onClick={handleClick}
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
-                    className={`px-3.5 py-2 text-sm leading-relaxed shadow-md cursor-pointer select-none transition-transform ${
+                    className={`text-sm leading-relaxed shadow-md cursor-pointer select-none transition-transform ${
+                        isMedia
+                            ? "p-1"
+                            : "px-3.5 py-2"
+                    } ${
                         isOut
                             ? "bg-lime-400 text-zinc-900 font-medium rounded-2xl rounded-br-sm"
                             : "bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-sm border border-zinc-700/60"
@@ -177,54 +209,104 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, gap = 0 }) => {
                     style={{
                         transform: swipeX > 0 ? `translateX(${swipeX}px)` : undefined,
                         transition: swipeX > 0 ? "none" : "transform 200ms ease-out",
+                        scrollMarginTop: "88px",
+                        scrollMarginBottom: "88px",
                     }}
                 >
                     {/* Reply quote if this message is a reply */}
-                    {msg.reply_to_id && msg.reply_to_text && (
-                        <div
-                            className={`mb-1.5 px-2 py-1 rounded-lg text-xs border-l-2 ${
+                    {msg.reply_to_id && replyPreview && (
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); scrollToMessage(msg.reply_to_id); }}
+                            className={`block w-full text-left mb-1.5 ${isMedia ? "mx-1" : ""} px-2 py-1 rounded-lg text-xs border-l-2 transition-colors ${
                                 isOut
-                                    ? "bg-lime-500/30 border-zinc-700 text-zinc-800"
-                                    : "bg-zinc-700/50 border-lime-400 text-zinc-400"
+                                    ? "bg-lime-500/30 border-zinc-700 text-zinc-800 hover:bg-lime-500/50"
+                                    : "bg-zinc-700/50 border-lime-400 text-zinc-400 hover:bg-zinc-700/80"
                             }`}
+                            title="К исходному сообщению"
                         >
-                            <span className="line-clamp-1">{truncate(msg.reply_to_text)}</span>
+                            <span className="flex items-center gap-1 line-clamp-1">
+                                {replyPreview.icon === "image" && <ImageIcon size={11} className="shrink-0 opacity-70" />}
+                                {replyPreview.icon === "video" && <VideoIcon size={11} className="shrink-0 opacity-70" />}
+                                <span className="truncate">{truncate(replyPreview.text)}</span>
+                            </span>
+                        </button>
+                    )}
+
+                    {isMedia && (
+                        <div className="relative">
+                            <MediaMessage
+                                type={msg.msg_type}
+                                fullUrl={msg.attachment_url}
+                                thumbUrl={msg.attachment_thumb_url}
+                                meta={msg.attachment_meta}
+                                isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
+                                onDoubleTap={() => onReply(msg)}
+                            />
+                            {/* Caption-less media: float the time stamp + status as a pill
+                                pinned to the bottom-right of the photo (Telegram-style). */}
+                            {!msg.text && (
+                                <span
+                                    className="absolute bottom-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] leading-none text-white pointer-events-none"
+                                    style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
+                                >
+                                    {msg.edited_at && <span className="opacity-80">ред.</span>}
+                                    {time && <span>{time}</span>}
+                                    {isOut && (
+                                        <MessageStatus
+                                            status={msg.client_status}
+                                            readAt={msg.read_at}
+                                            progress={msg.upload_progress}
+                                            onRetry={() => onRetry?.(msg)}
+                                            isOutMode={false}
+                                        />
+                                    )}
+                                </span>
+                            )}
                         </div>
                     )}
-                    <div className="flex items-end gap-2">
-                        <span className="whitespace-pre-wrap break-words">{msg.text}</span>
-                        <span className="flex items-center gap-1 shrink-0 self-end mb-0.5">
-                            {msg.edited_at && (
-                                <span className={`text-[10px] leading-none select-none ${
-                                    isOut ? "text-zinc-700/60" : "text-zinc-500/70"
-                                }`}>
-                                    ред.
-                                </span>
+
+                    {/* Text bubble OR media with caption — keep the timestamp on the
+                        same baseline as the last text line so it sits bottom-right. */}
+                    {(!isMedia || msg.text) && (
+                        <div className={`flex items-end gap-2 ${isMedia ? "px-2 pt-1 pb-0.5" : ""}`}>
+                            {msg.text && (
+                                <span className="whitespace-pre-wrap break-words flex-1 min-w-0">{msg.text}</span>
                             )}
-                            {time && (
-                                <span className={`text-[10px] leading-none select-none ${
-                                    isOut ? "text-zinc-700/70" : "text-zinc-500"
-                                }`}>
-                                    {time}
-                                </span>
-                            )}
-                            {isOut && (
-                                <span
-                                    className={`inline-block w-1.5 h-1.5 rounded-full ${
-                                        msg.read_at ? "bg-zinc-900" : "bg-zinc-900/40"
-                                    }`}
-                                    title={msg.read_at ? "Прочитано" : "Доставлено"}
-                                />
-                            )}
-                        </span>
-                    </div>
+                            <span className="flex items-center gap-1 shrink-0 self-end mb-0.5 ml-auto">
+                                {msg.edited_at && (
+                                    <span className={`text-[10px] leading-none select-none ${
+                                        isOut ? "text-zinc-700/60" : "text-zinc-500/70"
+                                    }`}>
+                                        ред.
+                                    </span>
+                                )}
+                                {time && (
+                                    <span className={`text-[10px] leading-none select-none ${
+                                        isOut ? "text-zinc-700/70" : "text-zinc-500"
+                                    }`}>
+                                        {time}
+                                    </span>
+                                )}
+                                {isOut && (
+                                    <MessageStatus
+                                        status={msg.client_status}
+                                        readAt={msg.read_at}
+                                        progress={msg.upload_progress}
+                                        onRetry={() => onRetry?.(msg)}
+                                        isOutMode={true}
+                                    />
+                                )}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
 
-export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage, onEditMessage }) => {
+export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage, onEditMessage, onRetryMedia }) => {
     const [actionMsg, setActionMsg] = useState(null);
 
     const itemsWithSeparators = useMemo(
@@ -294,6 +376,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                     isOut={isOut}
                     onReply={handleReply}
                     onActionMenu={handleActionMenu}
+                    onRetry={onRetryMedia}
                     gap={gap}
                   />
                 </React.Fragment>

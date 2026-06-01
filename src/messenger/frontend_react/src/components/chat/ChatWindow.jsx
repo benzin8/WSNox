@@ -12,6 +12,7 @@ export const ChatWindow = ({
     isPartnerOnline, partnerPresencePreference,
     replyTo, onReply, onCancelReply, onDeleteMessage,
     editingMessage, onEditMessage, onCancelEdit, onConfirmEdit,
+    onPickMedia, onRetryMedia,
 }) => {
     if (!activeChat) {
         return (
@@ -91,6 +92,7 @@ export const ChatWindow = ({
           onReply={onReply}
           onDeleteMessage={onDeleteMessage}
           onEditMessage={onEditMessage}
+          onRetryMedia={onRetryMedia}
         />
         <InputArea
           inputText={inputText}
@@ -102,6 +104,7 @@ export const ChatWindow = ({
           editingMessage={editingMessage}
           onCancelEdit={onCancelEdit}
           onConfirmEdit={onConfirmEdit}
+          onPickMedia={onPickMedia}
         />
       </div>
     );

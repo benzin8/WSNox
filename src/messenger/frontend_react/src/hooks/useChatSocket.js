@@ -92,7 +92,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
                     if (data.temp_id != null) {
                         setMessages((prev) => prev.map((m) =>
                             m.id === data.temp_id
-                                ? { ...m, id: data.message_id }
+                                ? { ...m, id: data.message_id, client_status: "sent" }
                                 : m
                         ));
                     }

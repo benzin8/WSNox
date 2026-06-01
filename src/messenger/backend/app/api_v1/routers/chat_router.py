@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.api_v1.auth.dependencies import get_current_user
@@ -15,12 +15,16 @@ from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.app.crud.profile import ProfileCRUD
 from messenger.backend.app.ws.presence import is_present
-from messenger.backend.app.ws.router import publish_read_receipt
+from messenger.backend.app.ws.router import (
+    publish_media_message,
+    publish_read_receipt,
+)
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
+from messenger.backend.services import media as media_service
 from messenger.backend.services.avatar_urls import resolve_avatar_urls
-from messenger.backend.services.deps import get_storage_optional
+from messenger.backend.services.deps import get_storage, get_storage_optional
 from messenger.backend.services.storage import S3Storage
 
 logging.basicConfig(level=logging.INFO)
@@ -133,7 +137,12 @@ async def get_chat_presence(
     return {"online_user_ids": online}
 
 @chat_router.get("/{chat_id}/messages", response_model=list[MessageResponse])
-async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
+async def get_messages_by_chat_id(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    storage: S3Storage | None = Depends(get_storage_optional),
+    current_user=Depends(get_current_user),
+):
     if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
@@ -151,10 +160,96 @@ async def get_messages_by_chat_id(chat_id: int, db: AsyncSession = Depends(get_d
     result = []
     for message in messages:
         resp = MessageResponse.model_validate(message)
+        if message.attachment_key or message.attachment_thumb_key:
+            full_url, thumb_url = await media_service.resolve_attachment_urls(
+                storage, message.attachment_key, message.attachment_thumb_key
+            )
+            resp.attachment_url = full_url
+            resp.attachment_thumb_url = thumb_url
         if not expose:
             resp.read_at = None
         result.append(resp)
     return result
+
+
+@chat_router.post("/{chat_id}/media", response_model=MessageResponse)
+async def upload_chat_media(
+    chat_id: int,
+    file: UploadFile = File(...),
+    caption: str = Form(""),
+    reply_to_id: int | None = Form(None),
+    client_meta: str = Form(""),
+    db: AsyncSession = Depends(get_db_session),
+    storage: S3Storage = Depends(get_storage),
+    current_user=Depends(get_current_user),
+):
+    """Upload an image or video as a chat message.
+
+    The request is multipart/form-data. Caption is optional and reuses the
+    same encryption pipeline as text bodies. After persistence the server
+    publishes a WS event so the recipient sees the message immediately.
+    """
+    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
+    other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, current_user.id)
+    if not other:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Чат без второго участника")
+
+    content_type = file.content_type or ""
+    try:
+        if content_type in media_service.ALLOWED_IMAGE_MIME:
+            payload = await media_service.process_image(storage, current_user.id, file)
+        elif content_type in media_service.ALLOWED_VIDEO_MIME:
+            payload = await media_service.process_video(storage, current_user.id, file, client_meta)
+        else:
+            raise HTTPException(status_code=415, detail="Unsupported media type")
+    except media_service.FileTooLarge as e:
+        raise HTTPException(status_code=413, detail="File too large") from e
+    except media_service.UnsupportedFormat as e:
+        raise HTTPException(status_code=415, detail="Unsupported media type") from e
+    except media_service.EmptyFile as e:
+        raise HTTPException(status_code=400, detail="Empty file") from e
+    except media_service.InvalidImage as e:
+        raise HTTPException(status_code=400, detail="Invalid image") from e
+    except media_service.InvalidMeta as e:
+        raise HTTPException(status_code=400, detail=str(e) or "Invalid meta") from e
+
+    message = await MessageCRUD.create_media_message(
+        db,
+        chat_id=chat_id,
+        sender_id=current_user.id,
+        recipient_id=other.user_id,
+        msg_type=payload.msg_type,
+        attachment_key=payload.attachment_key,
+        attachment_thumb_key=payload.attachment_thumb_key,
+        attachment_meta=payload.attachment_meta,
+        caption=caption,
+        reply_to_id=reply_to_id,
+    )
+
+    full_url, thumb_url = await media_service.resolve_attachment_urls(
+        storage, message.attachment_key, message.attachment_thumb_key
+    )
+
+    # Fan out to the recipient via the existing WS pubsub channel.
+    await publish_media_message(
+        db=db,
+        chat_id=chat_id,
+        sender_id=current_user.id,
+        recipient_id=other.user_id,
+        message=message,
+        caption=caption,
+        attachment_url=full_url,
+        attachment_thumb_url=thumb_url,
+    )
+
+    # MessageBase.text is required; the Message ORM object doesn't carry it,
+    # so we attach the cleartext caption before validation.
+    message.text = caption or ""
+    resp = MessageResponse.model_validate(message)
+    resp.attachment_url = full_url
+    resp.attachment_thumb_url = thumb_url
+    return resp
 
 @chat_router.post("/{chat_id}/read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_chat_as_read(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):

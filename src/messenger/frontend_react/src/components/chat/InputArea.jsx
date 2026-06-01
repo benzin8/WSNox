@@ -1,8 +1,9 @@
 import React from "react";
 import { useState } from "react";
 import { Send, X, Reply, Pencil, Check } from "lucide-react";
+import { AttachmentPicker } from "./AttachmentPicker";
 
-export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit }) => {
+export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit, onPickMedia }) => {
     const [inputText, setInputText] = useState("");
     const inputRef = React.useRef(null);
 
@@ -75,12 +76,15 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
           )}
           <form
             onSubmit={handleSubmit}
-            className={`flex items-center gap-3 bg-zinc-800/30 rounded-2xl p-2 pl-4 border transition-all duration-300 ${
+            className={`flex items-center gap-2 bg-zinc-800/30 rounded-2xl p-2 pl-2 border transition-all duration-300 ${
               editingMessage
                 ? "border-lime-400/50 ring-4 ring-lime-400/20"
                 : "border-zinc-700/60 focus-within:border-lime-400/50 focus-within:ring-4 focus-within:ring-lime-400/40"
             }`}
           >
+            {!editingMessage && onPickMedia && (
+              <AttachmentPicker onPick={onPickMedia} disabled={!isConnected} />
+            )}
             <input
               ref={inputRef}
               type="text"

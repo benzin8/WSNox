@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from messenger.backend.db import Base
@@ -22,6 +23,14 @@ class Message(Base):
     reply_to_id: Mapped[Optional[int]] = mapped_column(ForeignKey("message.id"), nullable=True, default=None)
 
     msg_type: Mapped[str] = mapped_column(String(15), default="text")
+
+    # Attachments (image/video). Keys are S3 object keys (NOT URLs — URLs are
+    # presigned on read). attachment_meta holds dims/duration/size as a small
+    # JSONB blob populated either by the server (Pillow for images) or the
+    # client (video probe). NULL for plain text messages.
+    attachment_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True, default=None)
+    attachment_thumb_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True, default=None)
+    attachment_meta: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True, default=None)
 
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), index=True)
     is_read: Mapped[bool] = mapped_column(default=False)
