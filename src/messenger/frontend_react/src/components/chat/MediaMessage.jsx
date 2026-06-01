@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Loader2, Play } from "lucide-react";
 import { MediaLightbox } from "./MediaLightbox";
+
+const DOUBLE_TAP_MS = 300;
 
 /**
  * Inline media block rendered inside an outgoing/incoming bubble.
@@ -18,8 +20,11 @@ export function MediaMessage({
   meta,           // { width, height, duration_ms, ... }
   isUploading,
   onClick,
+  onDoubleTap,    // called on second tap within DOUBLE_TAP_MS → reply
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const lastTapRef = useRef(0);
+  const tapTimerRef = useRef(null);
   const url = thumbUrl || fullUrl;
   // Compute the displayed aspect-ratio so the bubble doesn't jump when the
   // image finishes loading. Cap the ratio to keep portrait media compact.
@@ -27,12 +32,30 @@ export function MediaMessage({
   const h = meta?.height ?? meta?.original_height ?? 3;
   const aspect = Math.max(0.6, Math.min(2.2, w / h));
 
-  const openLightbox = (e) => {
-    if (e) e.stopPropagation();  // don't trigger bubble's action menu
+  // Single tap opens the lightbox (or fires onClick), double tap fires
+  // onDoubleTap (reply). We delay the single-tap action by DOUBLE_TAP_MS
+  // so a quick second tap can cancel it — the same pattern MessageBubble
+  // uses for "single = action menu, double = reply" on text bubbles.
+  const handleTap = useCallback((e) => {
+    if (e) e.stopPropagation();
     if (isUploading) return;
-    if (onClick) onClick();
-    else setLightboxOpen(true);
-  };
+
+    const now = Date.now();
+    const diff = now - lastTapRef.current;
+    lastTapRef.current = now;
+
+    if (diff < DOUBLE_TAP_MS && onDoubleTap) {
+      clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = null;
+      onDoubleTap();
+      return;
+    }
+    tapTimerRef.current = setTimeout(() => {
+      tapTimerRef.current = null;
+      if (onClick) onClick();
+      else setLightboxOpen(true);
+    }, DOUBLE_TAP_MS);
+  }, [isUploading, onClick, onDoubleTap]);
 
   return (
     <div className="relative">
@@ -46,12 +69,12 @@ export function MediaMessage({
             alt=""
             className="w-full h-full object-cover cursor-zoom-in"
             loading="lazy"
-            onClick={openLightbox}
+            onClick={handleTap}
           />
         )}
 
         {type === "video" && fullUrl && (
-          <div className="relative w-full h-full" onClick={openLightbox}>
+          <div className="relative w-full h-full" onClick={handleTap}>
             <video
               src={fullUrl}
               preload="metadata"

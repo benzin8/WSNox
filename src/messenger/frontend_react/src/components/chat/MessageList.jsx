@@ -241,6 +241,7 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, onRetry, gap = 0 }) 
                                 thumbUrl={msg.attachment_thumb_url}
                                 meta={msg.attachment_meta}
                                 isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
+                                onDoubleTap={() => onReply(msg)}
                             />
                             {/* Caption-less media: float the time stamp + status as a pill
                                 pinned to the bottom-right of the photo (Telegram-style). */}
