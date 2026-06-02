@@ -2,7 +2,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
-from messenger.backend.app.api_v1.schemas.chat import ChatCreateRequest
+from messenger.backend.app.api_v1.schemas.chat import (
+    ChatCreateRequest,
+    GroupChatCreateRequest,
+)
 from messenger.backend.models.chat import Chat, ChatMember
 from messenger.backend.models.message import Message
 from messenger.backend.models.profile import Profile
@@ -49,7 +52,40 @@ class ChatCRUD:
             await session.rollback()
             raise e
         return chat
-        
+
+    @staticmethod
+    async def create_group_chat(
+        session: AsyncSession,
+        data: GroupChatCreateRequest,
+        creator_id: int,
+    ) -> Chat:
+        """Create a group chat. Creator becomes admin; everyone else member.
+
+        Member ids in the request are merged with the creator and de-duped, so
+        a caller passing themselves in by accident is harmless.
+        """
+        member_ids = set(data.member_ids) | {creator_id}
+        if len(member_ids) < 2:
+            raise ValueError("A group needs at least 2 participants")
+
+        chat = Chat(chat_type="group", name=data.name.strip()[:100] or "Group")
+        session.add(chat)
+        await session.flush()
+
+        for uid in member_ids:
+            session.add(ChatMember(
+                chat_id=chat.id,
+                user_id=uid,
+                role="admin" if uid == creator_id else "member",
+            ))
+        try:
+            await session.commit()
+            await session.refresh(chat)
+        except Exception:
+            await session.rollback()
+            raise
+        return chat
+
     @staticmethod
     async def get_chat_by_user_id(session: AsyncSession, current_user_id: int, other_user_id: int) -> Chat:
         query = (
@@ -58,7 +94,7 @@ class ChatCRUD:
         .where(Chat.chat_type == "private")
         .where(ChatMember.user_id.in_([current_user_id, other_user_id]))
         .group_by(Chat.id)
-        .having(func.count(ChatMember.user_id) == 2) 
+        .having(func.count(ChatMember.user_id) == 2)
     )
         result = await session.execute(query)
         return result.scalars().first()
@@ -84,7 +120,82 @@ class ChatCRUD:
         )
         result = await session.execute(query)
         return result.scalars().first()
-    
+
+    @staticmethod
+    async def get_member_ids(session: AsyncSession, chat_id: int) -> list[int]:
+        """All user_ids in the chat — sender included.
+
+        Used for fanout: callers usually filter out the sender themselves.
+        """
+        rows = await session.execute(
+            select(ChatMember.user_id).where(ChatMember.chat_id == chat_id)
+        )
+        return [row[0] for row in rows.all()]
+
+    @staticmethod
+    async def get_chat_members_full(session: AsyncSession, chat_id: int) -> list[tuple[ChatMember, User, Profile | None]]:
+        """Members with their user + profile, for the group-info screen."""
+        rows = await session.execute(
+            select(ChatMember, User, Profile)
+            .join(User, User.id == ChatMember.user_id)
+            .outerjoin(Profile, Profile.user_id == User.id)
+            .where(ChatMember.chat_id == chat_id)
+            .order_by(ChatMember.joined_at.asc())
+        )
+        return rows.all()
+
+    @staticmethod
+    async def get_chat(session: AsyncSession, chat_id: int) -> Chat | None:
+        return await session.get(Chat, chat_id)
+
+    @staticmethod
+    async def add_members(session: AsyncSession, chat_id: int, user_ids: list[int]) -> list[int]:
+        """Add users to a chat, skipping any who are already members.
+
+        Returns the list of user_ids that were actually inserted.
+        """
+        if not user_ids:
+            return []
+        existing = await session.execute(
+            select(ChatMember.user_id).where(
+                ChatMember.chat_id == chat_id,
+                ChatMember.user_id.in_(user_ids),
+            )
+        )
+        already = {row[0] for row in existing.all()}
+        new_ids = [uid for uid in user_ids if uid not in already]
+        for uid in new_ids:
+            session.add(ChatMember(chat_id=chat_id, user_id=uid, role="member"))
+        try:
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        return new_ids
+
+    @staticmethod
+    async def remove_member(session: AsyncSession, chat_id: int, user_id: int) -> bool:
+        """Remove a user from a chat. Returns True if a row was deleted."""
+        from sqlalchemy import delete
+        result = await session.execute(
+            delete(ChatMember).where(
+                ChatMember.chat_id == chat_id,
+                ChatMember.user_id == user_id,
+            )
+        )
+        await session.commit()
+        return result.rowcount > 0
+
+    @staticmethod
+    async def delete_chat(session: AsyncSession, chat_id: int) -> bool:
+        """Delete a chat (and via cascade — its members and messages)."""
+        chat = await session.get(Chat, chat_id)
+        if not chat:
+            return False
+        await session.delete(chat)
+        await session.commit()
+        return True
+
     @staticmethod
     async def is_chat_member(session: AsyncSession, chat_id: int, user_id: int) -> bool:
         query = select(ChatMember).where(
@@ -93,6 +204,16 @@ class ChatCRUD:
         )
         result = await session.execute(query)
         return result.scalar_one_or_none() is not None
+
+    @staticmethod
+    async def get_chat_role(session: AsyncSession, chat_id: int, user_id: int) -> str | None:
+        rows = await session.execute(
+            select(ChatMember.role).where(
+                ChatMember.chat_id == chat_id,
+                ChatMember.user_id == user_id,
+            )
+        )
+        return rows.scalar_one_or_none()
 
     @staticmethod
     async def get_chat_partners(session: AsyncSession, user_id: int) -> list[int]:
@@ -112,14 +233,25 @@ class ChatCRUD:
 
     @staticmethod
     async def get_chats(session: AsyncSession, current_user_id: int):
+        """Return chats the user is in. For each row:
+        (Chat, OtherUser|None, rcpt_display_name|None, rcpt_avatar|None,
+         encrypted_data, msg_type, msg_created_at, unread_count,
+         last_sender_id|None, last_sender_display_name|None, member_count|None)
+
+        OtherUser/rcpt_* are only populated for `private` chats. For group
+        chats we expose member_count and the sender of the last message so
+        the chat list can render "Иван: …" preview + initials avatar.
+        """
         OtherUser = aliased(User)
         OtherMember = aliased(ChatMember)
+        SenderProfile = aliased(Profile)
 
         msg_ranked = (
             select(
                 Message.chat_id,
                 Message.encrypted_data,
                 Message.msg_type,
+                Message.sender_id,
                 Message.created_at,
                 func.row_number().over(
                     partition_by=Message.chat_id,
@@ -130,7 +262,15 @@ class ChatCRUD:
 
         last_msg = select(msg_ranked).where(msg_ranked.c.rn == 1).subquery()
 
-        unread_sub = (
+        # Unread count semantics:
+        # * private chats: messages where I'm the recipient and is_read=False
+        # * group chats: messages from someone else where I have no MessageRead row
+        # We approximate both with: count of messages in chat sent by !=me and
+        # for which there's no MessageRead(me) AND (private case is_read=False).
+        # For MVP keep the simpler private-only formula and let group counts be
+        # "messages from others without a MessageRead row".
+        from messenger.backend.models.message_read import MessageRead
+        unread_private = (
             select(
                 Message.chat_id,
                 func.count(Message.id).label("cnt"),
@@ -138,6 +278,29 @@ class ChatCRUD:
             .where(Message.recipient_id == current_user_id)
             .where(Message.is_read == False)  # noqa: E712
             .group_by(Message.chat_id)
+        ).subquery()
+
+        unread_group = (
+            select(
+                Message.chat_id,
+                func.count(Message.id).label("cnt"),
+            )
+            .join(Chat, Chat.id == Message.chat_id)
+            .outerjoin(
+                MessageRead,
+                (MessageRead.message_id == Message.id) & (MessageRead.user_id == current_user_id),
+            )
+            .where(Chat.chat_type == "group")
+            .where(Message.sender_id != current_user_id)
+            .where(MessageRead.message_id.is_(None))
+            .group_by(Message.chat_id)
+        ).subquery()
+
+        member_count_sub = (
+            select(
+                ChatMember.chat_id,
+                func.count(ChatMember.user_id).label("cnt"),
+            ).group_by(ChatMember.chat_id)
         ).subquery()
 
         query = (
@@ -149,14 +312,29 @@ class ChatCRUD:
                 last_msg.c.encrypted_data,
                 last_msg.c.msg_type.label("last_msg_type"),
                 last_msg.c.created_at.label("last_msg_time"),
-                unread_sub.c.cnt,
+                last_msg.c.sender_id.label("last_sender_id"),
+                SenderProfile.display_name.label("last_sender_display_name"),
+                func.coalesce(unread_private.c.cnt, unread_group.c.cnt, 0).label("unread_cnt"),
+                member_count_sub.c.cnt.label("member_count"),
             )
             .join(ChatMember, ChatMember.chat_id == Chat.id)
-            .join(OtherMember, (OtherMember.chat_id == Chat.id) & (OtherMember.user_id != current_user_id))
-            .join(OtherUser, OtherUser.id == OtherMember.user_id)
+            # OtherMember/OtherUser only resolve for chats with exactly 2 members
+            # (i.e. private). For groups the LEFT JOIN keeps the chat row but
+            # OtherUser comes back NULL — caller renders group UI from chat.name
+            # + member_count instead.
+            .outerjoin(
+                OtherMember,
+                (OtherMember.chat_id == Chat.id)
+                & (OtherMember.user_id != current_user_id)
+                & (Chat.chat_type == "private"),
+            )
+            .outerjoin(OtherUser, OtherUser.id == OtherMember.user_id)
             .outerjoin(Profile, Profile.user_id == OtherUser.id)
             .outerjoin(last_msg, last_msg.c.chat_id == Chat.id)
-            .outerjoin(unread_sub, unread_sub.c.chat_id == Chat.id)
+            .outerjoin(SenderProfile, SenderProfile.user_id == last_msg.c.sender_id)
+            .outerjoin(unread_private, unread_private.c.chat_id == Chat.id)
+            .outerjoin(unread_group, unread_group.c.chat_id == Chat.id)
+            .outerjoin(member_count_sub, member_count_sub.c.chat_id == Chat.id)
             .where(ChatMember.user_id == current_user_id)
             .order_by(func.coalesce(last_msg.c.created_at, Chat.updated_at).desc())
         )

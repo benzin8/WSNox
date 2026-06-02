@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from messenger.backend.app.api_v1.auth.dependencies import get_current_user
 from messenger.backend.app.api_v1.schemas.chat import (
     ChatCreateRequest,
+    ChatMemberResponse,
     ChatResponse,
+    GroupAddMembersRequest,
+    GroupChatCreateRequest,
+    GroupChatMembersResponse,
     UserSearchResponse,
 )
 from messenger.backend.app.api_v1.schemas.message import MessageResponse
@@ -16,6 +20,7 @@ from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.app.crud.profile import ProfileCRUD
 from messenger.backend.app.ws.presence import is_present
 from messenger.backend.app.ws.router import (
+    publish_chat_event,
     publish_media_message,
     publish_read_receipt,
     send_media_ack_to_sender,
@@ -99,21 +104,39 @@ async def get_chats(
 ):
     result = await ChatCRUD.get_chats(db, current_user.id)
     chats = []
-    for chat, other_user, rcpt_display_name, rcpt_avatar, encrypted_data, last_msg_type, last_msg_time, unread_cnt in result:
+    for row in result:
+        (
+            chat,
+            other_user,
+            rcpt_display_name,
+            rcpt_avatar,
+            encrypted_data,
+            last_msg_type,
+            last_msg_time,
+            last_sender_id,
+            last_sender_display_name,
+            unread_cnt,
+            member_count,
+        ) = row
         chat_resp = ChatResponse.model_validate(chat)
-        chat_resp.recipient = UserResponse.model_validate(other_user)
-        chat_resp.recipient.display_name = rcpt_display_name
-        chat_resp.recipient_id = other_user.id
-        urls = await resolve_avatar_urls(storage, rcpt_avatar)
-        chat_resp.recipient.avatar_thumb_url = urls.thumb
+        if other_user is not None:
+            chat_resp.recipient = UserResponse.model_validate(other_user)
+            chat_resp.recipient.display_name = rcpt_display_name
+            chat_resp.recipient_id = other_user.id
+            urls = await resolve_avatar_urls(storage, rcpt_avatar)
+            chat_resp.recipient.avatar_thumb_url = urls.thumb
+        else:
+            chat_resp.recipient = None
+            chat_resp.recipient_id = None
+            chat_resp.member_count = member_count or 0
+            chat_resp.last_sender_id = last_sender_id
+            chat_resp.last_sender_display_name = last_sender_display_name
         decoded = None
         if encrypted_data:
             try:
                 decoded = decrypt_message(encrypted_data)
             except Exception:
                 decoded = None
-        # Media without caption decrypts to an empty string — fall back to a
-        # short type label so the chat list doesn't say "Нет сообщений".
         if not decoded and last_msg_type == "image":
             decoded = "📷 Фото"
         elif not decoded and last_msg_type == "video":
@@ -123,6 +146,185 @@ async def get_chats(
         chat_resp.unread_count = unread_cnt or 0
         chats.append(chat_resp)
     return chats
+
+
+@chat_router.post("/group", response_model=ChatResponse, status_code=status.HTTP_201_CREATED)
+async def create_group_chat(
+    request: GroupChatCreateRequest,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    """Create a new group chat. Creator is implicitly added as admin."""
+    if not request.name or not request.name.strip():
+        raise HTTPException(status_code=400, detail="Group name is required")
+    # All requested members must already share a private chat with the creator,
+    # so we don't accidentally let anyone pull arbitrary users into a group.
+    partners = set(await ChatCRUD.get_chat_partners(db, current_user.id))
+    bad = [uid for uid in request.member_ids if uid != current_user.id and uid not in partners]
+    if bad:
+        raise HTTPException(status_code=400, detail=f"Not a chat partner: {bad}")
+    try:
+        chat = await ChatCRUD.create_group_chat(db, request, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    member_ids = await ChatCRUD.get_member_ids(db, chat.id)
+    resp = ChatResponse.model_validate(chat)
+    resp.member_count = len(member_ids)
+
+    # Notify all members (other than the creator) so their chat list updates
+    # without a refresh. The event carries enough metadata that the client
+    # can render a placeholder row immediately.
+    try:
+        await publish_chat_event({
+            "type": "group_created",
+            "chat_id": chat.id,
+            "name": chat.name,
+            "created_by": current_user.id,
+            "member_ids": member_ids,
+        })
+    except Exception:  # noqa: BLE001
+        logger.exception("publish_chat_event(group_created) failed")
+    return resp
+
+
+@chat_router.get("/{chat_id}/members", response_model=GroupChatMembersResponse)
+async def get_group_members(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    storage: S3Storage | None = Depends(get_storage_optional),
+    current_user=Depends(get_current_user),
+):
+    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
+    rows = await ChatCRUD.get_chat_members_full(db, chat_id)
+    members = []
+    for member, user, profile in rows:
+        member_resp = ChatMemberResponse(
+            user_id=user.id,
+            role=member.role,
+            username=user.username,
+            display_name=profile.display_name if profile else None,
+            avatar=None,
+        )
+        if profile and profile.avatar:
+            urls = await resolve_avatar_urls(storage, profile.avatar)
+            member_resp.avatar = urls.thumb
+        members.append(member_resp)
+    return GroupChatMembersResponse(chat_id=chat_id, members=members)
+
+
+@chat_router.post("/{chat_id}/members", response_model=GroupChatMembersResponse)
+async def add_group_members(
+    chat_id: int,
+    request: GroupAddMembersRequest,
+    db: AsyncSession = Depends(get_db_session),
+    storage: S3Storage | None = Depends(get_storage_optional),
+    current_user=Depends(get_current_user),
+):
+    """Add new members to a group chat. Admin only.
+
+    Caller may only invite users they already share a private chat with —
+    same guard as group creation, so this can't be used to pull arbitrary
+    accounts into a conversation.
+    """
+    chat = await ChatCRUD.get_chat(db, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if chat.chat_type != "group":
+        raise HTTPException(status_code=400, detail="Group chats only")
+    role = await ChatCRUD.get_chat_role(db, chat_id, current_user.id)
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    partners = set(await ChatCRUD.get_chat_partners(db, current_user.id))
+    bad = [uid for uid in request.member_ids if uid != current_user.id and uid not in partners]
+    if bad:
+        raise HTTPException(status_code=400, detail=f"Not a chat partner: {bad}")
+
+    added = await ChatCRUD.add_members(db, chat_id, request.member_ids)
+    member_ids_now = await ChatCRUD.get_member_ids(db, chat_id)
+
+    if added:
+        try:
+            await publish_chat_event({
+                "type": "group_members_added",
+                "chat_id": chat_id,
+                "added_user_ids": added,
+                "member_ids": member_ids_now,
+            })
+        except Exception:  # noqa: BLE001
+            logger.exception("publish_chat_event(group_members_added) failed")
+
+    rows = await ChatCRUD.get_chat_members_full(db, chat_id)
+    members = []
+    for member, user, profile in rows:
+        member_resp = ChatMemberResponse(
+            user_id=user.id,
+            role=member.role,
+            username=user.username,
+            display_name=profile.display_name if profile else None,
+            avatar=None,
+        )
+        if profile and profile.avatar:
+            urls = await resolve_avatar_urls(storage, profile.avatar)
+            member_resp.avatar = urls.thumb
+        members.append(member_resp)
+    return GroupChatMembersResponse(chat_id=chat_id, members=members)
+
+
+@chat_router.post("/{chat_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
+async def leave_group_chat(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    chat = await ChatCRUD.get_chat(db, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if chat.chat_type != "group":
+        raise HTTPException(status_code=400, detail="Can leave group chats only")
+    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+        raise HTTPException(status_code=403, detail="Not a member")
+
+    member_ids = await ChatCRUD.get_member_ids(db, chat_id)
+    await ChatCRUD.remove_member(db, chat_id, current_user.id)
+    try:
+        await publish_chat_event({
+            "type": "group_member_left",
+            "chat_id": chat_id,
+            "user_id": current_user.id,
+            "member_ids": member_ids,
+        })
+    except Exception:  # noqa: BLE001
+        logger.exception("publish_chat_event(group_member_left) failed")
+
+
+@chat_router.delete("/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_chat(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    """Delete a group chat. Only admin may do this."""
+    chat = await ChatCRUD.get_chat(db, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    if chat.chat_type != "group":
+        raise HTTPException(status_code=400, detail="Can delete group chats only")
+    role = await ChatCRUD.get_chat_role(db, chat_id, current_user.id)
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    member_ids = await ChatCRUD.get_member_ids(db, chat_id)
+    await ChatCRUD.delete_chat(db, chat_id)
+    try:
+        await publish_chat_event({
+            "type": "group_deleted",
+            "chat_id": chat_id,
+            "member_ids": member_ids,
+        })
+    except Exception:  # noqa: BLE001
+        logger.exception("publish_chat_event(group_deleted) failed")
 
 @chat_router.get("/presence")
 async def get_chat_presence(
@@ -155,17 +357,21 @@ async def get_messages_by_chat_id(
 ):
     if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
+    chat = await ChatCRUD.get_chat(db, chat_id)
     max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
     if max_id:
         await publish_read_receipt(db, chat_id, current_user.id, max_id)
     messages = await MessageCRUD.get_messages(db, chat_id)
 
-    # Determine whether to expose read_at based on reciprocity
+    # Per-user read receipts in groups are a separate iteration — for MVP we
+    # hide read_at in groups entirely. Private chats follow the reciprocity
+    # rule based on the two participants' settings.
     from messenger.backend.app.crud.notification import should_expose_read_receipts
-    other_user = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, current_user.id)
     expose = False
-    if other_user:
-        expose = await should_expose_read_receipts(db, current_user.id, other_user.user_id)
+    if chat and chat.chat_type == "private":
+        other_user = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, current_user.id)
+        if other_user:
+            expose = await should_expose_read_receipts(db, current_user.id, other_user.user_id)
 
     result = []
     for message in messages:
@@ -202,9 +408,18 @@ async def upload_chat_media(
     """
     if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
-    other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, current_user.id)
-    if not other:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Чат без второго участника")
+    chat = await ChatCRUD.get_chat(db, chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    # For private chats we still persist recipient_id (back-compat with old
+    # clients reading the column). For group chats recipient_id is NULL and
+    # fan-out happens via chat_members.
+    recipient_id: int | None = None
+    if chat.chat_type == "private":
+        other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, current_user.id)
+        if not other:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Чат без второго участника")
+        recipient_id = other.user_id
 
     content_type = file.content_type or ""
     try:
@@ -229,7 +444,7 @@ async def upload_chat_media(
         db,
         chat_id=chat_id,
         sender_id=current_user.id,
-        recipient_id=other.user_id,
+        recipient_id=recipient_id,
         msg_type=payload.msg_type,
         attachment_key=payload.attachment_key,
         attachment_thumb_key=payload.attachment_thumb_key,
@@ -242,19 +457,22 @@ async def upload_chat_media(
         storage, message.attachment_key, message.attachment_thumb_key
     )
 
-    # Fan out to the recipient via the existing WS pubsub channel. We
-    # swallow publish errors here — the message is already persisted, and
-    # a recipient who misses the live event will see it on next refresh.
+    # Fan out via the existing WS pubsub channel. For groups the
+    # publish helper computes recipient_ids from chat_members; for
+    # private it short-circuits to the one recipient. Failures are
+    # swallowed — the message is already persisted, so a missed live
+    # event will still show up on next refresh.
     try:
         await publish_media_message(
             db=db,
             chat_id=chat_id,
             sender_id=current_user.id,
-            recipient_id=other.user_id,
+            recipient_id=recipient_id,
             message=message,
             caption=caption,
             attachment_url=full_url,
             attachment_thumb_url=thumb_url,
+            chat_type=chat.chat_type,
         )
     except Exception:  # noqa: BLE001
         logger.exception("publish_media_message failed (message persisted)")

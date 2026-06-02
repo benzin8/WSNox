@@ -2,6 +2,7 @@ import React from 'react';
 import { User, Sparkles } from 'lucide-react';
 import { useEnergy } from '../../features/energy';
 import { Avatar } from '../profile/Avatar';
+import { GroupAvatar } from './GroupAvatar';
 
 export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => {
   const { randomInChat } = useEnergy();
@@ -36,11 +37,20 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
     <div className="flex-grow overflow-y-auto p-2 space-y-1 scrollbar-hide">
       {sortedChats.map((chat) => {
         const isSelected = activeChatId === chat.id;
-        const displayName = chat.recipient?.display_name || chat.recipient?.name || chat.name || "Чат";
-        const lastMsg = chat.last_message || "Нет сообщений";
+        const isGroup = chat.chat_type === "group";
+        const displayName = isGroup
+          ? (chat.name || "Группа")
+          : (chat.recipient?.display_name || chat.recipient?.name || chat.name || "Чат");
+        // Group preview: "{sender_display_name || username}: {message}".
+        // For private chats — message text as-is.
+        const previewText = chat.last_message || "";
+        const previewSender = isGroup ? (chat.last_sender_display_name || "") : "";
+        const lastMsg = previewText
+          ? (previewSender ? `${previewSender}: ${previewText}` : previewText)
+          : "Нет сообщений";
         const time = chat.last_message_time || chat.updated_at;
-        const formattedTime = time 
-          ? new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+        const formattedTime = time
+          ? new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           : '';
 
         return (
@@ -48,24 +58,35 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
             key={chat.id}
             onClick={() => onSelectChat(chat)}
             className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all duration-300 group relative overflow-hidden ${
-              isSelected 
-                ? 'bg-lime-400/10 border border-lime-400/20 shadow-[0_0_20px_rgba(163,230,53,0.05)]' 
+              isSelected
+                ? 'bg-lime-400/10 border border-lime-400/20 shadow-[0_0_20px_rgba(163,230,53,0.05)]'
                 : 'bg-zinc-800/30 border border-zinc-700/50 hover:bg-zinc-800/60 hover:border-zinc-600'
             }`}
           >
             {isSelected && (
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-lime-400 rounded-r-full shadow-[0_0_10px_rgba(163,230,53,0.5)]" />
             )}
-            
-            <Avatar
-              url={chat.recipient?.avatar_thumb_url}
-              initials={(displayName || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")}
-              online={onlineUsers?.has(chat.recipient_id)}
-              size={48}
-              className={`flex-shrink-0 transition-all duration-300 ${
-                isSelected ? 'scale-105 shadow-lg shadow-lime-400/20' : ''
-              }`}
-            />
+
+            {isGroup ? (
+              <GroupAvatar
+                id={chat.id}
+                name={displayName}
+                size={48}
+                className={`flex-shrink-0 transition-all duration-300 ${
+                  isSelected ? 'scale-105 shadow-lg shadow-lime-400/20' : ''
+                }`}
+              />
+            ) : (
+              <Avatar
+                url={chat.recipient?.avatar_thumb_url}
+                initials={(displayName || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")}
+                online={onlineUsers?.has(chat.recipient_id)}
+                size={48}
+                className={`flex-shrink-0 transition-all duration-300 ${
+                  isSelected ? 'scale-105 shadow-lg shadow-lime-400/20' : ''
+                }`}
+              />
+            )}
 
             <div className="flex-grow min-w-0">
               <div className="flex justify-between items-baseline mb-1">

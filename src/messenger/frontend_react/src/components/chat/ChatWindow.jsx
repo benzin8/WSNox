@@ -1,9 +1,10 @@
 import React from "react";
-import { User, Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle } from 'lucide-react';
+import { Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle, LogOut, Trash2 } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 import { ChatMuteToggle } from "../../features/notifications";
 import { Avatar } from "../profile/Avatar";
+import { GroupAvatar } from "./GroupAvatar";
 
 export const ChatWindow = ({
     messages, setMessages, activeChat, sendMessage,
@@ -12,8 +13,11 @@ export const ChatWindow = ({
     isPartnerOnline, partnerPresencePreference,
     replyTo, onReply, onCancelReply, onDeleteMessage,
     editingMessage, onEditMessage, onCancelEdit, onConfirmEdit,
-    onPickMedia, onRetryMedia,
+    onPickMedia, onRetryMedia, onLeaveGroup, onDeleteGroup,
 }) => {
+    const [menuOpen, setMenuOpen] = React.useState(false);
+    React.useEffect(() => { setMenuOpen(false); }, [activeChat?.id]);
+    const isGroup = activeChat?.chat_type === "group";
     if (!activeChat) {
         return (
             <div className="flex-grow flex items-center justify-center relative overflow-hidden">
@@ -43,35 +47,81 @@ export const ChatWindow = ({
             <button
               type="button"
               onClick={onOpenProfile}
-              className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl hover:bg-zinc-800/50 active:scale-[0.98] transition-all min-w-0"
-              title="Открыть профиль"
+              className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl active:scale-[0.98] transition-all min-w-0 hover:bg-zinc-800/50"
+              title={isGroup ? "Участники группы" : "Открыть профиль"}
             >
-              <Avatar
-                url={activeChat?.recipient?.avatar_thumb_url}
-                initials={(chatName || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")}
-                online={isPartnerOnline}
-                size={44}
-                className="shrink-0 group-hover:ring-2 group-hover:ring-lime-400/60 transition-all"
-              />
+              {isGroup ? (
+                <GroupAvatar
+                  id={activeChat?.id}
+                  name={activeChat?.name || chatName}
+                  size={44}
+                  className="shrink-0"
+                />
+              ) : (
+                <Avatar
+                  url={activeChat?.recipient?.avatar_thumb_url}
+                  initials={(chatName || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("")}
+                  online={isPartnerOnline}
+                  size={44}
+                  className="shrink-0 group-hover:ring-2 group-hover:ring-lime-400/60 transition-all"
+                />
+              )}
               <div className="text-left min-w-0">
-                <h3 className="font-bold leading-tight group-hover:text-lime-400 transition-colors truncate">
-                  {chatName}
+                <h3 className={`font-bold leading-tight truncate ${isGroup ? "text-zinc-100" : "group-hover:text-lime-400 transition-colors"}`}>
+                  {isGroup ? (activeChat?.name || chatName) : chatName}
                 </h3>
                 <div className="flex items-center gap-1.5">
-                  <p className={`text-xs font-medium ${isPartnerOnline ? "text-lime-400" : "text-zinc-500"}`}>
-                    {isPartnerOnline ? "в сети" : "не в сети"}
-                  </p>
-                  {partnerPresencePreference === "dnd" && (
-                    <BellOff size={12} className="text-amber-400" />
+                  {isGroup ? (
+                    <p className="text-xs font-medium text-zinc-500">
+                      {activeChat?.member_count ? `${activeChat.member_count} участников` : "группа"}
+                    </p>
+                  ) : (
+                    <>
+                      <p className={`text-xs font-medium ${isPartnerOnline ? "text-lime-400" : "text-zinc-500"}`}>
+                        {isPartnerOnline ? "в сети" : "не в сети"}
+                      </p>
+                      {partnerPresencePreference === "dnd" && (
+                        <BellOff size={12} className="text-amber-400" />
+                      )}
+                    </>
                   )}
                 </div>
               </div>
             </button>
           </div>
-          <div className="flex items-center gap-4 text-zinc-400">
+          <div className="flex items-center gap-4 text-zinc-400 relative">
             <ChatMuteToggle chatId={activeChat?.id} />
-            <Phone size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
-            <MoreVertical size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
+            {!isGroup && (
+              <Phone size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
+            )}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="hover:text-lime-400 cursor-pointer transition-colors p-1 -m-1 rounded-md"
+              aria-label="Меню чата"
+            >
+              <MoreVertical size={20} />
+            </button>
+            {menuOpen && isGroup && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl py-1 z-30">
+                <button
+                  type="button"
+                  onClick={() => { setMenuOpen(false); onLeaveGroup?.(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
+                >
+                  <LogOut size={16} /> Покинуть группу
+                </button>
+                {onDeleteGroup && (
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); onDeleteGroup?.(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-zinc-800 transition-colors"
+                  >
+                    <Trash2 size={16} /> Удалить группу
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </header>
 
@@ -93,6 +143,7 @@ export const ChatWindow = ({
           onDeleteMessage={onDeleteMessage}
           onEditMessage={onEditMessage}
           onRetryMedia={onRetryMedia}
+          isGroup={isGroup}
         />
         <InputArea
           inputText={inputText}

@@ -23,7 +23,8 @@ def _utc_iso(value: Optional[datetime]) -> Optional[str]:
 class MessageBase(BaseModel):
     chat_id: int
     sender_id: int
-    recipient_id: int
+    # NULL for group-chat messages — there is no single recipient.
+    recipient_id: Optional[int] = None
     text: str
     is_read: bool
     created_at: datetime

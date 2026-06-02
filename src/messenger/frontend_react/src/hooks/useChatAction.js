@@ -115,6 +115,70 @@ export const useChatAction = () => {
         }
     }
 
+    const createGroupChat = async (name, memberIds) => {
+        try {
+            setError(null);
+            const res = await axios.post(
+                `${API_BASE}/chats/group`,
+                { name, member_ids: memberIds },
+                getAuthConfig()
+            );
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to create group");
+            return null;
+        }
+    }
+
+    const getChatMembers = async (chatId) => {
+        try {
+            setError(null);
+            const res = await axios.get(
+                `${API_BASE}/chats/${chatId}/members`,
+                getAuthConfig()
+            );
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to fetch members");
+            return null;
+        }
+    }
+
+    const addGroupMembers = async (chatId, memberIds) => {
+        try {
+            setError(null);
+            const res = await axios.post(
+                `${API_BASE}/chats/${chatId}/members`,
+                { member_ids: memberIds },
+                getAuthConfig()
+            );
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to add members");
+            return null;
+        }
+    }
+
+    const leaveGroupChat = async (chatId) => {
+        try {
+            await axios.post(`${API_BASE}/chats/${chatId}/leave`, null, getAuthConfig());
+            return true;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to leave group");
+            return false;
+        }
+    }
+
+    const deleteChat = async (chatId) => {
+        try {
+            await axios.delete(`${API_BASE}/chats/${chatId}`, getAuthConfig());
+            return true;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to delete chat");
+            return false;
+        }
+    }
+
     return {searchChats,
             getUserDataByChatId,
             getOrCreateChats,
@@ -122,6 +186,11 @@ export const useChatAction = () => {
             getMessagesByChatId,
             getAllChats,
             markChatAsRead,
+            createGroupChat,
+            getChatMembers,
+            addGroupMembers,
+            leaveGroupChat,
+            deleteChat,
             setActiveChat,
             activeChat,
             searchResult,
