@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Send, LogOut, User, MessageSquare, Phone, MoreVertical, Search } from 'lucide-react';
+import { LogOut, User, Search, UsersRound } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
 import { useChatSocket } from '../../hooks/useChatSocket';
 import { usePresence } from '../../hooks/usePresence';
@@ -11,6 +11,8 @@ import { useEnergy } from '../../features/energy';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
+import { CreateGroupModal } from '../../components/chat/CreateGroupModal';
+import { GroupInfoModal } from '../../components/chat/GroupInfoModal';
 import { MediaPreviewModal } from '../../components/chat/MediaPreviewModal';
 import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
@@ -71,7 +73,7 @@ function ChatPage() {
     return () => mql.removeEventListener?.('change', onChange);
   }, []);
 
-  const { messages, setMessages, sendMessage, editMessage, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, socketRef } = useChatSocket(token, activeChatIdRef);
+  const { messages, setMessages, sendMessage, editMessage, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastChatEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { settings: notificationSettings } = useNotificationSettings();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
@@ -92,7 +94,12 @@ function ChatPage() {
           getMyData,
           getMessagesByChatId,
           getAllChats,
-          markChatAsRead
+          markChatAsRead,
+          createGroupChat,
+          getChatMembers,
+          addGroupMembers,
+          leaveGroupChat,
+          deleteChat,
   } = useChatAction();
   const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
   const { isAdmin } = useIsAdmin();
@@ -186,11 +193,18 @@ function ChatPage() {
       setChats(prevChats => {
         const idx = prevChats.findIndex(c => c.id === lastReceivedMessage.chat_id);
         if (idx === -1) return prevChats;
+        // Media without caption — show a short label instead of "" so the
+        // preview doesn't collapse into "Нет сообщений" on the live update.
+        let previewText = lastReceivedMessage.text;
+        if (!previewText && lastReceivedMessage.msg_type === "image") previewText = "📷 Фото";
+        else if (!previewText && lastReceivedMessage.msg_type === "video") previewText = "🎥 Видео";
         const updatedChat = {
           ...prevChats[idx],
-          last_message: lastReceivedMessage.text,
+          last_message: previewText,
           last_message_time: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          last_sender_id: lastReceivedMessage.sender_id,
+          last_sender_display_name: lastReceivedMessage.sender_display_name,
           unread_count: (!isViewing && !isOwnMessage)
             ? (prevChats[idx].unread_count || 0) + 1
             : prevChats[idx].unread_count || 0,
@@ -277,8 +291,13 @@ function ChatPage() {
 
   useEffect(() => {
     if (activeChat?.id && currentUser?.id) {
+      // Wipe the previous chat's messages immediately so the user never
+      // sees stale content while the new fetch is in flight (otherwise
+      // switching from chat A to chat B would briefly show A's bubbles).
+      setMessages([]);
       const fetchMessages = async () => {
         const msgs = await getMessagesByChatId(activeChat.id);
+        if (!msgs) return;
         const mappedMsgs = msgs.map(m => ({
           ...m,
           text: m.text,
@@ -331,17 +350,142 @@ function ChatPage() {
             text: text,
             type: 'outgoing',
             id: tempId,
+            sender_id: currentUser?.id,
+            sender_display_name: myProfile?.display_name || currentUser?.name || null,
             created_at: new Date().toISOString(),
             reply_to_id: replyMsg?.id ?? null,
             reply_to_text: replyMsg?.text ?? null,
-            // Persist the original message's msg_type so the quote can render
-            // "Фото"/"Видео" immediately for our own optimistic copy — without
-            // this we'd only see the proper label after a page refresh once
-            // the server-side reply_to_msg_type comes back via GET /messages.
             reply_to_msg_type: replyMsg?.msg_type ?? null,
             client_status: 'pending',
         }]);
   }
+
+  // ── group chats ────────────────────────────────────────────────────
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [groupCandidates, setGroupCandidates] = useState([]);
+  const [creatingGroup, setCreatingGroup] = useState(false);
+
+  const handleOpenCreateGroup = useCallback(() => {
+    // Candidates = current private chats' counterparts. The backend rejects
+    // anyone the user has no existing chat with, so list only those here.
+    const cands = (chatsRef.current || [])
+      .filter((c) => c.chat_type === "private" && c.recipient)
+      .map((c) => ({
+        id: c.recipient.id,
+        name: c.recipient.name,
+        username: c.recipient.username,
+        display_name: c.recipient.display_name,
+        avatar_thumb_url: c.recipient.avatar_thumb_url,
+      }));
+    setGroupCandidates(cands);
+    setShowCreateGroup(true);
+  }, []);
+
+  const handleCreateGroup = useCallback(async (name, memberIds) => {
+    setCreatingGroup(true);
+    const chat = await createGroupChat(name, memberIds);
+    setCreatingGroup(false);
+    if (!chat) return;
+    setShowCreateGroup(false);
+    const updated = await getAllChats();
+    setChats(updated);
+    const created = updated.find((c) => c.id === chat.id) || chat;
+    setActiveChat(created);
+    setChatName(created.name || "Группа");
+    setMobileView('chat');
+    setReplyTo(null);
+    setEditingMessage(null);
+    setMessages([]);
+  }, [createGroupChat, getAllChats, setActiveChat, setMessages]);
+
+  const handleLeaveGroup = useCallback(async () => {
+    if (!activeChat || activeChat.chat_type !== "group") return;
+    const ok = window.confirm(`Покинуть группу "${activeChat.name}"?`);
+    if (!ok) return;
+    const success = await leaveGroupChat(activeChat.id);
+    if (success) {
+      setChats((prev) => prev.filter((c) => c.id !== activeChat.id));
+      setActiveChat(null);
+      setMessages([]);
+      setMobileView('list');
+    }
+  }, [activeChat, leaveGroupChat, setActiveChat, setMessages]);
+
+  // Group info modal: list members + add-member flow.
+  const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+  const [groupMembers, setGroupMembers] = useState(null);
+  const [groupMembersLoading, setGroupMembersLoading] = useState(false);
+  const [groupAdding, setGroupAdding] = useState(false);
+
+  const loadGroupMembers = useCallback(async (chatId) => {
+    setGroupMembersLoading(true);
+    const data = await getChatMembers(chatId);
+    setGroupMembersLoading(false);
+    setGroupMembers(data?.members || []);
+  }, [getChatMembers]);
+
+  const handleOpenGroupInfo = useCallback(() => {
+    if (!activeChat || activeChat.chat_type !== "group") return;
+    setGroupInfoOpen(true);
+    setGroupMembers(null);
+    loadGroupMembers(activeChat.id);
+  }, [activeChat, loadGroupMembers]);
+
+  const handleAddGroupMembers = useCallback(async (memberIds) => {
+    if (!activeChat || activeChat.chat_type !== "group") return;
+    setGroupAdding(true);
+    const data = await addGroupMembers(activeChat.id, memberIds);
+    setGroupAdding(false);
+    if (data) {
+      setGroupMembers(data.members || []);
+      // Member count on the active chat header should reflect the new size.
+      setActiveChat((prev) => prev ? { ...prev, member_count: (data.members || []).length } : prev);
+      setChats((prev) => prev.map((c) =>
+        c.id === activeChat.id ? { ...c, member_count: (data.members || []).length } : c,
+      ));
+    }
+  }, [activeChat, addGroupMembers, setActiveChat]);
+
+  const isGroupAdmin = activeChat?.chat_type === "group"
+    && (groupMembers || []).some((m) => m.user_id === currentUser?.id && m.role === "admin");
+
+  const handleDeleteGroup = useCallback(async () => {
+    if (!activeChat || activeChat.chat_type !== "group") return;
+    const ok = window.confirm(`Удалить группу "${activeChat.name}"? Это действие необратимо.`);
+    if (!ok) return;
+    const success = await deleteChat(activeChat.id);
+    if (success) {
+      setChats((prev) => prev.filter((c) => c.id !== activeChat.id));
+      setActiveChat(null);
+      setMessages([]);
+      setMobileView('list');
+    }
+  }, [activeChat, deleteChat, setActiveChat, setMessages]);
+
+  // React to group lifecycle events fan-out via WS so the chat list keeps
+  // up to date even when WE didn't initiate the change (another member
+  // created the group, the admin deleted it, etc.).
+  useEffect(() => {
+    if (!lastChatEvent) return;
+    if (lastChatEvent.type === "group_created" || lastChatEvent.type === "group_members_added") {
+      // Someone added us to a new group, or we got added to an existing one —
+      // refetch the list so the chat shows up / member_count updates.
+      getAllChats().then((updated) => setChats(updated));
+    } else if (lastChatEvent.type === "group_deleted") {
+      setChats((prev) => prev.filter((c) => c.id !== lastChatEvent.chat_id));
+      if (activeChatIdRef.current === lastChatEvent.chat_id) {
+        setActiveChat(null);
+        setMessages([]);
+        setMobileView('list');
+      }
+    } else if (lastChatEvent.type === "group_member_left") {
+      // Only relevant if we have the chat open and the leaver was us
+      // (everyone else updates only when they re-open the members screen,
+      // which is a roadmap iteration). For MVP just refetch the list.
+      getAllChats().then((updated) => setChats(updated));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastChatEvent]);
 
   // ── media flow ─────────────────────────────────────────────────────
   const [pendingMediaFile, setPendingMediaFile] = useState(null);
@@ -488,7 +632,16 @@ function ChatPage() {
   const handleSelectChat = async (selectedChat) => {
     setChatListBlurred(false);
     randomInChat();
-    if (selectedChat.recipient) {
+    if (selectedChat.chat_type === "group") {
+      setActiveChat(selectedChat);
+      setChatName(selectedChat.name || "Группа");
+      setMobileView('chat');
+      setReplyTo(null);
+      setEditingMessage(null);
+      setChats(prevChats => prevChats.map(c =>
+        c.id === selectedChat.id ? { ...c, unread_count: 0 } : c
+      ));
+    } else if (selectedChat.recipient) {
       setActiveChat(selectedChat);
       setChatName(selectedChat.recipient.display_name || selectedChat.recipient.name);
       setMobileView('chat');
@@ -664,6 +817,15 @@ function ChatPage() {
                 <span className="font-bold text-lg tracking-tight group-hover:text-lime-400 transition-colors">Чаты</span>
               </button>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleOpenCreateGroup}
+                  title="Создать группу"
+                  aria-label="Создать группу"
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-lime-400 hover:bg-zinc-800 transition-colors"
+                >
+                  <UsersRound size={20} />
+                </button>
                 {isAdmin && (
                   <button
                     onClick={() => navigate('/dashboard')}
@@ -757,7 +919,13 @@ function ChatPage() {
              inputText={inputText}
              setInputText={setInputText}
              chatName={chatName}
-             onOpenProfile={() => activeChat?.recipient_id && handleOpenUserProfile(activeChat.recipient_id)}
+             onOpenProfile={() => {
+               if (activeChat?.chat_type === "group") {
+                 handleOpenGroupInfo();
+               } else if (activeChat?.recipient_id) {
+                 handleOpenUserProfile(activeChat.recipient_id);
+               }
+             }}
              onBack={() => setMobileView('list')}
              replyTo={replyTo}
              onReply={handleReply}
@@ -769,6 +937,8 @@ function ChatPage() {
              onConfirmEdit={handleConfirmEdit}
              onPickMedia={handlePickMedia}
              onRetryMedia={handleRetryMedia}
+             onLeaveGroup={handleLeaveGroup}
+             onDeleteGroup={isGroupAdmin ? handleDeleteGroup : null}
              />
           </div>
         </div>
@@ -798,6 +968,38 @@ function ChatPage() {
             file={pendingMediaFile}
             onCancel={() => setPendingMediaFile(null)}
             onSend={handleSendMedia}
+          />
+        )}
+
+        {/* Group creation modal */}
+        {showCreateGroup && (
+          <CreateGroupModal
+            candidates={groupCandidates}
+            isSubmitting={creatingGroup}
+            onCancel={() => setShowCreateGroup(false)}
+            onCreate={handleCreateGroup}
+          />
+        )}
+
+        {/* Group info / add members modal */}
+        {groupInfoOpen && activeChat?.chat_type === "group" && (
+          <GroupInfoModal
+            chat={activeChat}
+            members={groupMembers}
+            isLoading={groupMembersLoading}
+            candidates={(chatsRef.current || [])
+              .filter((c) => c.chat_type === "private" && c.recipient)
+              .map((c) => ({
+                id: c.recipient.id,
+                name: c.recipient.name,
+                username: c.recipient.username,
+                display_name: c.recipient.display_name,
+                avatar_thumb_url: c.recipient.avatar_thumb_url,
+              }))}
+            isAdmin={isGroupAdmin}
+            isAdding={groupAdding}
+            onCancel={() => setGroupInfoOpen(false)}
+            onAdd={handleAddGroupMembers}
           />
         )}
       </div>

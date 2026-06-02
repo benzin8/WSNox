@@ -17,7 +17,9 @@ class Message(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     chat_id: Mapped[int] = mapped_column(ForeignKey("chats.id"), index=True)
     sender_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    recipient_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # NULL for group-chat messages: there is no single recipient — the message
+    # fans out to every chat member except the sender via chat_members.
+    recipient_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True, default=None)
 
     encrypted_data: Mapped[str] = mapped_column(Text, nullable=False)
     reply_to_id: Mapped[Optional[int]] = mapped_column(ForeignKey("message.id"), nullable=True, default=None)

@@ -24,6 +24,7 @@ from messenger.backend.app.ws.viewing_chat import (
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import AsyncSessionLocal
+from messenger.backend.models.chat import Chat
 from messenger.backend.models.message import Message
 from messenger.backend.models.user import User
 
@@ -77,19 +78,20 @@ async def publish_media_message(
     db: AsyncSession,
     chat_id: int,
     sender_id: int,
-    recipient_id: int,
+    recipient_id: int | None,
     message: Message,
     caption: str,
     attachment_url: str | None,
     attachment_thumb_url: str | None,
+    chat_type: str = "private",
 ) -> None:
-    """Fan out a media message to the recipient via the existing pubsub channel.
+    """Fan out a media message via the existing pubsub channel.
 
-    Mirrors the text-message flow in ``ConnectionManager.send_personal_message``
-    but carries attachment fields. The recipient's WS handler in
-    ``pubsub_listener`` already forwards every published payload — adding the
-    attachment_* keys here is backwards-compatible for older clients that
-    ignore unknown fields.
+    For private chats we publish to the single ``recipient_id``. For group
+    chats we resolve the chat's member list (minus the sender) and publish a
+    ``recipient_ids`` list — the listener iterates it and delivers to each
+    online socket. Either way the payload also carries sender display info so
+    the receiving client can render the bubble immediately.
     """
     from sqlalchemy.orm import selectinload as _selectinload
     sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
@@ -106,11 +108,17 @@ async def publish_media_message(
                 pass
             reply_to_msg_type = reply_msg.msg_type
 
+    recipient_ids = await _resolve_recipient_ids(db, chat_id, sender_id, chat_type, recipient_id)
+    chat_info = await _build_chat_info(db, chat_id, sender_id, recipient_id, chat_type, sender, sender_display_name)
+
     payload = json.dumps({
         "recipient_id": recipient_id,
+        "recipient_ids": recipient_ids,
         "encrypted_text": message.encrypted_data,
         "sender_id": sender_id,
+        "sender_display_name": sender_display_name,
         "chat_id": chat_id,
+        "chat_type": chat_type,
         "created_at": _utc_iso(message.created_at),
         "message_id": message.id,
         "reply_to_id": message.reply_to_id,
@@ -120,7 +128,43 @@ async def publish_media_message(
         "attachment_url": attachment_url,
         "attachment_thumb_url": attachment_thumb_url,
         "attachment_meta": message.attachment_meta,
-        "chat_info": {
+        "chat_info": chat_info,
+    })
+    redis = get_redis()
+    await redis.publish(REDIS_CHAT_CHANNEL, payload)
+
+
+async def _resolve_recipient_ids(
+    db: AsyncSession,
+    chat_id: int,
+    sender_id: int,
+    chat_type: str,
+    recipient_id: int | None,
+) -> list[int]:
+    """List of users who should receive a message fan-out, sender excluded."""
+    if chat_type == "private":
+        return [recipient_id] if recipient_id is not None else []
+    members = await ChatCRUD.get_member_ids(db, chat_id)
+    return [uid for uid in members if uid != sender_id]
+
+
+async def _build_chat_info(
+    db: AsyncSession,
+    chat_id: int,
+    sender_id: int,
+    recipient_id: int | None,
+    chat_type: str,
+    sender: User,
+    sender_display_name: str | None,
+) -> dict:
+    """Build the chat_info blob the client uses to render the chat row.
+
+    Private: includes the sender as the "recipient" (the client uses the
+    other party). Group: includes name + chat_type so the client can render
+    a group avatar/title from the chat object it already has.
+    """
+    if chat_type == "private":
+        return {
             "id": chat_id,
             "name": f"private_{min(sender_id, recipient_id)}_{max(sender_id, recipient_id)}",
             "chat_type": "private",
@@ -131,10 +175,26 @@ async def publish_media_message(
                 "username": sender.username,
                 "display_name": sender_display_name,
             },
-        },
-    })
+        }
+    chat = await db.get(Chat, chat_id)
+    return {
+        "id": chat_id,
+        "name": chat.name if chat else f"chat_{chat_id}",
+        "chat_type": "group",
+        "recipient_id": None,
+        "recipient": None,
+    }
+
+
+async def publish_chat_event(payload: dict) -> None:
+    """Publish a chat lifecycle event (group created / member left / deleted).
+
+    Listener side iterates payload['member_ids'] and pushes the event to every
+    online socket of each member, so their chat list can update without a
+    refresh.
+    """
     redis = get_redis()
-    await redis.publish(REDIS_CHAT_CHANNEL, payload)
+    await redis.publish(REDIS_CHAT_CHANNEL + ":chat_events", json.dumps(payload))
 
 
 async def publish_read_receipt(
@@ -144,8 +204,15 @@ async def publish_read_receipt(
     up_to_message_id: int,
 ) -> None:
     """Fan out a messages_read event so the sender's client can flip the
-    read indicator without a refresh. Caller must have already persisted
-    the read_at update in the DB. Honors the reciprocity rule."""
+    read indicator without a refresh.
+
+    Private chats: only emit if the reciprocity rule allows it.
+    Group chats: MVP suppresses read receipts entirely — the receipt model
+    in groups is "seen by N of M" which is a separate iteration.
+    """
+    chat = await db.get(Chat, chat_id)
+    if not chat or chat.chat_type == "group":
+        return
     other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, reader_id)
     if not other:
         return
@@ -187,11 +254,18 @@ class ConnectionManager:
         self,
         chat_id: int,
         text: str,
-        recipient_id: int,
+        recipient_id: int | None,
         sender_id: int,
         db: AsyncSession,
         reply_to_id: int | None = None,
+        chat_type: str = "private",
     ) -> int:
+        """Persist + fan out a text message.
+
+        ``recipient_id`` is the single counterpart for private chats. For
+        groups it must be None — fan-out resolves the member list from the
+        chat itself. ``chat_type`` is used to pick the right code path.
+        """
         message = await MessageCRUD.create_text_message(
             db=db,
             chat_id=chat_id,
@@ -203,7 +277,6 @@ class ConnectionManager:
         from sqlalchemy.orm import selectinload as _selectinload
         sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
         sender_display_name = sender.profile.display_name if sender.profile else None
-        # Fetch reply-to text if this is a reply
         reply_to_text = None
         reply_to_msg_type = None
         if message.reply_to_id:
@@ -216,28 +289,23 @@ class ConnectionManager:
                     pass
                 reply_to_msg_type = reply_msg.msg_type
 
+        recipient_ids = await _resolve_recipient_ids(db, chat_id, sender_id, chat_type, recipient_id)
+        chat_info = await _build_chat_info(db, chat_id, sender_id, recipient_id, chat_type, sender, sender_display_name)
+
         payload = json.dumps({
             "recipient_id": recipient_id,
+            "recipient_ids": recipient_ids,
             "encrypted_text": message.encrypted_data,
             "sender_id": sender_id,
+            "sender_display_name": sender_display_name,
             "chat_id": chat_id,
+            "chat_type": chat_type,
             "created_at": _utc_iso(message.created_at),
             "message_id": message.id,
             "reply_to_id": message.reply_to_id,
             "reply_to_text": reply_to_text,
             "reply_to_msg_type": reply_to_msg_type,
-            "chat_info": {
-                "id": chat_id,
-                "name": f"private_{min(sender_id, recipient_id)}_{max(sender_id, recipient_id)}",
-                "chat_type": "private",
-                "recipient_id": sender_id,
-                "recipient": {
-                    "id": sender.id,
-                    "name": sender.name,
-                    "username": sender.username,
-                    "display_name": sender_display_name,
-                },
-            },
+            "chat_info": chat_info,
         })
         redis = get_redis()
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
@@ -253,56 +321,104 @@ class ConnectionManager:
                 if message["type"] != "message":
                     continue
                 data = json.loads(message["data"])
-                recipient_id = data.get("recipient_id")
                 encrypted_text = data.get("encrypted_text")
                 sender_id = data.get("sender_id")
                 chat_id = data.get("chat_id")
                 chat_info = data.get("chat_info")
+                sender_display_name = data.get("sender_display_name")
+                # New payloads include `recipient_ids` (list). Old single-
+                # recipient payloads (or anything from before this migration)
+                # fall back to wrapping `recipient_id` in a 1-element list so
+                # the dispatch path is uniform.
+                recipient_ids = data.get("recipient_ids")
+                if recipient_ids is None:
+                    rid = data.get("recipient_id")
+                    recipient_ids = [rid] if rid is not None else []
 
-                sockets = self.active_connections.get(recipient_id, set())
-                if not sockets:
-                    # No active WebSocket — consider push, but respect prefs
-                    if await self._should_push(recipient_id, chat_id):
-                        sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
-                        asyncio.create_task(send_push_to_user(recipient_id, {
-                            "title": f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение",
-                            "body": "Нажмите, чтобы открыть чат",
-                            "chat_id": chat_id,
-                            "sender_id": sender_id,
-                        }))
-                    continue
                 try:
                     decrypted_text = decrypt_message(encrypted_text)
                 except Exception:  # noqa: BLE001
                     continue
-                payload = {
-                    "text": decrypted_text,
-                    "sender_id": sender_id,
-                    "recipient_id": recipient_id,
-                    "chat_id": chat_id,
-                    "chat_info": chat_info,
-                    "created_at": data.get("created_at"),
-                    "message_id": data.get("message_id"),
-                    "reply_to_id": data.get("reply_to_id"),
-                    "reply_to_text": data.get("reply_to_text"),
-                    "reply_to_msg_type": data.get("reply_to_msg_type"),
-                    "msg_type": data.get("msg_type", "text"),
-                    "attachment_url": data.get("attachment_url"),
-                    "attachment_thumb_url": data.get("attachment_thumb_url"),
-                    "attachment_meta": data.get("attachment_meta"),
-                }
-                dead = []
-                for ws in sockets:
-                    try:
-                        await ws.send_json(payload)
-                    except Exception:  # noqa: BLE001
-                        dead.append(ws)
-                for ws in dead:
-                    sockets.discard(ws)
-                if not sockets:
-                    self.active_connections.pop(recipient_id, None)
+
+                for recipient_id in recipient_ids:
+                    sockets = self.active_connections.get(recipient_id, set())
+                    if not sockets:
+                        if await self._should_push(recipient_id, chat_id):
+                            chat_type = (chat_info or {}).get("chat_type", "private")
+                            if chat_type == "group":
+                                group_name = (chat_info or {}).get("name", "")
+                                title = f"{sender_display_name or 'Кто-то'} в {group_name}" if group_name else f"Новое сообщение от {sender_display_name or 'участника'}"
+                            else:
+                                sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
+                                title = f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение"
+                            asyncio.create_task(send_push_to_user(recipient_id, {
+                                "title": title,
+                                "body": decrypted_text[:80] if decrypted_text else "Нажмите, чтобы открыть чат",
+                                "chat_id": chat_id,
+                                "sender_id": sender_id,
+                            }))
+                        continue
+                    payload = {
+                        "text": decrypted_text,
+                        "sender_id": sender_id,
+                        "sender_display_name": sender_display_name,
+                        "recipient_id": recipient_id,
+                        "chat_id": chat_id,
+                        "chat_type": data.get("chat_type", "private"),
+                        "chat_info": chat_info,
+                        "created_at": data.get("created_at"),
+                        "message_id": data.get("message_id"),
+                        "reply_to_id": data.get("reply_to_id"),
+                        "reply_to_text": data.get("reply_to_text"),
+                        "reply_to_msg_type": data.get("reply_to_msg_type"),
+                        "msg_type": data.get("msg_type", "text"),
+                        "attachment_url": data.get("attachment_url"),
+                        "attachment_thumb_url": data.get("attachment_thumb_url"),
+                        "attachment_meta": data.get("attachment_meta"),
+                    }
+                    dead = []
+                    for ws in sockets:
+                        try:
+                            await ws.send_json(payload)
+                        except Exception:  # noqa: BLE001
+                            dead.append(ws)
+                    for ws in dead:
+                        sockets.discard(ws)
+                    if not sockets:
+                        self.active_connections.pop(recipient_id, None)
         except asyncio.CancelledError:
             await pubsub.unsubscribe(REDIS_CHAT_CHANNEL)
+
+    async def chat_events_listener(self) -> None:
+        """Fan out chat lifecycle events (group_created / member_left / deleted)
+        to the members listed in payload['member_ids']."""
+        redis = get_redis()
+        pubsub = redis.pubsub()
+        channel = REDIS_CHAT_CHANNEL + ":chat_events"
+        await pubsub.subscribe(channel)
+
+        try:
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                data = json.loads(message["data"])
+                member_ids = data.get("member_ids") or []
+                for uid in member_ids:
+                    sockets = self.active_connections.get(uid)
+                    if not sockets:
+                        continue
+                    dead = []
+                    for ws in sockets:
+                        try:
+                            await ws.send_json(data)
+                        except Exception:  # noqa: BLE001
+                            dead.append(ws)
+                    for ws in dead:
+                        sockets.discard(ws)
+                    if not sockets and uid in self.active_connections:
+                        del self.active_connections[uid]
+        except asyncio.CancelledError:
+            await pubsub.unsubscribe(channel)
 
     async def read_receipts_listener(self) -> None:
         """Listen for read receipt events and fan out to the message sender."""
@@ -567,16 +683,24 @@ async def websocket_chat(websocket: WebSocket) -> None:
             async with AsyncSessionLocal() as db:
                 if not await ChatCRUD.is_chat_member(db, chat_id, user_id):
                     continue
-                other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, user_id)
-                if not other:
+                chat = await db.get(Chat, chat_id)
+                if chat is None:
                     continue
+                if chat.chat_type == "private":
+                    other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, user_id)
+                    if not other:
+                        continue
+                    recipient_id = other.user_id
+                else:
+                    recipient_id = None
                 message_id = await manager.send_personal_message(
                     chat_id=chat_id,
                     text=text,
-                    recipient_id=other.user_id,
+                    recipient_id=recipient_id,
                     sender_id=user_id,
                     db=db,
                     reply_to_id=reply_to_id,
+                    chat_type=chat.chat_type,
                 )
                 temp_id = msg_data.get("temp_id")
                 if temp_id is not None:

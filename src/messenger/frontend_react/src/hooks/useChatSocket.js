@@ -14,6 +14,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
     const [lastPresenceEvent, setLastPresenceEvent] = useState(null);
     const [lastProfileEvent, setLastProfileEvent] = useState(null);
     const [lastReadReceiptEvent, setLastReadReceiptEvent] = useState(null);
+    const [lastChatEvent, setLastChatEvent] = useState(null);
 
     const currentUserRef = useRef(null);
     const socketRef = useRef(null);
@@ -125,6 +126,16 @@ export const useChatSocket = (token, activeChatIdRef) => {
                     return;
                 }
 
+                if (
+                    data.type === "group_created"
+                    || data.type === "group_member_left"
+                    || data.type === "group_members_added"
+                    || data.type === "group_deleted"
+                ) {
+                    setLastChatEvent(data);
+                    return;
+                }
+
                 if (data.type === "message_edited") {
                     if (data.chat_id === activeChatIdRef?.current) {
                         setMessages((prev) => prev.map((m) =>
@@ -144,6 +155,10 @@ export const useChatSocket = (token, activeChatIdRef) => {
                         id: data.message_id || Date.now(),
                         reply_to_id: data.reply_to_id || null,
                         reply_to_text: data.reply_to_text || null,
+                        // Carry sender info & msg_type so group bubbles can
+                        // render the author label without an extra fetch.
+                        sender_display_name: data.sender_display_name || null,
+                        msg_type: data.msg_type || "text",
                     }]);
                 }
                 setLastReceivedMessage(data);
@@ -217,6 +232,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
         lastPresenceEvent,
         lastProfileEvent,
         lastReadReceiptEvent,
+        lastChatEvent,
         socketRef,
     };
 };

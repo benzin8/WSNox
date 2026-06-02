@@ -98,8 +98,18 @@ function truncate(text, max = 60) {
     return text.length > max ? text.slice(0, max) + "..." : text;
 }
 
+// Deterministic palette for the sender-name label in group chats.
+const SENDER_COLOURS = [
+    "text-sky-300", "text-violet-300", "text-rose-300", "text-amber-300",
+    "text-emerald-300", "text-orange-300", "text-pink-300", "text-cyan-300",
+];
+function senderColour(senderId) {
+    const n = typeof senderId === "number" ? senderId : 0;
+    return SENDER_COLOURS[Math.abs(n) % SENDER_COLOURS.length];
+}
+
 // Individual message bubble with swipe + click handlers
-const MessageBubble = ({ msg, isOut, onReply, onActionMenu, onRetry, gap = 0 }) => {
+const MessageBubble = ({ msg, isOut, onReply, onActionMenu, onRetry, gap = 0, showSenderName = false }) => {
     const time = formatTime(msg.created_at);
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
@@ -213,6 +223,14 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, onRetry, gap = 0 }) 
                         scrollMarginBottom: "88px",
                     }}
                 >
+                    {/* Group: show sender display name above the first
+                        message in a run from each non-self participant. */}
+                    {showSenderName && (
+                        <div className={`${isMedia ? "px-2 pt-1" : ""} mb-0.5 text-xs font-semibold ${senderColour(msg.sender_id)}`}>
+                            {msg.sender_display_name || msg.sender_name || `Участник #${msg.sender_id}`}
+                        </div>
+                    )}
+
                     {/* Reply quote if this message is a reply */}
                     {msg.reply_to_id && replyPreview && (
                         <button
@@ -306,7 +324,7 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, onRetry, gap = 0 }) 
     );
 };
 
-export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage, onEditMessage, onRetryMedia }) => {
+export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage, onEditMessage, onRetryMedia, isGroup = false }) => {
     const [actionMsg, setActionMsg] = useState(null);
 
     const itemsWithSeparators = useMemo(
@@ -316,9 +334,16 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
             const showDateSep = !!(dateKey && dateKey !== prevDateKey);
             const prev = idx > 0 ? messages[idx - 1] : null;
             const gap = showDateSep ? 0 : getMessageGap(prev, msg);
-            return { msg, showDateSep, gap };
+            // Show the sender label above the first message in any run of
+            // messages from one other participant in a group chat. Same
+            // sender consecutively → don't repeat. Separator resets the run.
+            const showSenderName =
+                isGroup &&
+                msg.type === "incoming" &&
+                (showDateSep || !prev || prev.sender_id !== msg.sender_id || prev.type !== "incoming");
+            return { msg, showDateSep, gap, showSenderName };
         }),
-        [messages],
+        [messages, isGroup],
     );
 
     const [toast, setToast] = useState(null);
@@ -364,7 +389,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                 <p className="text-sm text-zinc-500 mt-1">Начните разговор!</p>
               </div>
             )}
-            {itemsWithSeparators.map(({ msg, showDateSep, gap }) => {
+            {itemsWithSeparators.map(({ msg, showDateSep, gap, showSenderName }) => {
               const isOut = msg.type === "outgoing";
               return (
                 <React.Fragment key={msg.id}>
@@ -378,6 +403,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                     onActionMenu={handleActionMenu}
                     onRetry={onRetryMedia}
                     gap={gap}
+                    showSenderName={showSenderName}
                   />
                 </React.Fragment>
               );
