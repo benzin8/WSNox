@@ -373,6 +373,30 @@ async def get_messages_by_chat_id(
         if other_user:
             expose = await should_expose_read_receipts(db, current_user.id, other_user.user_id)
 
+    # For group chats, batch-resolve sender display name + avatar thumb URL
+    # so the client can render "{name}" + avatar next to each incoming bubble
+    # without N profile fetches. Private chats skip this — the client knows
+    # the other participant from the chat row.
+    sender_display: dict[int, str | None] = {}
+    sender_avatar: dict[int, str | None] = {}
+    if chat and chat.chat_type == "group" and messages:
+        from sqlalchemy import select
+
+        from messenger.backend.models.profile import Profile
+        sender_ids = {m.sender_id for m in messages}
+        rows = await db.execute(
+            select(Profile).where(Profile.user_id.in_(sender_ids))
+        )
+        profiles = {p.user_id: p for p in rows.scalars().all()}
+        for uid in sender_ids:
+            prof = profiles.get(uid)
+            sender_display[uid] = prof.display_name if prof else None
+            if prof and prof.avatar:
+                urls = await resolve_avatar_urls(storage, prof.avatar)
+                sender_avatar[uid] = urls.thumb
+            else:
+                sender_avatar[uid] = None
+
     result = []
     for message in messages:
         resp = MessageResponse.model_validate(message)
@@ -384,6 +408,9 @@ async def get_messages_by_chat_id(
             resp.attachment_thumb_url = thumb_url
         if not expose:
             resp.read_at = None
+        if sender_display:
+            resp.sender_display_name = sender_display.get(message.sender_id)
+            resp.sender_avatar_url = sender_avatar.get(message.sender_id)
         result.append(resp)
     return result
 
@@ -473,6 +500,7 @@ async def upload_chat_media(
             attachment_url=full_url,
             attachment_thumb_url=thumb_url,
             chat_type=chat.chat_type,
+            storage=storage,
         )
     except Exception:  # noqa: BLE001
         logger.exception("publish_media_message failed (message persisted)")

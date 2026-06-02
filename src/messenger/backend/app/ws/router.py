@@ -74,6 +74,21 @@ async def send_media_ack_to_sender(
         sockets.discard(ws)
 
 
+async def _resolve_sender_avatar_url(storage, profile) -> str | None:
+    """Return a presigned thumb URL for a sender's avatar, if any.
+
+    Used by the publishers so each WS message carries the sender's avatar
+    URL — group bubbles can render the avatar next to the bubble without
+    an extra fetch. Storage may be None in test/local setups; in that
+    case we just return None.
+    """
+    if not profile or not profile.avatar or storage is None:
+        return None
+    from messenger.backend.services.avatar_urls import resolve_avatar_urls
+    urls = await resolve_avatar_urls(storage, profile.avatar)
+    return urls.thumb
+
+
 async def publish_media_message(
     db: AsyncSession,
     chat_id: int,
@@ -84,6 +99,7 @@ async def publish_media_message(
     attachment_url: str | None,
     attachment_thumb_url: str | None,
     chat_type: str = "private",
+    storage=None,
 ) -> None:
     """Fan out a media message via the existing pubsub channel.
 
@@ -96,6 +112,7 @@ async def publish_media_message(
     from sqlalchemy.orm import selectinload as _selectinload
     sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
     sender_display_name = sender.profile.display_name if sender.profile else None
+    sender_avatar_url = await _resolve_sender_avatar_url(storage, sender.profile if sender else None)
     reply_to_text = None
     reply_to_msg_type = None
     if message.reply_to_id:
@@ -117,6 +134,7 @@ async def publish_media_message(
         "encrypted_text": message.encrypted_data,
         "sender_id": sender_id,
         "sender_display_name": sender_display_name,
+        "sender_avatar_url": sender_avatar_url,
         "chat_id": chat_id,
         "chat_type": chat_type,
         "created_at": _utc_iso(message.created_at),
@@ -259,6 +277,7 @@ class ConnectionManager:
         db: AsyncSession,
         reply_to_id: int | None = None,
         chat_type: str = "private",
+        storage=None,
     ) -> int:
         """Persist + fan out a text message.
 
@@ -277,6 +296,7 @@ class ConnectionManager:
         from sqlalchemy.orm import selectinload as _selectinload
         sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
         sender_display_name = sender.profile.display_name if sender.profile else None
+        sender_avatar_url = await _resolve_sender_avatar_url(storage, sender.profile if sender else None)
         reply_to_text = None
         reply_to_msg_type = None
         if message.reply_to_id:
@@ -298,6 +318,7 @@ class ConnectionManager:
             "encrypted_text": message.encrypted_data,
             "sender_id": sender_id,
             "sender_display_name": sender_display_name,
+            "sender_avatar_url": sender_avatar_url,
             "chat_id": chat_id,
             "chat_type": chat_type,
             "created_at": _utc_iso(message.created_at),
@@ -362,6 +383,7 @@ class ConnectionManager:
                         "text": decrypted_text,
                         "sender_id": sender_id,
                         "sender_display_name": sender_display_name,
+                        "sender_avatar_url": data.get("sender_avatar_url"),
                         "recipient_id": recipient_id,
                         "chat_id": chat_id,
                         "chat_type": data.get("chat_type", "private"),
@@ -701,6 +723,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     db=db,
                     reply_to_id=reply_to_id,
                     chat_type=chat.chat_type,
+                    storage=getattr(websocket.app.state, "storage", None),
                 )
                 temp_id = msg_data.get("temp_id")
                 if temp_id is not None:

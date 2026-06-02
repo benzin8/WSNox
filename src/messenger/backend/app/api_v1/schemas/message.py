@@ -39,6 +39,12 @@ class MessageBase(BaseModel):
     attachment_url: Optional[str] = None
     attachment_thumb_url: Optional[str] = None
     attachment_meta: Optional[dict] = None
+    # Sender display info — populated by the server for group chats so the
+    # client can render the author label/avatar next to incoming bubbles
+    # without an extra round-trip. NULL on private chats (the client already
+    # knows the counterpart) and when the sender has no profile/avatar.
+    sender_display_name: Optional[str] = None
+    sender_avatar_url: Optional[str] = None
 
     @field_serializer("created_at", "read_at", "edited_at", when_used="json")
     def _serialize_dt(self, value: Optional[datetime]) -> Optional[str]:

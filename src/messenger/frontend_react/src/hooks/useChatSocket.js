@@ -156,8 +156,9 @@ export const useChatSocket = (token, activeChatIdRef) => {
                         reply_to_id: data.reply_to_id || null,
                         reply_to_text: data.reply_to_text || null,
                         // Carry sender info & msg_type so group bubbles can
-                        // render the author label without an extra fetch.
+                        // render the author label + avatar without an extra fetch.
                         sender_display_name: data.sender_display_name || null,
+                        sender_avatar_url: data.sender_avatar_url || null,
                         msg_type: data.msg_type || "text",
                     }]);
                 }

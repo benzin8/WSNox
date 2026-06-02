@@ -3,6 +3,13 @@ import { Image as ImageIcon, MessageSquare, Reply, Video as VideoIcon } from "lu
 import { MessageActionMenu } from "./MessageActionMenu";
 import { MediaMessage } from "./MediaMessage";
 import { MessageStatus } from "./MessageStatus";
+import { Avatar } from "../profile/Avatar";
+
+// Avatar column width for incoming bubbles in group chats. Bubbles with
+// no rendered avatar (mid-run) reserve the same width so the bubble run
+// stays vertically aligned under the avatar slot.
+const GROUP_AVATAR_SIZE = 28;
+const GROUP_AVATAR_GAP = 8;
 
 function replyQuotePreview(msg) {
     // The replied-to message may have been a media post without a caption;
@@ -109,7 +116,17 @@ function senderColour(senderId) {
 }
 
 // Individual message bubble with swipe + click handlers
-const MessageBubble = ({ msg, isOut, onReply, onActionMenu, onRetry, gap = 0, showSenderName = false }) => {
+const MessageBubble = ({
+    msg,
+    isOut,
+    onReply,
+    onActionMenu,
+    onRetry,
+    gap = 0,
+    showSenderName = false,
+    showSenderAvatar = false,
+    reserveAvatarSlot = false,
+}) => {
     const time = formatTime(msg.created_at);
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
@@ -187,11 +204,34 @@ const MessageBubble = ({ msg, isOut, onReply, onActionMenu, onRetry, gap = 0, sh
     // Swipe progress indicator opacity
     const swipeProgress = Math.min(swipeX / 50, 1);
 
+    const senderInitial = (msg.sender_display_name || msg.sender_name || "?").slice(0, 1).toUpperCase();
+
     return (
         <div
             className={`flex w-full ${isOut ? "justify-end" : "justify-start"} animate-fadeIn`}
             style={gap > 0 ? { marginTop: `${gap}px` } : undefined}
         >
+            {/* Avatar slot for incoming group bubbles. Rendered only on the
+                last bubble in a run; mid-run bubbles get a transparent
+                spacer of the same width so the run stays left-aligned. */}
+            {!isOut && reserveAvatarSlot && (
+                <div
+                    className="shrink-0 self-end"
+                    style={{
+                        width: GROUP_AVATAR_SIZE,
+                        marginRight: GROUP_AVATAR_GAP,
+                        marginBottom: 2,
+                    }}
+                >
+                    {showSenderAvatar && (
+                        <Avatar
+                            url={msg.sender_avatar_url}
+                            initials={senderInitial}
+                            size={GROUP_AVATAR_SIZE}
+                        />
+                    )}
+                </div>
+            )}
             <div className="relative flex items-center gap-2" style={{ maxWidth: "75%" }}>
                 {/* Reply indicator (appears on swipe) */}
                 <div
@@ -333,6 +373,8 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
             const prevDateKey = idx > 0 ? getDateKey(messages[idx - 1].created_at) : null;
             const showDateSep = !!(dateKey && dateKey !== prevDateKey);
             const prev = idx > 0 ? messages[idx - 1] : null;
+            const next = idx < messages.length - 1 ? messages[idx + 1] : null;
+            const nextDateKey = next ? getDateKey(next.created_at) : null;
             const gap = showDateSep ? 0 : getMessageGap(prev, msg);
             // Show the sender label above the first message in any run of
             // messages from one other participant in a group chat. Same
@@ -341,7 +383,18 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                 isGroup &&
                 msg.type === "incoming" &&
                 (showDateSep || !prev || prev.sender_id !== msg.sender_id || prev.type !== "incoming");
-            return { msg, showDateSep, gap, showSenderName };
+            // Avatar sits next to the LAST bubble in a sender run (Telegram-
+            // style anchor). Date separator after this bubble also counts
+            // as the end of a run.
+            const isLastInRun =
+                !next
+                || next.sender_id !== msg.sender_id
+                || next.type !== "incoming"
+                || (nextDateKey && nextDateKey !== dateKey);
+            const showSenderAvatar =
+                isGroup && msg.type === "incoming" && isLastInRun;
+            const reserveAvatarSlot = isGroup && msg.type === "incoming";
+            return { msg, showDateSep, gap, showSenderName, showSenderAvatar, reserveAvatarSlot };
         }),
         [messages, isGroup],
     );
@@ -389,7 +442,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                 <p className="text-sm text-zinc-500 mt-1">Начните разговор!</p>
               </div>
             )}
-            {itemsWithSeparators.map(({ msg, showDateSep, gap, showSenderName }) => {
+            {itemsWithSeparators.map(({ msg, showDateSep, gap, showSenderName, showSenderAvatar, reserveAvatarSlot }) => {
               const isOut = msg.type === "outgoing";
               return (
                 <React.Fragment key={msg.id}>
@@ -404,6 +457,8 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                     onRetry={onRetryMedia}
                     gap={gap}
                     showSenderName={showSenderName}
+                    showSenderAvatar={showSenderAvatar}
+                    reserveAvatarSlot={reserveAvatarSlot}
                   />
                 </React.Fragment>
               );
