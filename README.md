@@ -21,7 +21,7 @@ FastAPI + React + PostgreSQL + Redis + WebSocket.
 | БД | PostgreSQL 16 (psycopg3 / `postgresql+psycopg://`) |
 | Кэш/PubSub | Redis 7 |
 | WebSocket | FastAPI WebSocket + Redis PubSub |
-| Аутентификация | JWT (python-jose), bcrypt, email-код через Redis |
+| Аутентификация | JWT (python-jose): короткий access (15 мин) в `Authorization`, refresh в httpOnly-куке; bcrypt, email-код и rate-limit через Redis |
 | Уведомления | Web Push (VAPID, pywebpush), Service Worker |
 | Пакеты | Poetry |
 
@@ -68,14 +68,15 @@ tests/                  # pytest
 ## Ключевые архитектурные решения
 
 - **Относительные URL на фронте**: `VITE_API_BASE_URL=''` — все запросы идут на тот же хост. WebSocket аналогично определяется через `window.location.host`. Работает через любой туннель без пересборки.
-- **CORS**: `allow_origins=["*"], allow_credentials=False` — JWT через `Authorization`-заголовок, cookies не используются.
+- **Авторизация**: короткий **access-JWT (15 мин)** идёт в `Authorization`-заголовке (и первым WS-сообщением); долгоживущий **refresh-JWT — в httpOnly-куке** `refresh_<user_id>` (`SameSite=Lax`, `Path=/auth`, `Secure` в проде по `COOKIE_SECURE`). XSS не может утащить refresh. На `401` клиент прозрачно рефрешит access (axios-интерсептор) и повторяет запрос. На `/auth/login` и `/auth/refresh` — rate-limit по IP.
+- **CORS**: `allow_origins=["*"], allow_credentials=False` — для обычных API-вызовов хватает `Authorization`-заголовка. Это монолит (фронт и API на одном origin), поэтому refresh-кука уходит same-origin без CORS-credentials и без слома «работы через любой туннель».
 - **JWT sub — строка**: при декодировании токена `user_id = int(payload.get("sub"))`.
 - **WebSocket + Redis PubSub**: при отправке сообщения бэкенд публикует в Redis, все воркеры слушают и доставляют нужным клиентам. На один и тот же `user_id` поддерживается множество сокетов (несколько вкладок).
 - **Шифрование сообщений**: хранятся как `encrypted_data` (AES-GCM), расшифровываются на сервере при отдаче.
 
 ## Реализованные фичи
 
-- **Аутентификация**: email-код + JWT, [восстановление и смена пароля](docs/features/password-reset.md)
+- **Аутентификация**: email-код + JWT (короткий access + refresh в httpOnly-куке), авто-refresh на `401`, rate-limit на login/refresh, [восстановление и смена пароля](docs/features/password-reset.md)
 - **[Мультиаккаунтинг](docs/features/multi-account.md)**: несколько аккаунтов одновременно, переключение в один клик из профиля, бейдж непрочитанного по каждому; добавление через обычный вход. Эндпоинты `GET /chats/unread-total`, `POST /auth/refresh`
 - **Чат**: WebSocket, история, поиск пользователей, последнее сообщение и счётчик непрочитанных в списке
 - **[Media-сообщения](docs/features/media-messages.md)**: фото и видео с подписью, серверный resize фото (Pillow), presigned S3 URLs, оптимистичный UI с прогрессом, фуллскрин-просмотрщик через React Portal, scroll-to-reply по клику на quote
