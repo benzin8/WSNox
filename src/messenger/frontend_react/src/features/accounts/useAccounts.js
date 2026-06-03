@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { getAccounts, getActiveId } from './accountStore';
+import { getAccounts, getActiveId, mintAccess } from './accountStore';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -25,8 +25,7 @@ export function useAccounts(enabled) {
           if (acc.user_id === activeId) {
             token = localStorage.getItem('access_token');
           } else {
-            const r = await axios.post(`${API_BASE}/auth/refresh`, { user_id: acc.user_id });
-            token = r.data.access_token;
+            token = await mintAccess(acc.user_id);
           }
           if (!token) return [acc.user_id, null];
           const res = await axios.get(`${API_BASE}/chats/unread-total`, {
