@@ -1,5 +1,6 @@
 import { X, Edit3, Calendar, Hash, Mail } from "lucide-react";
 import { Avatar } from "./Avatar";
+import { AccountsBlock } from "../../features/accounts/AccountsBlock";
 
 const MONTHS_RU = [
     'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
@@ -13,7 +14,7 @@ function formatJoinedDate(iso) {
     return `${MONTHS_RU[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit }) => {
+export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit, onAddAccount }) => {
     if (!profile) return null;
 
     const initials = (profile.display_name || profile.name || profile.username)
@@ -108,13 +109,16 @@ export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit }) => {
                     </div>
 
                     {isOwnProfile && (
-                        <button
-                            onClick={onEdit}
-                            className="w-full mt-3 flex items-center justify-center gap-2 bg-lime-400 text-zinc-900 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-lime-300 hover:shadow-[0_0_30px_rgba(163,230,53,0.25)] active:scale-[0.97] transition-all duration-300"
-                        >
-                            <Edit3 size={15} />
-                            Редактировать
-                        </button>
+                        <>
+                            <button
+                                onClick={onEdit}
+                                className="w-full mt-3 flex items-center justify-center gap-2 bg-lime-400 text-zinc-900 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-lime-300 hover:shadow-[0_0_30px_rgba(163,230,53,0.25)] active:scale-[0.97] transition-all duration-300"
+                            >
+                                <Edit3 size={15} />
+                                Редактировать
+                            </button>
+                            <AccountsBlock onAddAccount={onAddAccount} />
+                        </>
                     )}
                 </div>
             </div>

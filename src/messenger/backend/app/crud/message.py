@@ -2,10 +2,12 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.core.crypto import decrypt_message, encrypt_message
 from messenger.backend.models import Chat, Message
+from messenger.backend.models.message_read import MessageRead
 
 
 class MessageCRUD:
@@ -129,10 +131,49 @@ class MessageCRUD:
         return message
 
     @staticmethod
+    async def _insert_group_reads(
+        db: AsyncSession, chat_id: int, user_id: int, up_to_message_id: int | None = None
+    ) -> int:
+        """Record per-user read rows for group messages from other members.
+
+        Group chats have no single recipient, so unread is tracked via
+        MessageRead rows (see ChatCRUD unread formula) rather than the
+        Message.is_read flag. This inserts the missing rows. Returns how many
+        messages were newly marked. For private chats this matches nothing.
+        """
+        query = (
+            select(Message.id)
+            .join(Chat, Chat.id == Message.chat_id)
+            .outerjoin(
+                MessageRead,
+                (MessageRead.message_id == Message.id) & (MessageRead.user_id == user_id),
+            )
+            .where(Message.chat_id == chat_id)
+            .where(Chat.chat_type == "group")
+            .where(Message.sender_id != user_id)
+            .where(MessageRead.message_id.is_(None))
+        )
+        if up_to_message_id is not None:
+            query = query.where(Message.id <= up_to_message_id)
+
+        ids = [row[0] for row in (await db.execute(query)).all()]
+        if not ids:
+            return 0
+        await db.execute(
+            pg_insert(MessageRead)
+            .values([{"message_id": mid, "user_id": user_id} for mid in ids])
+            .on_conflict_do_nothing()
+        )
+        return len(ids)
+
+    @staticmethod
     async def mark_as_read(db: AsyncSession, chat_id: int, user_id: int) -> int:
         """Mark all unread messages in the chat as read.
 
-        Returns the max message id that was marked, or 0 if nothing changed.
+        Private chats: flip is_read on messages addressed to the user.
+        Group chats: insert per-user MessageRead rows for messages from others.
+        Returns the max private message id marked (for the read-receipt WS
+        event), or 0 if nothing private changed.
         """
         now = datetime.now(timezone.utc)
         # Get max id before update for the WS event
@@ -152,12 +193,16 @@ class MessageCRUD:
                 .where(Message.is_read == False)  # noqa: E712
                 .values(is_read=True, read_at=now)
             )
+
+        group_marked = await MessageCRUD._insert_group_reads(db, chat_id, user_id)
+
+        if max_id or group_marked:
             await db.commit()
         return max_id
 
     @staticmethod
     async def mark_as_read_up_to(db: AsyncSession, chat_id: int, user_id: int, up_to_message_id: int) -> None:
-        """Mark messages up to a specific message_id as read."""
+        """Mark messages up to a specific message_id as read (private + group)."""
         now = datetime.now(timezone.utc)
         await db.execute(
             update(Message)
@@ -167,4 +212,5 @@ class MessageCRUD:
             .where(Message.is_read == False)  # noqa: E712
             .values(is_read=True, read_at=now)
         )
+        await MessageCRUD._insert_group_reads(db, chat_id, user_id, up_to_message_id)
         await db.commit()

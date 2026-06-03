@@ -17,6 +17,7 @@ import { MediaPreviewModal } from '../../components/chat/MediaPreviewModal';
 import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import { Avatar } from '../../components/profile/Avatar';
+import { beginAddAccount, removeAccount, getActiveId, seedCurrentAccount } from '../../features/accounts/accountStore';
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -132,6 +133,15 @@ function ChatPage() {
       setCurrentUser(user);
       setMyProfile(profile);
       setChats(allChats);
+      // Migrate a pre-multi-account session into the account store so it
+      // isn't lost when a second account is added.
+      if (profile) {
+        seedCurrentAccount({
+          user_id: profile.user_id,
+          display_name: profile.display_name || profile.name,
+          avatar_url: profile.avatar_thumb_url,
+        });
+      }
     };
 
     fetchInitialData();
@@ -623,9 +633,15 @@ function ChatPage() {
   }, [activeChat?.id, socketRef, setMessages]);
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    navigate('/auth/send-code');
+    const activeId = getActiveId();
+    if (activeId != null) {
+      removeAccount(activeId, navigate);
+    } else {
+      // Pre-multi-account fallback: no store entry, clear legacy keys.
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      navigate('/auth/send-code');
+    }
   };
 
   // Выбор чата
@@ -950,6 +966,7 @@ function ChatPage() {
             isOwnProfile={profileModal.isOwnProfile}
             onClose={() => setProfileModal(null)}
             onEdit={() => setShowEditModal(true)}
+            onAddAccount={() => { beginAddAccount(); navigate('/auth/send-code'); }}
           />
         )}
 

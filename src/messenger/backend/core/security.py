@@ -27,5 +27,28 @@ def create_token(data: dict, expires_delta: timedelta, is_refresh: bool = False)
 def create_pair_jwt_tokens(user_id: int):
     access = create_token({"sub": str(user_id)}, timedelta(days=30))
     refresh = create_token({"sub": str(user_id)}, timedelta(days=7), is_refresh=True)
-    
+
     return {"access_token": access, "refresh_token": refresh}
+
+
+def decode_token(token: str, expected_type: str) -> int | None:
+    """Decode a JWT, enforce its `type`, and return the int user id.
+
+    Returns None on any failure (bad signature, wrong type, expired,
+    missing/non-int sub). Pure — no DB access.
+    """
+    from jose import JWTError
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        return None
+    if payload.get("type") != expected_type:
+        return None
+    sub = payload.get("sub")
+    if sub is None:
+        return None
+    try:
+        return int(sub)
+    except (ValueError, TypeError):
+        return None

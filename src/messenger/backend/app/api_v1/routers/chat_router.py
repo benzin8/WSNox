@@ -96,6 +96,14 @@ async def get_user_data_by_chat_id(
 async def get_my_data(db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     return UserResponse.model_validate(current_user)
 
+@chat_router.get("/unread-total")
+async def get_unread_total(
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    total = await ChatCRUD.get_unread_total(db, current_user.id)
+    return {"unread_total": total}
+
 @chat_router.get("/", response_model=list[ChatResponse])
 async def get_chats(
     db: AsyncSession = Depends(get_db_session),

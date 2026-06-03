@@ -6,6 +6,7 @@ import { parseApiError } from '../../utils/parseApiError';
 import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
 import { AuthCardWrapper } from '../../components/auth/AuthCardWrapper';
 import { useEnergy } from '../../features/energy';
+import { upsertAccount, isAddingAccount, endAddAccount } from '../../features/accounts/accountStore';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -35,10 +36,16 @@ export default function LoginPage() {
                 password,
             });
 
-            const { access_token, refresh_token } = response.data;
-            localStorage.setItem('access_token', access_token);
-            localStorage.setItem('refresh_token', refresh_token);
+            const { access_token, refresh_token, user } = response.data;
+            const adding = isAddingAccount();
+            upsertAccount(user, access_token, refresh_token);
+            endAddAccount();
 
+            if (adding) {
+                // Reload into chat under the freshly added (now active) account.
+                window.location.assign('/chat');
+                return;
+            }
             beginTransit();
             setTimeout(() => navigate('/chat'), 950);
             return;

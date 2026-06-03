@@ -42,6 +42,9 @@ class ResetPasswordRequest(BaseModel):
     token: str = Field(..., min_length=10, max_length=128)
     password: str = Field(..., min_length=8, max_length=128)
 
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(..., min_length=10)
+
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1, max_length=128)
     new_password: str = Field(..., min_length=8, max_length=128)

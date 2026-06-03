@@ -112,14 +112,6 @@ export default function VerifyCodePage() {
                         >
                             Сменить email
                         </button>
-
-                        <button
-                            type="button"
-                            onClick={() => navigate('/auth/register', { state: { email } })}
-                            className="w-full inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl font-semibold text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                        >
-                            Пропустить →
-                        </button>
                     </form>
                 </div>
             </AuthCardWrapper>
