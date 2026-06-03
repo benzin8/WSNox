@@ -117,9 +117,14 @@ export async function mintAccess(userId) {
 function stripLegacyRefresh(userId) {
   const accounts = getAccounts();
   const idx = accounts.findIndex((a) => a.user_id === userId);
-  if (idx >= 0 && accounts[idx].refresh_token) {
-    const { refresh_token, access_token, ...meta } = accounts[idx];
-    accounts[idx] = meta;
+  const acc = accounts[idx];
+  if (acc && (acc.refresh_token || acc.access_token)) {
+    accounts[idx] = {
+      user_id: acc.user_id,
+      display_name: acc.display_name,
+      avatar_url: acc.avatar_url,
+      needs_login: acc.needs_login,
+    };
     persist(accounts, getActiveId());
   }
 }
