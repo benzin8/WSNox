@@ -88,14 +88,6 @@ export default function SendCodePage() {
                             {loading ? 'Отправка...' : 'Отправить код'}
                             {!loading && <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
                         </button>
-
-                        <button
-                            type="button"
-                            onClick={() => navigate('/auth/register', { state: { email: email || 'test@example.com' } })}
-                            className="w-full inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl font-semibold text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                        >
-                            Пропустить →
-                        </button>
                     </form>
 
                     <div className="mt-8 text-center text-xs text-zinc-500">

@@ -133,20 +133,6 @@ export default function RegisterPage() {
                             {loading ? 'Регистрация...' : 'Зарегистрироваться'}
                             {!loading && <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
                         </button>
-
-                        <button
-                            type="button"
-                            onClick={() => {
-                                localStorage.setItem('access_token', 'dev-skip');
-                                localStorage.setItem('refresh_token', 'dev-skip');
-                                window.dispatchEvent(new Event('storage'));
-                                beginTransit();
-                                setTimeout(() => navigate('/chat'), 950);
-                            }}
-                            className="w-full inline-flex items-center justify-center gap-2 px-7 py-3 rounded-xl font-semibold text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
-                        >
-                            Пропустить →
-                        </button>
                     </form>
                 </div>
             </AuthCardWrapper>
