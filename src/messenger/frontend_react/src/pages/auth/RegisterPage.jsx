@@ -7,6 +7,7 @@ import PasswordStrengthBar from '../../components/auth/PasswordStrengthBar';
 import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
 import { AuthCardWrapper } from '../../components/auth/AuthCardWrapper';
 import { useEnergy } from '../../features/energy';
+import { upsertAccount, isAddingAccount, endAddAccount } from '../../features/accounts/accountStore';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -36,10 +37,15 @@ export default function RegisterPage() {
                 ...formData
             });
 
-            const { access_token, refresh_token } = response.data;
-            localStorage.setItem('access_token', access_token);
-            localStorage.setItem('refresh_token', refresh_token);
+            const { access_token, refresh_token, user } = response.data;
+            const adding = isAddingAccount();
+            upsertAccount(user, access_token, refresh_token);
+            endAddAccount();
 
+            if (adding) {
+                window.location.assign('/chat');
+                return;
+            }
             window.dispatchEvent(new Event('storage'));
             beginTransit();
             setTimeout(() => navigate('/chat'), 950);

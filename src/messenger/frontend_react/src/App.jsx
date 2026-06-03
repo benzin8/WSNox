@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Cookies from 'js-cookie'
 
 import { EnergyProvider, EnergyOrb } from './features/energy';
+import { isAddingAccount, syncActiveFromStore } from './features/accounts/accountStore';
 
 import LandingPage from './pages/LandingPage';
 import SendCodePage from './pages/auth/SendCodePage';
@@ -26,7 +27,9 @@ const ProtectedRoute = ({ children }) => {
 
 const PublicOnlyRoute = ({ children }) => {
   const token = localStorage.getItem('access_token');
-  if (token) {
+  // While adding another account, allow the auth pages even though a token
+  // for the current account already exists.
+  if (token && !isAddingAccount()) {
     return <Navigate to="/chat" replace />;
   }
   return children;
@@ -36,6 +39,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
 
   useEffect(() => {
+    syncActiveFromStore();
     const checkAuth = () => {
       setIsAuthenticated(!!localStorage.getItem('access_token'));
     };
