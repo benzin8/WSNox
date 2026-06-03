@@ -25,3 +25,10 @@ def test_decode_rejects_expired_token():
 
 def test_decode_rejects_garbage():
     assert decode_token("not-a-jwt", expected_type="refresh") is None
+
+
+def test_refresh_route_registered():
+    from messenger.backend.app.main import app
+    paths = [r.path for r in app.routes]
+    assert any(p.endswith("/auth/refresh") for p in paths), \
+        "POST /auth/refresh route missing"

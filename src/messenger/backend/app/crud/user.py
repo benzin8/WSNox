@@ -39,6 +39,11 @@ class UserCRUD:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_user_by_id(session: AsyncSession, user_id: int) -> User | None:
+        result = await session.execute(select(User).where(User.id == user_id))
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def login_user(session: AsyncSession, email: str, password: str) -> User | None:
         query = select(User).where(User.email == email)
         result = await session.execute(query)
