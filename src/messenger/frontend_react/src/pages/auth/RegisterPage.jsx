@@ -37,9 +37,9 @@ export default function RegisterPage() {
                 ...formData
             });
 
-            const { access_token, refresh_token, user } = response.data;
+            const { access_token, user } = response.data;
             const adding = isAddingAccount();
-            upsertAccount(user, access_token, refresh_token);
+            upsertAccount(user, access_token);
             endAddAccount();
 
             if (adding) {
