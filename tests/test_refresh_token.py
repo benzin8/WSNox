@@ -1,4 +1,3 @@
-import pytest
 from datetime import timedelta
 
 from messenger.backend.core.security import (
