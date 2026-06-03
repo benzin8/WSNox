@@ -98,6 +98,40 @@ export function seedCurrentAccount({ user_id, display_name, avatar_url }) {
   persist(accounts, user_id);
 }
 
+// Update the active account's tokens in place (used after a token refresh)
+// and keep the legacy keys mirrored. No reload.
+export function updateActiveTokens(accessToken, refreshToken) {
+  const accounts = getAccounts();
+  const activeId = getActiveId();
+  const idx = accounts.findIndex((a) => a.user_id === activeId);
+  if (idx < 0) {
+    // No store entry (pre-multi-account session) — just update legacy keys.
+    localStorage.setItem('access_token', accessToken);
+    localStorage.setItem('refresh_token', refreshToken);
+    return;
+  }
+  accounts[idx] = {
+    ...accounts[idx],
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    needs_login: false,
+  };
+  persist(accounts, activeId);
+  mirrorLegacyKeys(accounts[idx]);
+}
+
+// Mark the active account as needing re-login and clear legacy keys.
+export function markActiveNeedsLogin() {
+  const accounts = getAccounts();
+  const activeId = getActiveId();
+  const idx = accounts.findIndex((a) => a.user_id === activeId);
+  if (idx >= 0) {
+    accounts[idx] = { ...accounts[idx], needs_login: true };
+    persist(accounts, activeId);
+  }
+  mirrorLegacyKeys(null);
+}
+
 export function switchAccount(userId) {
   const accounts = getAccounts();
   const target = accounts.find((a) => a.user_id === userId);

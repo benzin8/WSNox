@@ -4,6 +4,9 @@ import Cookies from 'js-cookie'
 
 import { EnergyProvider, EnergyOrb } from './features/energy';
 import { isAddingAccount, syncActiveFromStore } from './features/accounts/accountStore';
+import { installRefreshInterceptor } from './features/accounts/refreshInterceptor';
+
+installRefreshInterceptor();
 
 import LandingPage from './pages/LandingPage';
 import SendCodePage from './pages/auth/SendCodePage';
