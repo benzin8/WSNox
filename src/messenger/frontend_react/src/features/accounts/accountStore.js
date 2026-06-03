@@ -1,6 +1,15 @@
-// Single source of truth for multi-account state in localStorage.
-// Legacy keys `access_token`/`refresh_token` are always mirrored to the
-// active account so existing code that reads them directly keeps working.
+// Multi-account state (C-lite cookie model).
+//
+// Refresh tokens are NEVER stored client-side — each account has an httpOnly
+// cookie `refresh_<user_id>` set by the server. localStorage holds only
+// non-sensitive account metadata + which account is active. The active
+// account's short-lived (15 min) access token lives in the legacy
+// `access_token` key so all existing `Authorization: Bearer` call sites and
+// the WebSocket keep working unchanged.
+
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const ACCOUNTS_KEY = 'accounts';
 const ACTIVE_KEY = 'active_account_id';
@@ -26,16 +35,6 @@ export function getActiveId() {
   return raw ? Number(raw) : null;
 }
 
-function mirrorLegacyKeys(account) {
-  if (account) {
-    localStorage.setItem('access_token', account.access_token);
-    localStorage.setItem('refresh_token', account.refresh_token);
-  } else {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-  }
-}
-
 function persist(accounts, activeId) {
   localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
   if (activeId == null) {
@@ -45,82 +44,71 @@ function persist(accounts, activeId) {
   }
 }
 
-// Insert/update an account from an auth response and make it active.
-// `user` is the UserResponse object; tokens are the JWT pair.
-export function upsertAccount(user, accessToken, refreshToken) {
-  const accounts = getAccounts();
-  const entry = {
-    user_id: user.id,
-    display_name: user.display_name || user.name,
-    avatar_url: user.avatar_thumb_url || null,
-    access_token: accessToken,
-    refresh_token: refreshToken,
+// Strip tokens down to metadata-only (drops legacy access_token/refresh_token
+// fields that older sessions stored inside account entries).
+function toMeta(user) {
+  return {
+    user_id: user.id ?? user.user_id,
+    display_name: user.display_name || user.name || 'Аккаунт',
+    avatar_url: user.avatar_thumb_url ?? user.avatar_url ?? null,
     needs_login: false,
   };
-  const idx = accounts.findIndex((a) => a.user_id === user.id);
-  if (idx >= 0) accounts[idx] = entry;
-  else accounts.push(entry);
-  persist(accounts, user.id);
-  mirrorLegacyKeys(entry);
 }
 
-// Bootstrap: keep the active account's legacy keys in sync. Called once at
-// app start. If accounts is empty but legacy tokens exist (pre-multi-account
-// session), seedCurrentAccount (called once user info is available) migrates it.
-export function syncActiveFromStore() {
+// Insert/update an account from an auth response and make it active. The
+// server has already set this account's refresh cookie; we keep only the
+// access token (active account) + metadata.
+export function upsertAccount(user, accessToken) {
   const accounts = getAccounts();
-  const activeId = getActiveId();
-  const active = accounts.find((a) => a.user_id === activeId);
-  if (active) mirrorLegacyKeys(active);
+  const entry = toMeta(user);
+  const idx = accounts.findIndex((a) => a.user_id === entry.user_id);
+  if (idx >= 0) accounts[idx] = { ...accounts[idx], ...entry };
+  else accounts.push(entry);
+  persist(accounts, entry.user_id);
+  localStorage.setItem('access_token', accessToken);
+  localStorage.removeItem('refresh_token'); // refresh lives in the cookie now
 }
 
-// Ensure the current (legacy) session is represented in the accounts list.
-// Migrates pre-multi-account sessions: if the logged-in user isn't stored
-// yet, add them using the live legacy tokens and mark them active. Does NOT
-// reload. No-op once the active account is already represented.
+// Ensure the currently logged-in user is represented (metadata only). Migrates
+// pre-multi-account / pre-cookie sessions. No network, no reload.
 export function seedCurrentAccount({ user_id, display_name, avatar_url }) {
   const access = localStorage.getItem('access_token');
-  const refresh = localStorage.getItem('refresh_token');
-  if (!access || !refresh || user_id == null) return;
+  if (!access || user_id == null) return;
   const accounts = getAccounts();
   const idx = accounts.findIndex((a) => a.user_id === user_id);
-  if (idx >= 0 && getActiveId() === user_id) return; // already represented & active
+  if (idx >= 0 && getActiveId() === user_id) return;
   const entry = {
     user_id,
     display_name: display_name || 'Аккаунт',
     avatar_url: avatar_url || null,
-    access_token: access,
-    refresh_token: refresh,
     needs_login: false,
   };
-  if (idx >= 0) accounts[idx] = entry;
+  if (idx >= 0) accounts[idx] = { ...accounts[idx], ...entry };
   else accounts.push(entry);
   persist(accounts, user_id);
 }
 
-// Update the active account's tokens in place (used after a token refresh)
-// and keep the legacy keys mirrored. No reload.
-export function updateActiveTokens(accessToken, refreshToken) {
+// App-start hook. Kept for compatibility; the active account's access token is
+// already in the legacy key, so there's nothing to mirror.
+export function syncActiveFromStore() {
   const accounts = getAccounts();
-  const activeId = getActiveId();
-  const idx = accounts.findIndex((a) => a.user_id === activeId);
-  if (idx < 0) {
-    // No store entry (pre-multi-account session) — just update legacy keys.
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('refresh_token', refreshToken);
-    return;
+  if (getActiveId() == null && accounts.length > 0) {
+    persist(accounts, accounts[0].user_id);
   }
-  accounts[idx] = {
-    ...accounts[idx],
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    needs_login: false,
-  };
-  persist(accounts, activeId);
-  mirrorLegacyKeys(accounts[idx]);
 }
 
-// Mark the active account as needing re-login and clear legacy keys.
+// Update the active account's access token after a refresh.
+export function updateActiveTokens(accessToken) {
+  localStorage.setItem('access_token', accessToken);
+  localStorage.removeItem('refresh_token');
+  const accounts = getAccounts();
+  const idx = accounts.findIndex((a) => a.user_id === getActiveId());
+  if (idx >= 0 && accounts[idx].needs_login) {
+    accounts[idx] = { ...accounts[idx], needs_login: false };
+    persist(accounts, getActiveId());
+  }
+}
+
 export function markActiveNeedsLogin() {
   const accounts = getAccounts();
   const activeId = getActiveId();
@@ -129,21 +117,36 @@ export function markActiveNeedsLogin() {
     accounts[idx] = { ...accounts[idx], needs_login: true };
     persist(accounts, activeId);
   }
-  mirrorLegacyKeys(null);
+  localStorage.removeItem('access_token');
 }
 
-export function switchAccount(userId) {
-  const accounts = getAccounts();
-  const target = accounts.find((a) => a.user_id === userId);
-  if (!target) return;
-  persist(accounts, userId);
-  mirrorLegacyKeys(target);
-  window.location.reload();
+// Switch active account: mint a fresh access token from the target account's
+// refresh cookie (sent automatically), then reload to re-init WS/contexts.
+export async function switchAccount(userId) {
+  try {
+    const res = await axios.post(`${API_BASE}/auth/refresh`, { user_id: userId });
+    persist(getAccounts(), userId);
+    localStorage.setItem('access_token', res.data.access_token);
+    localStorage.removeItem('refresh_token');
+    window.location.reload();
+  } catch {
+    const accounts = getAccounts();
+    const idx = accounts.findIndex((a) => a.user_id === userId);
+    if (idx >= 0) {
+      accounts[idx] = { ...accounts[idx], needs_login: true };
+      persist(accounts, getActiveId());
+    }
+  }
 }
 
-// Remove an account. If it was active, switch to the first remaining one
-// (reload), or return to login when none remain.
-export function removeAccount(userId, navigate) {
+// Remove an account: clear its server cookie, drop its metadata. If it was the
+// active one, switch to the next remaining account, else go to login.
+export async function removeAccount(userId, navigate) {
+  try {
+    await axios.post(`${API_BASE}/auth/logout`, { user_id: userId });
+  } catch {
+    /* best-effort cookie clear */
+  }
   const accounts = getAccounts().filter((a) => a.user_id !== userId);
   const wasActive = getActiveId() === userId;
   if (!wasActive) {
@@ -152,11 +155,11 @@ export function removeAccount(userId, navigate) {
   }
   if (accounts.length > 0) {
     persist(accounts, accounts[0].user_id);
-    mirrorLegacyKeys(accounts[0]);
-    window.location.reload();
+    await switchAccount(accounts[0].user_id); // mints access + reloads
   } else {
     persist(accounts, null);
-    mirrorLegacyKeys(null);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
     if (navigate) navigate('/auth/send-code');
     else window.location.assign('/auth/send-code');
   }

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { updateActiveTokens, markActiveNeedsLogin } from './accountStore';
+import { updateActiveTokens, markActiveNeedsLogin, getActiveId } from './accountStore';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -8,15 +8,21 @@ let refreshPromise = null;
 
 function doRefresh() {
   if (refreshPromise) return refreshPromise;
-  const refreshToken = localStorage.getItem('refresh_token');
-  if (!refreshToken) return Promise.reject(new Error('no refresh token'));
+  const userId = getActiveId();
+  if (userId == null) return Promise.reject(new Error('no active account'));
+
+  // The refresh token rides as an httpOnly cookie. A legacy refresh_token in
+  // localStorage (pre-cookie session) is passed once so the server can set the
+  // cookie, then dropped.
+  const body = { user_id: userId };
+  const legacy = localStorage.getItem('refresh_token');
+  if (legacy) body.refresh_token = legacy;
 
   refreshPromise = axios
-    .post(`${API_BASE}/auth/refresh`, { refresh_token: refreshToken })
+    .post(`${API_BASE}/auth/refresh`, body)
     .then((res) => {
-      const { access_token, refresh_token } = res.data;
-      updateActiveTokens(access_token, refresh_token);
-      return access_token;
+      updateActiveTokens(res.data.access_token);
+      return res.data.access_token;
     })
     .finally(() => {
       refreshPromise = null;

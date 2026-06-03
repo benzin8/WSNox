@@ -19,8 +19,18 @@ export function useAccounts(enabled) {
     Promise.all(
       accounts.map(async (acc) => {
         try {
+          // Active account uses the in-hand access token; others mint a fresh
+          // short-lived one from their httpOnly refresh cookie.
+          let token;
+          if (acc.user_id === activeId) {
+            token = localStorage.getItem('access_token');
+          } else {
+            const r = await axios.post(`${API_BASE}/auth/refresh`, { user_id: acc.user_id });
+            token = r.data.access_token;
+          }
+          if (!token) return [acc.user_id, null];
           const res = await axios.get(`${API_BASE}/chats/unread-total`, {
-            headers: { Authorization: `Bearer ${acc.access_token}` },
+            headers: { Authorization: `Bearer ${token}` },
           });
           return [acc.user_id, res.data.unread_total];
         } catch {

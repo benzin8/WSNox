@@ -52,6 +52,7 @@ services:
     environment:
       - DOCKER_MODE=true
       - DEBUG=false
+      - COOKIE_SECURE=true
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_HOST=db

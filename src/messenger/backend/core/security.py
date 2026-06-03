@@ -24,11 +24,23 @@ def create_token(data: dict, expires_delta: timedelta, is_refresh: bool = False)
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def create_pair_jwt_tokens(user_id: int):
-    access = create_token({"sub": str(user_id)}, timedelta(days=30))
-    refresh = create_token({"sub": str(user_id)}, timedelta(days=7), is_refresh=True)
+ACCESS_TTL = timedelta(minutes=15)
+REFRESH_TTL = timedelta(days=7)
 
-    return {"access_token": access, "refresh_token": refresh}
+
+def create_access_token(user_id: int) -> str:
+    return create_token({"sub": str(user_id)}, ACCESS_TTL)
+
+
+def create_refresh_token(user_id: int) -> str:
+    return create_token({"sub": str(user_id)}, REFRESH_TTL, is_refresh=True)
+
+
+def create_pair_jwt_tokens(user_id: int):
+    return {
+        "access_token": create_access_token(user_id),
+        "refresh_token": create_refresh_token(user_id),
+    }
 
 
 def decode_token(token: str, expected_type: str) -> int | None:
