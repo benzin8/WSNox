@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     redis_url: str
     debug: bool = False
 
+    # Set the `Secure` flag on auth cookies. Must be False for local http dev
+    # (cookie won't be stored over http otherwise), True in production (HTTPS).
+    cookie_secure: bool = False
+
     smtp_host: str = "smtp.yandex.ru"
     smtp_port: int = 465
     smtp_user: str = ""

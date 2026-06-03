@@ -43,7 +43,13 @@ class ResetPasswordRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=128)
 
 class RefreshRequest(BaseModel):
-    refresh_token: str = Field(..., min_length=10)
+    # Which account to refresh; server reads its httpOnly cookie refresh_<user_id>.
+    user_id: int
+    # Legacy fallback for migrating pre-cookie sessions (refresh was in localStorage).
+    refresh_token: Optional[str] = Field(None, min_length=10)
+
+class LogoutRequest(BaseModel):
+    user_id: int
 
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(..., min_length=1, max_length=128)
@@ -83,7 +89,7 @@ class AuthResponse(BaseModel):
     status: str
     user: UserResponse
     access_token: str
-    refresh_token: str
+    # refresh token is delivered as an httpOnly cookie, not in the body
 
 class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
