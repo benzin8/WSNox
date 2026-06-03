@@ -340,3 +340,34 @@ class ChatCRUD:
         )
         result = await session.execute(query)
         return result.all()
+
+    @staticmethod
+    async def get_unread_total(session: AsyncSession, current_user_id: int) -> int:
+        """Total unread messages for a user across all their chats.
+
+        Same semantics as the per-chat unread_count in get_chats:
+        * private: messages where I'm the recipient and is_read is False
+        * group:   messages from others in group chats with no MessageRead(me) row
+        """
+        from messenger.backend.models.message_read import MessageRead
+
+        private_total = await session.scalar(
+            select(func.count(Message.id))
+            .where(Message.recipient_id == current_user_id)
+            .where(Message.is_read == False)  # noqa: E712
+        )
+
+        group_total = await session.scalar(
+            select(func.count(Message.id))
+            .join(Chat, Chat.id == Message.chat_id)
+            .outerjoin(
+                MessageRead,
+                (MessageRead.message_id == Message.id)
+                & (MessageRead.user_id == current_user_id),
+            )
+            .where(Chat.chat_type == "group")
+            .where(Message.sender_id != current_user_id)
+            .where(MessageRead.message_id.is_(None))
+        )
+
+        return (private_total or 0) + (group_total or 0)
