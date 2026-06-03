@@ -97,6 +97,33 @@ export function syncActiveFromStore() {
   }
 }
 
+// Mint a fresh access token for an account from its httpOnly refresh cookie.
+// For sessions created before the cookie model, falls back to the legacy
+// refresh token still kept in the account entry (or the top-level key for the
+// active account) so the server can validate it and set the cookie (migration).
+export async function mintAccess(userId) {
+  const body = { user_id: userId };
+  const acc = getAccounts().find((a) => a.user_id === userId);
+  const legacy =
+    (acc && acc.refresh_token) ||
+    (userId === getActiveId() ? localStorage.getItem('refresh_token') : null);
+  if (legacy) body.refresh_token = legacy;
+  const res = await axios.post(`${API_BASE}/auth/refresh`, body);
+  return res.data.access_token;
+}
+
+// Drop the legacy refresh token from an account entry once it's migrated to a
+// cookie (so we stop sending it).
+function stripLegacyRefresh(userId) {
+  const accounts = getAccounts();
+  const idx = accounts.findIndex((a) => a.user_id === userId);
+  if (idx >= 0 && accounts[idx].refresh_token) {
+    const { refresh_token, access_token, ...meta } = accounts[idx];
+    accounts[idx] = meta;
+    persist(accounts, getActiveId());
+  }
+}
+
 // Update the active account's access token after a refresh.
 export function updateActiveTokens(accessToken) {
   localStorage.setItem('access_token', accessToken);
@@ -124,10 +151,11 @@ export function markActiveNeedsLogin() {
 // refresh cookie (sent automatically), then reload to re-init WS/contexts.
 export async function switchAccount(userId) {
   try {
-    const res = await axios.post(`${API_BASE}/auth/refresh`, { user_id: userId });
+    const accessToken = await mintAccess(userId);
     persist(getAccounts(), userId);
-    localStorage.setItem('access_token', res.data.access_token);
+    localStorage.setItem('access_token', accessToken);
     localStorage.removeItem('refresh_token');
+    stripLegacyRefresh(userId);
     window.location.reload();
   } catch {
     const accounts = getAccounts();

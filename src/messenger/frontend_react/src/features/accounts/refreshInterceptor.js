@@ -1,7 +1,5 @@
 import axios from 'axios';
-import { updateActiveTokens, markActiveNeedsLogin, getActiveId } from './accountStore';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+import { updateActiveTokens, markActiveNeedsLogin, getActiveId, mintAccess } from './accountStore';
 
 // Shared in-flight refresh so concurrent 401s trigger only one /auth/refresh.
 let refreshPromise = null;
@@ -11,18 +9,10 @@ function doRefresh() {
   const userId = getActiveId();
   if (userId == null) return Promise.reject(new Error('no active account'));
 
-  // The refresh token rides as an httpOnly cookie. A legacy refresh_token in
-  // localStorage (pre-cookie session) is passed once so the server can set the
-  // cookie, then dropped.
-  const body = { user_id: userId };
-  const legacy = localStorage.getItem('refresh_token');
-  if (legacy) body.refresh_token = legacy;
-
-  refreshPromise = axios
-    .post(`${API_BASE}/auth/refresh`, body)
-    .then((res) => {
-      updateActiveTokens(res.data.access_token);
-      return res.data.access_token;
+  refreshPromise = mintAccess(userId)
+    .then((accessToken) => {
+      updateActiveTokens(accessToken);
+      return accessToken;
     })
     .finally(() => {
       refreshPromise = null;
@@ -31,8 +21,6 @@ function doRefresh() {
   return refreshPromise;
 }
 
-// Register once at app start. On a 401, transparently refresh the active
-// account's access token and retry the original request a single time.
 export function installRefreshInterceptor() {
   axios.interceptors.response.use(
     (response) => response,
@@ -41,9 +29,14 @@ export function installRefreshInterceptor() {
       if (!response || response.status !== 401 || !config) {
         return Promise.reject(error);
       }
-      // Don't loop on the refresh call itself, and only retry once.
-      if (config._retried || (config.url || '').includes('/auth/refresh')) {
-        markActiveNeedsLogin();
+      // Auth endpoints (/auth/refresh, /auth/logout, ...) manage their own
+      // errors — never auto-refresh or clear the session from them. This is
+      // critical: background per-account refreshes (unread badges) and account
+      // switches must NOT be able to log the active account out.
+      if ((config.url || '').includes('/auth/')) {
+        return Promise.reject(error);
+      }
+      if (config._retried) {
         return Promise.reject(error);
       }
       try {
@@ -52,6 +45,8 @@ export function installRefreshInterceptor() {
         config.headers = { ...(config.headers || {}), Authorization: `Bearer ${accessToken}` };
         return axios(config);
       } catch (refreshErr) {
+        // The active account's own refresh failed for a normal request →
+        // the session is genuinely dead.
         markActiveNeedsLogin();
         return Promise.reject(refreshErr);
       }
