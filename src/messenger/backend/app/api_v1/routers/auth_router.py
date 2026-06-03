@@ -13,7 +13,11 @@ from messenger.backend.app.api_v1.schemas.user import (
     UserResponse,
 )
 from messenger.backend.app.crud.user import UserCRUD
-from messenger.backend.core.rate_limit import rate_limit_send_code
+from messenger.backend.core.rate_limit import (
+    rate_limit_login,
+    rate_limit_refresh,
+    rate_limit_send_code,
+)
 from messenger.backend.core.redis import get_redis
 from messenger.backend.core.security import (
     create_pair_jwt_tokens,
@@ -124,7 +128,7 @@ async def reset_password(
     }
 
 
-@auth_router.post("/login", response_model=AuthResponse)
+@auth_router.post("/login", response_model=AuthResponse, dependencies=[Depends(rate_limit_login)])
 async def login(data: UserLogin, db: AsyncSession = Depends(get_db_session)):
     redis = get_redis()
     verified = await redis.get(f"verified_for_login:{data.email}")
@@ -146,7 +150,7 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db_session)):
     }
 
 
-@auth_router.post("/refresh")
+@auth_router.post("/refresh", dependencies=[Depends(rate_limit_refresh)])
 async def refresh_tokens(data: RefreshRequest, db: AsyncSession = Depends(get_db_session)):
     user_id = decode_token(data.refresh_token, expected_type="refresh")
     if user_id is None:

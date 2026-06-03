@@ -19,6 +19,18 @@ async def rate_limit_send_code(request: Request) -> None:
     await check_rate_limit(f"rl:send_code:ip:{client_ip}", max_requests=5, window_seconds=300)
 
 
+async def rate_limit_login(request: Request) -> None:
+    """10 login attempts / 5 min per IP — brute-force protection."""
+    client_ip = request.headers.get("x-real-ip") or request.client.host
+    await check_rate_limit(f"rl:login:ip:{client_ip}", max_requests=10, window_seconds=300)
+
+
+async def rate_limit_refresh(request: Request) -> None:
+    """30 token refreshes / 5 min per IP."""
+    client_ip = request.headers.get("x-real-ip") or request.client.host
+    await check_rate_limit(f"rl:refresh:ip:{client_ip}", max_requests=30, window_seconds=300)
+
+
 async def rate_limit_avatar_upload(
     request: Request,
     current_user: User = Depends(get_current_user),
