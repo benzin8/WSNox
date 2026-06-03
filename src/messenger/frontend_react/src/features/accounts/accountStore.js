@@ -66,12 +66,36 @@ export function upsertAccount(user, accessToken, refreshToken) {
 
 // Bootstrap: keep the active account's legacy keys in sync. Called once at
 // app start. If accounts is empty but legacy tokens exist (pre-multi-account
-// session), there's nothing to seed (we lack user info) — leave as-is.
+// session), seedCurrentAccount (called once user info is available) migrates it.
 export function syncActiveFromStore() {
   const accounts = getAccounts();
   const activeId = getActiveId();
   const active = accounts.find((a) => a.user_id === activeId);
   if (active) mirrorLegacyKeys(active);
+}
+
+// Ensure the current (legacy) session is represented in the accounts list.
+// Migrates pre-multi-account sessions: if the logged-in user isn't stored
+// yet, add them using the live legacy tokens and mark them active. Does NOT
+// reload. No-op once the active account is already represented.
+export function seedCurrentAccount({ user_id, display_name, avatar_url }) {
+  const access = localStorage.getItem('access_token');
+  const refresh = localStorage.getItem('refresh_token');
+  if (!access || !refresh || user_id == null) return;
+  const accounts = getAccounts();
+  const idx = accounts.findIndex((a) => a.user_id === user_id);
+  if (idx >= 0 && getActiveId() === user_id) return; // already represented & active
+  const entry = {
+    user_id,
+    display_name: display_name || 'Аккаунт',
+    avatar_url: avatar_url || null,
+    access_token: access,
+    refresh_token: refresh,
+    needs_login: false,
+  };
+  if (idx >= 0) accounts[idx] = entry;
+  else accounts.push(entry);
+  persist(accounts, user_id);
 }
 
 export function switchAccount(userId) {
