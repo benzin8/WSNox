@@ -1,14 +1,15 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="180" height="44" viewBox="0 0 180 44" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg-l" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+    <linearGradient id="w-bg" x1="0" y1="0" x2="0" y2="44" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#bef264"></stop>
       <stop offset="1" stop-color="#84cc16"></stop>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="14" fill="url(#bg-l)"></rect>
-  <rect x="0" y="0" width="64" height="32" rx="14" fill="#ffffff" fill-opacity="0.18"></rect>
-  <rect x="0.5" y="0.5" width="63" height="63" rx="13.5" stroke="#1a2e05" stroke-opacity="0.2"></rect>
-  <g transform="translate(16, 16)">
+  <rect x="0" y="6" width="32" height="32" rx="7" fill="url(#w-bg)"></rect>
+  <g transform="translate(0, 6)">
     <path d="M0.263523 5C0.263523 5 2.23058 0 4.68941 0L8.13176 4C8.13176 4 8.13177 17.5 9.1153 18C10.0988 18.5 13.0494 8 13.5412 7C14.0329 6 15.5082 5 16 5C16.4918 5 17.9671 6 18.4588 7C18.9506 8 21.9012 18.5 22.8847 18C23.8682 17.5 23.8682 4 23.8682 4L27.3106 0C29.7694 0 31.7365 5 31.7365 5C31.7365 5 32.3294 11.4441 31.7365 15.5C30.7244 22.4235 24.8518 32 24.8518 32H19.9341C19.9341 32 17.9671 19.5 16 19.5C14.0329 19.5 12.0659 32 12.0659 32H7.14823C7.14823 32 1.27565 22.4235 0.263523 15.5C-0.329404 11.4441 0.263523 5 0.263523 5Z" fill="#0a0a0c"></path>
   </g>
+  <text x="44" y="30" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="22" font-weight="700" letter-spacing="-0.04em" fill="#f4f4f5">
+    WSNox
+  </text>
 </svg>

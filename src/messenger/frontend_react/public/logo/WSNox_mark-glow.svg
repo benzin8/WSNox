@@ -1,0 +1,25 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="g-halo" cx="64" cy="64" r="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a3e635" stop-opacity="0.55"></stop>
+      <stop offset="0.4" stop-color="#a3e635" stop-opacity="0.18"></stop>
+      <stop offset="1" stop-color="#a3e635" stop-opacity="0"></stop>
+    </radialGradient>
+    <linearGradient id="g-mark" x1="64" y1="20" x2="64" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ecfccb"></stop>
+      <stop offset="0.5" stop-color="#a3e635"></stop>
+      <stop offset="1" stop-color="#4d7c0f"></stop>
+    </linearGradient>
+    <filter id="g-blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4"></feGaussianBlur>
+    </filter>
+  </defs>
+  <circle cx="64" cy="64" r="56" fill="url(#g-halo)"></circle>
+  
+  <g transform="translate(32, 32) scale(2)" filter="url(#g-blur)" opacity="0.65">
+    <path d="M0.263523 5C0.263523 5 2.23058 0 4.68941 0L8.13176 4C8.13176 4 8.13177 17.5 9.1153 18C10.0988 18.5 13.0494 8 13.5412 7C14.0329 6 15.5082 5 16 5C16.4918 5 17.9671 6 18.4588 7C18.9506 8 21.9012 18.5 22.8847 18C23.8682 17.5 23.8682 4 23.8682 4L27.3106 0C29.7694 0 31.7365 5 31.7365 5C31.7365 5 32.3294 11.4441 31.7365 15.5C30.7244 22.4235 24.8518 32 24.8518 32H19.9341C19.9341 32 17.9671 19.5 16 19.5C14.0329 19.5 12.0659 32 12.0659 32H7.14823C7.14823 32 1.27565 22.4235 0.263523 15.5C-0.329404 11.4441 0.263523 5 0.263523 5Z" fill="#a3e635"></path>
+  </g>
+  <g transform="translate(32, 32) scale(2)">
+    <path d="M0.263523 5C0.263523 5 2.23058 0 4.68941 0L8.13176 4C8.13176 4 8.13177 17.5 9.1153 18C10.0988 18.5 13.0494 8 13.5412 7C14.0329 6 15.5082 5 16 5C16.4918 5 17.9671 6 18.4588 7C18.9506 8 21.9012 18.5 22.8847 18C23.8682 17.5 23.8682 4 23.8682 4L27.3106 0C29.7694 0 31.7365 5 31.7365 5C31.7365 5 32.3294 11.4441 31.7365 15.5C30.7244 22.4235 24.8518 32 24.8518 32H19.9341C19.9341 32 17.9671 19.5 16 19.5C14.0329 19.5 12.0659 32 12.0659 32H7.14823C7.14823 32 1.27565 22.4235 0.263523 15.5C-0.329404 11.4441 0.263523 5 0.263523 5Z" fill="url(#g-mark)"></path>
+  </g>
+</svg>
