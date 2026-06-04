@@ -7,6 +7,44 @@ import { playTone } from "../audio/tones.js";
 import { isDesktopNotificationSupported, getDesktopPermission } from "../utils/permissions.js";
 import { isIosSafariNotStandalone } from "../utils/platform.js";
 
+const ROW_STYLE = {
+  background: "rgba(39,39,42,0.3)",
+  border: "1px solid rgba(63,63,70,0.6)",
+};
+
+function ToggleRow({ label, desc, on, onChange, disabled = false }) {
+  const handle = () => { if (!disabled) onChange?.(!on); };
+  return (
+    <button
+      type="button"
+      onClick={handle}
+      disabled={disabled}
+      className="flex items-center gap-3 px-3.5 rounded-2xl text-left disabled:opacity-50"
+      style={{ minHeight: 54, ...ROW_STYLE }}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="text-sm text-zinc-100">{label}</div>
+        {desc && <div className="text-[11px] text-zinc-500 mt-0.5">{desc}</div>}
+      </div>
+      <span
+        className="relative shrink-0 rounded-full"
+        style={{ width: 44, height: 26, background: on ? "#a3e635" : "#3f3f46" }}
+        aria-hidden
+      >
+        <span
+          className="absolute top-0.5 rounded-full bg-white"
+          style={{
+            width: 22,
+            height: 22,
+            left: on ? 20 : 2,
+            boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+          }}
+        />
+      </span>
+    </button>
+  );
+}
+
 export function NotificationSettingsTab() {
   const {
     settings,
@@ -24,8 +62,7 @@ export function NotificationSettingsTab() {
   const supported = isDesktopNotificationSupported();
   const permission = getDesktopPermission();
 
-  const handleDesktopToggle = async (e) => {
-    const enabled = e.target.checked;
+  const handleDesktopToggle = async (enabled) => {
     setDesktopHint("");
     const result = await setDesktopEnabled(enabled);
     if (enabled && result !== "granted") {
@@ -39,9 +76,9 @@ export function NotificationSettingsTab() {
     }
   };
 
-  const handlePushToggle = async (e) => {
+  const handlePushToggle = async (enabled) => {
     setPushHint("");
-    if (e.target.checked) {
+    if (enabled) {
       const result = await push.subscribe();
       if (result === "denied") {
         setPushHint("Браузер блокирует уведомления. Разрешите их в настройках сайта.");
@@ -58,143 +95,102 @@ export function NotificationSettingsTab() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* DND */}
-      <div className="flex flex-col gap-1">
-        <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
-          <input
-            type="checkbox"
-            checked={!!settings.dnd}
-            onChange={(e) => setDnd(e.target.checked)}
-            className="accent-lime-400"
-          />
-          Не беспокоить
-        </label>
-        <p className="pl-6 text-[10px] text-zinc-500">
-          Полностью отключает push-уведомления, пока включено.
-        </p>
-      </div>
+    <div className="flex flex-col gap-2">
+      <ToggleRow
+        label="Не беспокоить"
+        desc="Полностью отключает push, пока включено."
+        on={!!settings.dnd}
+        onChange={setDnd}
+      />
 
-      {/* Read receipts */}
-      <div className="flex flex-col gap-1">
-        <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
-          <input
-            type="checkbox"
-            checked={!!settings.readReceipts}
-            onChange={(e) => setReadReceipts(e.target.checked)}
-            className="accent-lime-400"
-          />
-          Отметки о прочтении
-        </label>
-        <p className="pl-6 text-[10px] text-zinc-500">
-          Показывать, прочитано ли сообщение. При отключении индикатор скрывается у обеих сторон.
-        </p>
-      </div>
+      <ToggleRow
+        label="Отметки о прочтении"
+        desc="Показывать, прочитано ли сообщение."
+        on={!!settings.readReceipts}
+        onChange={setReadReceipts}
+      />
 
-      {/* Звук */}
-      <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
-          <input
-            type="checkbox"
-            checked={settings.sound.enabled}
-            onChange={(e) => setSoundEnabled(e.target.checked)}
-            className="accent-lime-400"
-          />
-          Воспроизводить звук
-        </label>
-        <div className="flex items-center gap-2 pl-6">
+      <ToggleRow
+        label="Воспроизводить звук"
+        desc="Звуковой сигнал при получении сообщений."
+        on={settings.sound.enabled}
+        onChange={setSoundEnabled}
+      />
+
+      {settings.sound.enabled && (
+        <div
+          className="flex items-center gap-2 px-3.5 py-3 rounded-2xl"
+          style={ROW_STYLE}
+        >
           <select
             value={settings.sound.sample}
             onChange={(e) => setSoundSample(e.target.value)}
-            disabled={!settings.sound.enabled}
-            className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60 transition-all disabled:opacity-50"
+            className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-lime-400/60"
           >
             {Object.entries(TONES).map(([key, t]) => (
               <option key={key} value={key}>{t.label}</option>
             ))}
           </select>
           <button
+            type="button"
             onClick={() => playTone(settings.sound.sample)}
-            disabled={!settings.sound.enabled}
-            className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 bg-zinc-700 text-zinc-200 rounded-xl hover:bg-zinc-600 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 bg-zinc-700 text-zinc-200 rounded-xl hover:bg-zinc-600"
           >
             <Volume2 size={14} /> Проверить
           </button>
         </div>
-      </div>
+      )}
 
-      {/* Browser notif */}
-      <div className="flex flex-col gap-1">
-        <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
-          <input
-            type="checkbox"
-            checked={settings.desktop.enabled}
-            onChange={handleDesktopToggle}
-            disabled={!supported}
-            className="accent-lime-400"
-          />
-          Показывать уведомления браузера
-        </label>
-        {!supported && (
-          <p className="pl-6 text-xs text-zinc-500">
-            Браузер не поддерживает Notification API.
-          </p>
-        )}
-        {supported && permission === "denied" && (
-          <p className="pl-6 text-xs text-red-400">
-            Уведомления заблокированы. Разрешите их в настройках сайта.
-          </p>
-        )}
-        {desktopHint && (
-          <p className="pl-6 text-xs text-red-400">{desktopHint}</p>
-        )}
-      </div>
+      <ToggleRow
+        label="Уведомления браузера"
+        desc="Показывать всплывающие уведомления вкладки."
+        on={settings.desktop.enabled}
+        onChange={handleDesktopToggle}
+        disabled={!supported}
+      />
 
-      {/* Title badge */}
-      <div className="flex flex-col gap-1">
-        <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
-          <input
-            type="checkbox"
-            checked={settings.titleBadge.enabled}
-            onChange={(e) => setTitleBadgeEnabled(e.target.checked)}
-            className="accent-lime-400"
-          />
-          Считать непрочитанные в заголовке вкладки
-        </label>
-        <p className="pl-6 text-[10px] text-zinc-500">
-          Например: «(3) WSNox» когда вкладка не активна.
+      {!supported && (
+        <p className="text-xs text-zinc-500 px-3.5 -mt-1">
+          Браузер не поддерживает Notification API.
         </p>
-      </div>
-
-      {/* Push notifications */}
-      <div className="flex flex-col gap-1">
-        <label className="flex items-center gap-2 text-sm text-zinc-200 font-medium">
-          <input
-            type="checkbox"
-            checked={push.enabled}
-            onChange={handlePushToggle}
-            disabled={!push.supported || push.loading}
-            className="accent-lime-400"
-          />
-          Push-уведомления
-        </label>
-        <p className="pl-6 text-[10px] text-zinc-500">
-          Получайте уведомления даже когда вкладка закрыта (на Android и в PWA).
+      )}
+      {supported && permission === "denied" && (
+        <p className="text-xs text-red-400 px-3.5 -mt-1">
+          Уведомления заблокированы. Разрешите их в настройках сайта.
         </p>
-        {!push.supported && isIosSafariNotStandalone() && (
-          <p className="pl-6 text-xs text-amber-400 leading-snug">
-            Для пушей на iPhone: нажми <span className="font-semibold">Поделиться</span> в Safari → <span className="font-semibold">«На экран Домой»</span>, потом открой приложение с главного экрана и вернись сюда.
-          </p>
-        )}
-        {!push.supported && !isIosSafariNotStandalone() && (
-          <p className="pl-6 text-xs text-zinc-500">
-            Браузер не поддерживает push-уведомления.
-          </p>
-        )}
-        {pushHint && (
-          <p className="pl-6 text-xs text-red-400">{pushHint}</p>
-        )}
-      </div>
+      )}
+      {desktopHint && (
+        <p className="text-xs text-red-400 px-3.5 -mt-1">{desktopHint}</p>
+      )}
+
+      <ToggleRow
+        label="Счётчик в заголовке вкладки"
+        desc="Например: «(3) WSNox», когда вкладка не активна."
+        on={settings.titleBadge.enabled}
+        onChange={setTitleBadgeEnabled}
+      />
+
+      <ToggleRow
+        label="Push-уведомления"
+        desc="Получать пуши, даже когда вкладка закрыта."
+        on={push.enabled}
+        onChange={handlePushToggle}
+        disabled={!push.supported || push.loading}
+      />
+
+      {!push.supported && isIosSafariNotStandalone() && (
+        <p className="text-xs text-amber-400 leading-snug px-3.5 -mt-1">
+          Для пушей на iPhone: нажми <span className="font-semibold">Поделиться</span> в Safari → <span className="font-semibold">«На экран Домой»</span>, потом открой приложение с главного экрана и вернись сюда.
+        </p>
+      )}
+      {!push.supported && !isIosSafariNotStandalone() && (
+        <p className="text-xs text-zinc-500 px-3.5 -mt-1">
+          Браузер не поддерживает push-уведомления.
+        </p>
+      )}
+      {pushHint && (
+        <p className="text-xs text-red-400 px-3.5 -mt-1">{pushHint}</p>
+      )}
     </div>
   );
 }
