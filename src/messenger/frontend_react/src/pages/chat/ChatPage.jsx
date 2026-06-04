@@ -41,6 +41,7 @@ function ChatPage() {
   // Profile modal state: { profile, isOwnProfile } or null when closed
   const [profileModal, setProfileModal] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editInitialTab, setEditInitialTab] = useState("profile");
   const [mobileView, setMobileView] = useState('list');
   const [partnerPresencePreference, setPartnerPresencePreference] = useState(null);
   const [chatListBlurred, setChatListBlurred] = useState(false);
@@ -821,8 +822,9 @@ function ChatPage() {
               myProfile={myProfile}
               isAdmin={isAdmin}
               onOpenOwnProfile={handleOpenOwnProfile}
-              onOpenEditProfile={async () => {
+              onOpenEditProfile={async (tab = "profile") => {
                 await handleOpenOwnProfile();
+                setEditInitialTab(tab);
                 setShowEditModal(true);
               }}
               onOpenCreateGroup={handleOpenCreateGroup}
@@ -942,6 +944,7 @@ function ChatPage() {
         {showEditModal && profileModal && (
           <EditProfileModal
             profile={profileModal.profile}
+            initialTab={editInitialTab}
             onClose={() => setShowEditModal(false)}
             onSave={handleSaveProfile}
           />
