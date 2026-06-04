@@ -1,6 +1,9 @@
 import { X, Edit3, Calendar, Hash, Mail } from "lucide-react";
 import { Avatar } from "./Avatar";
+import { Cover, MetaRow, Pill } from "./parts";
+import { ProfileShell } from "./ProfileShell";
 import { AccountsBlock } from "../../features/accounts/AccountsBlock";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 const MONTHS_RU = [
     'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
@@ -15,113 +18,140 @@ function formatJoinedDate(iso) {
 }
 
 export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit, onAddAccount }) => {
+    const isMobile = useMediaQuery("(max-width: 767px)");
     if (!profile) return null;
 
-    const initials = (profile.display_name || profile.name || profile.username)
+    const initials = (profile.display_name || profile.name || profile.username || "?")
         .split(" ")
         .slice(0, 2)
         .map((w) => w[0]?.toUpperCase())
         .join("");
 
     const joined = formatJoinedDate(profile.created_at);
+    const avatarSize = isMobile ? 104 : 96;
+    const coverHeight = isMobile ? 124 : 112;
+    const closeSize = isMobile ? 40 : 34;
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn"
-            onClick={onClose}
-        >
-            <div
-                className="relative w-[22rem] max-w-[95vw] bg-zinc-900/50 border border-zinc-800/80 rounded-2xl shadow-2xl overflow-hidden animate-popIn"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* Gradient header with lime glow */}
-                <div className="relative h-24 bg-gradient-to-br from-lime-400/30 via-lime-400/10 to-zinc-900/50 overflow-hidden">
-                    {/* Glow orb behind avatar */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-[200px] h-[200px] rounded-full bg-lime-400/[0.08] blur-[60px] pointer-events-none" />
-                    <button
-                        onClick={onClose}
-                        className="absolute top-3 right-3 text-zinc-200/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-full w-8 h-8 flex items-center justify-center transition-all duration-300"
-                        aria-label="Закрыть"
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
+        <ProfileShell onClose={onClose} variant="view">
+            <div className="relative">
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="absolute z-20 flex items-center justify-center rounded-full text-zinc-100"
+                    style={{
+                        top: 14,
+                        right: 14,
+                        width: closeSize,
+                        height: closeSize,
+                        background: "rgba(0,0,0,0.30)",
+                        backdropFilter: "blur(6px)",
+                        WebkitBackdropFilter: "blur(6px)",
+                    }}
+                    aria-label="Закрыть"
+                >
+                    <X size={isMobile ? 20 : 16} />
+                </button>
 
-                <div className="px-6 pb-6 -mt-12 flex flex-col items-center gap-3">
+                <Cover height={coverHeight} />
+
+                <div
+                    className={`px-5 ${isMobile ? "pb-6" : "pb-5"} flex flex-col items-center`}
+                    style={{ marginTop: isMobile ? -56 : -52 }}
+                >
                     <Avatar
                         url={profile.avatar_url}
                         initials={initials}
                         online={profile.online}
-                        size={96}
-                        className="border-4 border-zinc-900 shadow-xl shadow-lime-400/20"
+                        size={avatarSize}
+                        ring
                     />
 
-                    <div className="text-center">
-                        <h2 className="text-xl font-bold tracking-tight text-zinc-100">
-                            {profile.display_name || profile.name}
-                        </h2>
-                        <p className="text-sm text-zinc-400">@{profile.username}</p>
-                    </div>
-
-                    {/* Status pills */}
-                    <div className="flex items-center gap-2 flex-wrap justify-center">
-                        <span
-                            className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border backdrop-blur-sm transition-colors ${
-                                profile.online
-                                    ? "bg-lime-400/10 text-lime-400 border-lime-400/20"
-                                    : "bg-zinc-800/40 text-zinc-400 border-zinc-700/60"
-                            }`}
+                    <div className="text-center mt-3">
+                        <h2
+                            className="font-bold tracking-tight text-zinc-100"
+                            style={{ fontSize: isMobile ? 24 : 21, letterSpacing: "-0.02em" }}
                         >
-                            {profile.online ? "в сети" : "не в сети"}
-                        </span>
-                        {profile.presence_preference === "dnd" && (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-amber-400/10 text-amber-400 border border-amber-400/20 backdrop-blur-sm">
-                                Не беспокоить
-                            </span>
+                            {profile.display_name || profile.name || `@${profile.username}`}
+                        </h2>
+                        {profile.username && (
+                            <p className="text-sm text-zinc-500 mt-0.5">@{profile.username}</p>
                         )}
                     </div>
 
-                    {/* Bio */}
+                    <div className="flex items-center gap-2 flex-wrap justify-center mt-3">
+                        <Pill tone={profile.online ? "lime" : "zinc"}>
+                            <span
+                                className="w-1.5 h-1.5 rounded-full"
+                                style={{
+                                    background: profile.online ? "#a3e635" : "#71717a",
+                                    boxShadow: profile.online ? "0 0 6px rgba(163,230,53,0.8)" : "none",
+                                }}
+                            />
+                            {profile.online ? "в сети" : "не в сети"}
+                        </Pill>
+                        {profile.presence_preference === "dnd" && (
+                            <Pill tone="amber">Не беспокоить</Pill>
+                        )}
+                    </div>
+
                     {profile.bio && (
-                        <p className="text-sm text-zinc-300 text-center leading-relaxed mt-1">
+                        <p
+                            className="text-sm text-zinc-300 text-center leading-relaxed mt-4 px-1"
+                            style={{ textWrap: "pretty" }}
+                        >
                             {profile.bio}
                         </p>
                     )}
 
-                    {/* Meta block */}
-                    <div className="w-full mt-2 grid gap-2 rounded-2xl p-4 border border-zinc-800/80 bg-zinc-900/50">
+                    <div className="w-full grid gap-2 mt-4">
                         {profile.email && (
-                            <div className="flex items-center gap-2 text-xs text-zinc-400">
-                                <Mail size={14} className="text-zinc-500 shrink-0" />
-                                <span className="break-all">{profile.email}</span>
-                            </div>
+                            <MetaRow
+                                icon={<Mail size={16} />}
+                                label="Email"
+                                value={profile.email}
+                                copyable
+                            />
                         )}
-                        <div className="flex items-center gap-2 text-xs text-zinc-400">
-                            <Hash size={14} className="text-zinc-500 shrink-0" />
-                            <span>ID {profile.user_id}</span>
-                        </div>
+                        <MetaRow
+                            icon={<Hash size={16} />}
+                            label="ID пользователя"
+                            value={profile.user_id}
+                            copyable
+                        />
                         {joined && (
-                            <div className="flex items-center gap-2 text-xs text-zinc-400">
-                                <Calendar size={14} className="text-zinc-500 shrink-0" />
-                                <span>С нами с {joined}</span>
-                            </div>
+                            <MetaRow
+                                icon={<Calendar size={16} />}
+                                label="В WSNox с"
+                                value={joined}
+                            />
                         )}
                     </div>
 
                     {isOwnProfile && (
                         <>
                             <button
+                                type="button"
                                 onClick={onEdit}
-                                className="w-full mt-3 flex items-center justify-center gap-2 bg-lime-400 text-zinc-900 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-lime-300 hover:shadow-[0_0_30px_rgba(163,230,53,0.25)] active:scale-[0.97] transition-all duration-300"
+                                className="w-full mt-4 flex items-center justify-center gap-2 font-semibold rounded-2xl active:scale-[0.98] hover:bg-lime-300"
+                                style={{
+                                    background: "#a3e635",
+                                    color: "#18181b",
+                                    minHeight: isMobile ? 52 : 46,
+                                    fontSize: 15,
+                                    boxShadow: "0 10px 30px rgba(163,230,53,0.28)",
+                                    transition: "transform .15s ease, background-color .15s ease",
+                                }}
                             >
-                                <Edit3 size={15} />
-                                Редактировать
+                                <Edit3 size={16} /> Редактировать профиль
                             </button>
-                            <AccountsBlock onAddAccount={onAddAccount} />
+                            <div className="w-full mt-3">
+                                <AccountsBlock onAddAccount={onAddAccount} />
+                            </div>
                         </>
                     )}
                 </div>
             </div>
-        </div>
+        </ProfileShell>
     );
 };
