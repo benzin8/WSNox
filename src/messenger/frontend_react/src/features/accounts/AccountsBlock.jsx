@@ -12,7 +12,7 @@ function initialsOf(name) {
 }
 
 export function AccountsBlock({ onAddAccount }) {
-  const { accounts, activeId, unread } = useAccounts(true);
+  const { accounts, activeId } = useAccounts(true);
 
   const handleAdd = () => {
     beginAddAccount();
@@ -26,7 +26,7 @@ export function AccountsBlock({ onAddAccount }) {
       <ul className="divide-y divide-zinc-800/60">
         {accounts.map((acc) => {
           const isActive = acc.user_id === activeId;
-          const count = unread[acc.user_id];
+          const count = acc.unread;
           return (
             <li
               key={acc.user_id}

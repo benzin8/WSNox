@@ -4,48 +4,55 @@ import { getAccounts, getActiveId, mintAccess } from './accountStore';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-// Returns { accounts, activeId, unread } where `unread` maps user_id -> number.
-// Unread totals are fetched per account using that account's own token when
-// the hook mounts (i.e. when the profile modal opens).
+// Returns { accounts, activeId } where each account is enriched with a FRESH
+// display_name + avatar_url + unread count, fetched when the profile modal
+// opens. Stored metadata is only a fallback: login-added accounts have no
+// avatar, and avatar URLs are short-lived presigned links that expire — so the
+// switcher must resolve them live per account (using that account's token).
 export function useAccounts(enabled) {
-  const [accounts] = useState(getAccounts);
+  const [stored] = useState(getAccounts);
   const [activeId] = useState(getActiveId);
-  const [unread, setUnread] = useState({});
+  const [accounts, setAccounts] = useState(() =>
+    stored.map((a) => ({ ...a, unread: null }))
+  );
 
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
 
     Promise.all(
-      accounts.map(async (acc) => {
+      stored.map(async (acc) => {
         try {
-          // Active account uses the in-hand access token; others mint a fresh
-          // short-lived one from their httpOnly refresh cookie.
-          let token;
-          if (acc.user_id === activeId) {
-            token = localStorage.getItem('access_token');
-          } else {
-            token = await mintAccess(acc.user_id);
-          }
-          if (!token) return [acc.user_id, null];
-          const res = await axios.get(`${API_BASE}/chats/unread-total`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          return [acc.user_id, res.data.unread_total];
+          const token =
+            acc.user_id === activeId
+              ? localStorage.getItem('access_token')
+              : await mintAccess(acc.user_id);
+          if (!token) return { ...acc, unread: null };
+          const headers = { Authorization: `Bearer ${token}` };
+          const [profileRes, unreadRes] = await Promise.all([
+            axios.get(`${API_BASE}/profiles/me`, { headers }).catch(() => null),
+            axios.get(`${API_BASE}/chats/unread-total`, { headers }).catch(() => null),
+          ]);
+          return {
+            ...acc,
+            display_name: profileRes?.data?.display_name || acc.display_name,
+            avatar_url: profileRes?.data?.avatar_thumb_url ?? acc.avatar_url,
+            unread: unreadRes ? unreadRes.data.unread_total : null,
+            needs_login: false,
+          };
         } catch {
-          // 401 / network — no badge for this account.
-          return [acc.user_id, null];
+          // 401 / network — keep stored metadata, no badge.
+          return { ...acc, unread: null };
         }
       })
-    ).then((pairs) => {
-      if (cancelled) return;
-      const map = {};
-      for (const [id, total] of pairs) if (total != null) map[id] = total;
-      setUnread(map);
+    ).then((list) => {
+      if (!cancelled) setAccounts(list);
     });
 
-    return () => { cancelled = true; };
-  }, [enabled, accounts]);
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, stored, activeId]);
 
-  return { accounts, activeId, unread };
+  return { accounts, activeId };
 }
