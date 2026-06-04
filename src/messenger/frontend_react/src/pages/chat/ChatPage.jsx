@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, User, Search, UsersRound } from 'lucide-react';
+import { User, Search } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
 import { useChatSocket } from '../../hooks/useChatSocket';
 import { usePresence } from '../../hooks/usePresence';
@@ -16,7 +16,7 @@ import { GroupInfoModal } from '../../components/chat/GroupInfoModal';
 import { MediaPreviewModal } from '../../components/chat/MediaPreviewModal';
 import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
-import { Avatar } from '../../components/profile/Avatar';
+import { SidebarHeader } from '../../components/chat/SidebarHeader';
 import { beginAddAccount, removeAccount, getActiveId, seedCurrentAccount } from '../../features/accounts/accountStore';
 import axios from 'axios';
 
@@ -817,51 +817,19 @@ function ChatPage() {
             className={`w-1/2 flex flex-col bg-zinc-950 backdrop-blur-xl border-r border-zinc-800/80 md:w-80 md:flex-shrink-0 transition-all duration-300 ${
               chatListBlurred ? 'blur-sm opacity-50 select-none' : ''
             }`}>
-            <div className="p-6 border-bottom border-zinc-800 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={handleOpenOwnProfile}
-                className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl hover:bg-zinc-800/50 active:scale-[0.98] transition-all"
-                title="Мой профиль"
-              >
-                <Avatar
-                  url={myProfile?.avatar_thumb_url}
-                  initials={(myProfile?.display_name || myProfile?.name || currentUser?.name || "?").slice(0, 1).toUpperCase()}
-                  size={40}
-                  className="group-hover:ring-2 group-hover:ring-lime-300 transition-all"
-                />
-                <span className="font-bold text-lg tracking-tight group-hover:text-lime-400 transition-colors">Чаты</span>
-              </button>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleOpenCreateGroup}
-                  title="Создать группу"
-                  aria-label="Создать группу"
-                  className="p-1.5 rounded-lg text-zinc-400 hover:text-lime-400 hover:bg-zinc-800 transition-colors"
-                >
-                  <UsersRound size={20} />
-                </button>
-                {isAdmin && (
-                  <button
-                    onClick={() => navigate('/dashboard')}
-                    title="Дашборд основателя"
-                    aria-label="Открыть дашборд"
-                    className="p-1.5 rounded-lg text-lime-400 hover:bg-zinc-800 transition-colors"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="7" height="9" />
-                      <rect x="14" y="3" width="7" height="5" />
-                      <rect x="14" y="12" width="7" height="9" />
-                      <rect x="3" y="16" width="7" height="5" />
-                    </svg>
-                  </button>
-                )}
-                <button onClick={handleLogout} className="text-zinc-500 hover:text-red-400 transition-colors">
-                  <LogOut size={20} />
-                </button>
-              </div>
-            </div>
+            <SidebarHeader
+              myProfile={myProfile}
+              isAdmin={isAdmin}
+              onOpenOwnProfile={handleOpenOwnProfile}
+              onOpenEditProfile={async () => {
+                await handleOpenOwnProfile();
+                setShowEditModal(true);
+              }}
+              onOpenCreateGroup={handleOpenCreateGroup}
+              onOpenDashboard={() => navigate('/dashboard')}
+              onAddAccount={() => { beginAddAccount(); navigate('/auth/send-code'); }}
+              onLogout={handleLogout}
+            />
 
             {!isConnected && (
               <div className="mx-4 mb-1 flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-400 text-xs font-medium animate-pulse">
