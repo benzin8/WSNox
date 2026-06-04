@@ -584,9 +584,9 @@ function EditFooter({ m, onClose, onPrimary, isBusy, primaryLabel, primaryType =
     );
 }
 
-export const EditProfileModal = ({ profile, onClose, onSave }) => {
+export const EditProfileModal = ({ profile, onClose, onSave, initialTab = "profile" }) => {
     const isMobile = useMediaQuery("(max-width: 767px)");
-    const [activeTab, setActiveTab] = useState("profile");
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [isSaving, setIsSaving] = useState(false);
 
     const wrappedSave = async (data) => {

@@ -28,9 +28,7 @@ export function SidebarHeader({
         onOpenOwnProfile?.();
         break;
       case "profile-appearance":
-        // Future: open Edit modal directly on Appearance tab; for now open own
-        // profile and the user can hit Edit → Appearance.
-        onOpenOwnProfile?.();
+        onOpenEditProfile?.("appearance");
         break;
       case "group":
         onOpenCreateGroup?.();
