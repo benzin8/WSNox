@@ -28,6 +28,7 @@ def test_decode_rejects_garbage():
 
 def test_refresh_route_registered():
     from messenger.backend.app.main import app
-    paths = [r.path for r in app.routes]
+    from tests._helpers import iter_route_paths
+    paths = iter_route_paths(app.routes)
     assert any(p.endswith("/auth/refresh") for p in paths), \
         "POST /auth/refresh route missing"
