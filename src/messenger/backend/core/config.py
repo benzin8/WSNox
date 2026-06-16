@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # в loader (как промах без записи), весь кэш данных отключается одной env-переменной.
     cache_data_enabled: bool = True
 
+    # Узкий kill-switch для самого объёмного кэша — полного chatlist-payload.
+    # По умолчанию OFF: включается отдельно от глобального cache_data_enabled.
+    cache_chatlist_payload: bool = False
+
     # Set the `Secure` flag on auth cookies. Must be False for local http dev
     # (cookie won't be stored over http otherwise), True in production (HTTPS).
     cookie_secure: bool = False
