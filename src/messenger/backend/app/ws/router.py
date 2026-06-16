@@ -12,7 +12,8 @@ from messenger.backend.app.api_v1.schemas.message import _utc_iso
 from messenger.backend.app.crud.chat import ChatCRUD
 from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.app.crud.notification import (
-    NotificationCRUD,
+    cached_get_dnd,
+    cached_muted_chat_ids,
     should_expose_read_receipts,
 )
 from messenger.backend.app.ws.push import send_push_to_user
@@ -531,24 +532,34 @@ class ConnectionManager:
         except asyncio.CancelledError:
             await pubsub.unsubscribe(channel)
 
-    async def _should_push(self, recipient_id: int, chat_id: int) -> bool:
+    async def _should_push(
+        self, recipient_id: int, chat_id: int, db: AsyncSession | None = None
+    ) -> bool:
         """Apply notification preferences before sending a push.
 
         Returns False when push should be suppressed: user has the chat
         currently open (within grace window), user has DND on, or the chat
         is muted.
+
+        viewing: Redis-проверка идёт первой как самый дешёвый short-circuit.
+        DND и muted читаются через read-through кэш (fail-open в loader).
+        Если *db* передан — переиспользуем эту сессию (батчинг получателей),
+        иначе открываем свою.
         """
         redis = get_redis()
         viewing = await get_viewing_chat(redis, recipient_id)
         if viewing is not None and viewing == chat_id:
             return False
 
-        async with AsyncSessionLocal() as db:
-            if await NotificationCRUD.get_dnd(db, recipient_id):
+        if db is not None:
+            if await cached_get_dnd(redis, db, recipient_id):
                 return False
-            if await NotificationCRUD.is_chat_muted(db, recipient_id, chat_id):
+            return chat_id not in await cached_muted_chat_ids(redis, db, recipient_id)
+
+        async with AsyncSessionLocal() as session:
+            if await cached_get_dnd(redis, session, recipient_id):
                 return False
-        return True
+            return chat_id not in await cached_muted_chat_ids(redis, session, recipient_id)
 
 
 manager = ConnectionManager()

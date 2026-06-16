@@ -35,18 +35,23 @@ def patch_db_session():
 
 @pytest.fixture
 def patch_crud():
+    """Patch the cached DND/muted wrappers used by _should_push.
+
+    cached_get_dnd -> bool; cached_muted_chat_ids -> list[int] (muted iff
+    chat_id is in the list).
+    """
     with (
         patch(
-            "messenger.backend.app.ws.router.NotificationCRUD.get_dnd",
+            "messenger.backend.app.ws.router.cached_get_dnd",
             new_callable=AsyncMock,
         ) as mock_dnd,
         patch(
-            "messenger.backend.app.ws.router.NotificationCRUD.is_chat_muted",
+            "messenger.backend.app.ws.router.cached_muted_chat_ids",
             new_callable=AsyncMock,
         ) as mock_muted,
     ):
         mock_dnd.return_value = False
-        mock_muted.return_value = False
+        mock_muted.return_value = []
         yield mock_dnd, mock_muted
 
 
@@ -95,5 +100,5 @@ async def test_suppresses_when_chat_muted(
     manager, patch_db_session, patch_crud, patch_redis
 ):
     _, mock_muted = patch_crud
-    mock_muted.return_value = True
+    mock_muted.return_value = [7]
     assert await manager._should_push(recipient_id=42, chat_id=7) is False

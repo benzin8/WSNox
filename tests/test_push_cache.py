@@ -252,3 +252,61 @@ async def test_send_push_uses_cached_subs_and_busts_on_410(fake_redis):
 
     m_del.assert_awaited_once()
     assert m_del.await_args.kwargs.get("user_id") == 42
+
+
+# --- Task 2.3: _should_push uses cached DND + muted -------------------------
+from messenger.backend.app.ws.router import ConnectionManager  # noqa: E402
+from messenger.backend.app.ws.viewing_chat import set_viewing_chat  # noqa: E402
+
+
+@pytest.mark.asyncio
+async def test_should_push_uses_cached_dnd_and_muted(fake_redis):
+    """_should_push читает DND/muted через кэш, не дёргая is_chat_muted напрямую."""
+    mgr = ConnectionManager()
+    db = MagicMock()
+    with (
+        patch("messenger.backend.app.ws.router.get_redis", return_value=fake_redis),
+        patch("messenger.backend.app.ws.router.cached_get_dnd",
+              new_callable=AsyncMock) as m_dnd,
+        patch("messenger.backend.app.ws.router.cached_muted_chat_ids",
+              new_callable=AsyncMock) as m_muted,
+    ):
+        m_dnd.return_value = False
+        m_muted.return_value = [9]  # chat 7 not muted -> push
+        assert await mgr._should_push(42, 7, db=db) is True
+        m_dnd.assert_awaited_once()
+        m_muted.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_should_push_suppressed_when_chat_in_cached_muted(fake_redis):
+    mgr = ConnectionManager()
+    db = MagicMock()
+    with (
+        patch("messenger.backend.app.ws.router.get_redis", return_value=fake_redis),
+        patch("messenger.backend.app.ws.router.cached_get_dnd",
+              new_callable=AsyncMock) as m_dnd,
+        patch("messenger.backend.app.ws.router.cached_muted_chat_ids",
+              new_callable=AsyncMock) as m_muted,
+    ):
+        m_dnd.return_value = False
+        m_muted.return_value = [7]  # chat 7 muted -> suppress
+        assert await mgr._should_push(42, 7, db=db) is False
+
+
+@pytest.mark.asyncio
+async def test_should_push_viewing_short_circuit_skips_cache(fake_redis):
+    """viewing: short-circuit первым: ни DND, ни muted не запрашиваются."""
+    mgr = ConnectionManager()
+    db = MagicMock()
+    await set_viewing_chat(fake_redis, user_id=42, chat_id=7)
+    with (
+        patch("messenger.backend.app.ws.router.get_redis", return_value=fake_redis),
+        patch("messenger.backend.app.ws.router.cached_get_dnd",
+              new_callable=AsyncMock) as m_dnd,
+        patch("messenger.backend.app.ws.router.cached_muted_chat_ids",
+              new_callable=AsyncMock) as m_muted,
+    ):
+        assert await mgr._should_push(42, 7, db=db) is False
+        m_dnd.assert_not_awaited()
+        m_muted.assert_not_awaited()
