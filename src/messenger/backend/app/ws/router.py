@@ -362,23 +362,28 @@ class ConnectionManager:
                 except Exception:  # noqa: BLE001
                     continue
 
+                online_recipients = []
+                offline_recipients = []
                 for recipient_id in recipient_ids:
+                    if self.active_connections.get(recipient_id):
+                        online_recipients.append(recipient_id)
+                    else:
+                        offline_recipients.append(recipient_id)
+
+                # Offline recipients: gate + push in a single shared session.
+                await self._fanout_offline_pushes(
+                    recipient_ids=offline_recipients,
+                    chat_id=chat_id,
+                    chat_info=chat_info,
+                    sender_id=sender_id,
+                    sender_display_name=sender_display_name,
+                    decrypted_text=decrypted_text,
+                )
+
+                # Online recipients: deliver over their live sockets.
+                for recipient_id in online_recipients:
                     sockets = self.active_connections.get(recipient_id, set())
                     if not sockets:
-                        if await self._should_push(recipient_id, chat_id):
-                            chat_type = (chat_info or {}).get("chat_type", "private")
-                            if chat_type == "group":
-                                group_name = (chat_info or {}).get("name", "")
-                                title = f"{sender_display_name or 'Кто-то'} в {group_name}" if group_name else f"Новое сообщение от {sender_display_name or 'участника'}"
-                            else:
-                                sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
-                                title = f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение"
-                            asyncio.create_task(send_push_to_user(recipient_id, {
-                                "title": title,
-                                "body": decrypted_text[:80] if decrypted_text else "Нажмите, чтобы открыть чат",
-                                "chat_id": chat_id,
-                                "sender_id": sender_id,
-                            }))
                         continue
                     payload = {
                         "text": decrypted_text,
@@ -531,6 +536,42 @@ class ConnectionManager:
                         del self.active_connections[uid]
         except asyncio.CancelledError:
             await pubsub.unsubscribe(channel)
+
+    async def _fanout_offline_pushes(
+        self,
+        recipient_ids: list[int],
+        chat_id: int,
+        chat_info: dict | None,
+        sender_id: int | None,
+        sender_display_name: str | None,
+        decrypted_text: str | None,
+    ) -> None:
+        """Отправить пуши всем офлайн-получателям сообщения в ОДНОЙ сессии.
+
+        Сессия открывается один раз на сообщение и переиспользуется в
+        _should_push для всех получателей (батчинг). Сам пуш — fire-and-forget
+        задача со своей короткоживущей сессией.
+        """
+        offline = [rid for rid in recipient_ids if not self.active_connections.get(rid)]
+        if not offline:
+            return
+        async with AsyncSessionLocal() as db:
+            for recipient_id in offline:
+                if not await self._should_push(recipient_id, chat_id, db=db):
+                    continue
+                chat_type = (chat_info or {}).get("chat_type", "private")
+                if chat_type == "group":
+                    group_name = (chat_info or {}).get("name", "")
+                    title = f"{sender_display_name or 'Кто-то'} в {group_name}" if group_name else f"Новое сообщение от {sender_display_name or 'участника'}"
+                else:
+                    sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
+                    title = f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение"
+                asyncio.create_task(send_push_to_user(recipient_id, {
+                    "title": title,
+                    "body": decrypted_text[:80] if decrypted_text else "Нажмите, чтобы открыть чат",
+                    "chat_id": chat_id,
+                    "sender_id": sender_id,
+                }))
 
     async def _should_push(
         self, recipient_id: int, chat_id: int, db: AsyncSession | None = None
