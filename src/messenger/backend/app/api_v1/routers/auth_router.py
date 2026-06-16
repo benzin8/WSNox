@@ -123,7 +123,7 @@ async def reset_password(
     if not user:
         raise HTTPException(status_code=400, detail="Аккаунт не найден")
 
-    await UserCRUD.set_password(db, user, data.password)
+    await UserCRUD.set_password(db, user, data.password, redis=get_redis())
 
     set_refresh_cookie(response, user.id, create_refresh_token(user.id))
     return {

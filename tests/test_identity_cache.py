@@ -146,3 +146,123 @@ async def test_get_current_admin_gates_on_snapshot_is_admin():
     with pytest.raises(HTTPException) as exc:
         await get_current_admin(user_snap)
     assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_set_password_invalidates_identity(fake_redis):
+    """UserCRUD.set_password бьёт cache:user:auth:{id} после commit."""
+    from messenger.backend.app.crud.user import UserCRUD
+
+    await fake_redis.set(user_auth(7), "{}")
+    user = _orm_user(user_id=7)
+    session = MagicMock()
+    session.commit = AsyncMock()
+
+    await UserCRUD.set_password(session, user, "new-strong-password", redis=fake_redis)
+
+    session.commit.assert_awaited_once()
+    assert await fake_redis.get(user_auth(7)) is None
+
+
+@pytest.mark.asyncio
+async def test_set_password_fail_open_when_redis_broken(fake_redis):
+    """RedisError на инвалидации не ломает смену пароля."""
+    from messenger.backend.app.crud.user import UserCRUD
+
+    broken = MagicMock()
+    broken.delete = AsyncMock(side_effect=RedisError("boom"))
+    user = _orm_user(user_id=7)
+    session = MagicMock()
+    session.commit = AsyncMock()
+
+    await UserCRUD.set_password(session, user, "new-strong-password", redis=broken)
+    session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_admin_set_role_busts_identity_cache(fake_redis, monkeypatch):
+    """admin_set_role: после commit DEL cache:user:auth:{target_id}."""
+    from httpx import ASGITransport, AsyncClient
+
+    from messenger.backend.app.api_v1.auth.dependencies import get_current_admin
+    from messenger.backend.app.main import app
+    from messenger.backend.core import redis as redis_module
+    from messenger.backend.db import get_db_session
+
+    monkeypatch.setattr(redis_module, "redis_client", fake_redis)
+    await fake_redis.set(user_auth(2), "{}")  # stale cached identity for the target
+
+    target = _orm_user(user_id=2, is_admin=False)
+    target.email = "bob@example.com"
+    session = MagicMock()
+    result = MagicMock()
+    result.scalar_one_or_none = MagicMock(return_value=target)
+    session.execute = AsyncMock(return_value=result)
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+
+    admin = CachedUser.from_orm(_orm_user(user_id=1, is_admin=True))
+
+    app.dependency_overrides[get_current_admin] = lambda: admin
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            r = await ac.patch(
+                "/api/admin/users/2/admin",
+                json={"is_admin": True, "confirm_email": "bob@example.com"},
+            )
+            assert r.status_code == 200, r.text
+            session.commit.assert_awaited_once()
+            assert await fake_redis.get(user_auth(2)) is None
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_verify_phone_code_busts_identity_cache(fake_redis, monkeypatch):
+    """verify_phone_code: после commit телефона DEL cache:user:auth:{id}."""
+    from types import SimpleNamespace
+
+    from httpx import ASGITransport, AsyncClient
+
+    from messenger.backend.app.api_v1.auth.dependencies import get_current_user
+    from messenger.backend.app.crud.profile import ProfileCRUD
+    from messenger.backend.app.main import app
+    from messenger.backend.core import redis as redis_module
+    from messenger.backend.db import get_db_session
+
+    monkeypatch.setattr(redis_module, "redis_client", fake_redis)
+    await fake_redis.set("phone_verify:7:+79990000000", "123456")  # stored code matches
+    await fake_redis.set(user_auth(7), "{}")
+
+    target = _orm_user(user_id=7)
+    session = MagicMock()
+    session.get = AsyncMock(return_value=target)
+    session.commit = AsyncMock()
+
+    async def _fake_gup(db, user_id):
+        return SimpleNamespace(
+            id=user_id, username="alice7", name="Alice", phone_number="+79990000000",
+            profile=SimpleNamespace(
+                display_name="Alice", bio="", presence_preference=None, avatar=None,
+            ),
+        )
+
+    monkeypatch.setattr(ProfileCRUD, "get_user_with_profile", staticmethod(_fake_gup))
+
+    me = CachedUser.from_orm(_orm_user(user_id=7))
+    app.dependency_overrides[get_current_user] = lambda: me
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            r = await ac.post(
+                "/profiles/phone/verify",
+                json={"phone_number": "+79990000000", "code": "123456"},
+            )
+            assert r.status_code == 200, r.text
+            session.commit.assert_awaited_once()
+            assert await fake_redis.get(user_auth(7)) is None
+    finally:
+        app.dependency_overrides.clear()
