@@ -60,7 +60,7 @@ function Toggle({ on }) {
   return (
     <span
       className="relative shrink-0 rounded-full"
-      style={{ width: 40, height: 23, background: on ? "#a3e635" : "#3f3f46" }}
+      style={{ width: 40, height: 23, background: on ? "var(--color-lime-400)" : "#3f3f46" }}
       aria-hidden
     >
       <span
@@ -74,7 +74,7 @@ function Toggle({ on }) {
 function Badge({ tone = "zinc", children }) {
   const tones = {
     amber: ["rgba(251,191,36,0.12)", "#fbbf24"],
-    lime: ["rgba(163,230,53,0.12)", "#a3e635"],
+    lime: ["rgba(var(--accent-rgb),0.12)", "var(--color-lime-400)"],
     zinc: ["rgba(63,63,70,0.5)", "#a1a1aa"],
   };
   const [bg, color] = tones[tone] || tones.zinc;
@@ -202,7 +202,7 @@ function MenuBody({
             {a.unread > 0 && (
               <span
                 className="text-[11px] font-bold px-1.5 rounded-full inline-flex items-center justify-center min-w-[20px] h-5"
-                style={{ background: "#a3e635", color: "#18181b" }}
+                style={{ background: "var(--color-lime-400)", color: "#18181b" }}
               >
                 {a.unread > 99 ? "99+" : a.unread}
               </span>

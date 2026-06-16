@@ -24,8 +24,8 @@ export default function AmbientGlow() {
           .wsnox-soul-drift, .wsnox-soul-pulse { animation: none; }
         }
       `}</style>
-      <div className="wsnox-soul wsnox-soul-drift" style={{ width: 560, height: 560, background: 'rgba(163,230,53,0.07)', left: -160, top: -120 }} />
-      <div className="wsnox-soul wsnox-soul-pulse" style={{ width: 480, height: 480, background: 'rgba(163,230,53,0.05)', right: -140, top: 240 }} />
+      <div className="wsnox-soul wsnox-soul-drift" style={{ width: 560, height: 560, background: 'rgba(var(--accent-rgb),0.07)', left: -160, top: -120 }} />
+      <div className="wsnox-soul wsnox-soul-pulse" style={{ width: 480, height: 480, background: 'rgba(var(--accent-rgb),0.05)', right: -140, top: 240 }} />
       <div className="wsnox-soul wsnox-soul-drift" style={{ width: 520, height: 520, background: 'rgba(132,204,22,0.045)', left: '30%', bottom: -220, animationDelay: '-6s' }} />
     </>
   );

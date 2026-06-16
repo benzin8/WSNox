@@ -13,9 +13,10 @@ import {
     Bell,
     Camera,
     Globe,
+    Check,
 } from "lucide-react";
 import { NotificationSettingsTab } from "../../features/notifications";
-import { useTheme } from "../../features/theme";
+import { useTheme, ACCENTS } from "../../features/theme";
 import { useProfile } from "../../hooks/useProfile";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { Avatar } from "./Avatar";
@@ -35,8 +36,6 @@ const TABS = [
     { id: "notifications", label: "Уведомления",  icon: Bell },
 ];
 
-const ACCENT_PALETTE = ["#a3e635", "#22d3ee", "#a78bfa", "#fb7185", "#fbbf24"];
-
 const INPUT_BG = "rgba(39,39,42,0.4)";
 const INPUT_BORDER = "rgba(63,63,70,0.6)";
 
@@ -50,8 +49,8 @@ function inputStyle(m, extra = {}) {
 }
 
 function handleFocus(e) {
-    e.target.style.borderColor = "rgba(163,230,53,0.6)";
-    e.target.style.boxShadow = "0 0 0 3px rgba(163,230,53,0.18)";
+    e.target.style.borderColor = "color-mix(in oklab, var(--color-lime-400) 60%, transparent)";
+    e.target.style.boxShadow = "0 0 0 3px color-mix(in oklab, var(--color-lime-400) 18%, transparent)";
 }
 function handleBlur(e) {
     e.target.style.borderColor = INPUT_BORDER;
@@ -72,6 +71,15 @@ function Tabs({ active, onChange, m }) {
     return (
         <div
             className="flex gap-1 p-1 rounded-2xl overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            onWheel={(e) => {
+                // The tab strip scrolls horizontally; a vertical mouse wheel
+                // won't move it by default. Translate vertical delta to
+                // horizontal scroll so the wheel reaches off-screen tabs.
+                const el = e.currentTarget;
+                if (el.scrollWidth > el.clientWidth && e.deltaY !== 0) {
+                    el.scrollLeft += e.deltaY;
+                }
+            }}
             style={{
                 background: "rgba(24,24,27,0.6)",
                 border: "1px solid rgba(39,39,42,0.85)",
@@ -90,10 +98,12 @@ function Tabs({ active, onChange, m }) {
                             padding: m ? "10px 14px" : "8px 12px",
                             minHeight: m ? 40 : undefined,
                             transition: "color .15s ease",
-                            color: on ? "#a3e635" : "#a1a1aa",
-                            background: on ? "rgba(163,230,53,0.10)" : "transparent",
+                            color: on ? "var(--color-lime-400)" : "#a1a1aa",
+                            background: on
+                                ? "color-mix(in oklab, var(--color-lime-400) 10%, transparent)"
+                                : "transparent",
                             border: on
-                                ? "1px solid rgba(163,230,53,0.22)"
+                                ? "1px solid color-mix(in oklab, var(--color-lime-400) 22%, transparent)"
                                 : "1px solid transparent",
                         }}
                     >
@@ -194,7 +204,7 @@ function ProfileTab({ m, profile, onSave, onClose, isSaving }) {
                     <div
                         className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center"
                         style={{
-                            background: "#a3e635",
+                            background: "var(--color-lime-400)",
                             color: "#18181b",
                             border: "3px solid #09090b",
                         }}
@@ -210,9 +220,9 @@ function ProfileTab({ m, profile, onSave, onClose, isSaving }) {
                         className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 rounded-xl whitespace-nowrap disabled:opacity-50"
                         style={{
                             minHeight: m ? 40 : 34,
-                            background: "rgba(163,230,53,0.10)",
-                            color: "#a3e635",
-                            border: "1px solid rgba(163,230,53,0.22)",
+                            background: "rgba(var(--accent-rgb),0.10)",
+                            color: "var(--color-lime-400)",
+                            border: "1px solid rgba(var(--accent-rgb),0.22)",
                         }}
                     >
                         <Upload size={13} />
@@ -289,11 +299,11 @@ function ProfileTab({ m, profile, onSave, onClose, isSaving }) {
                                 className="flex flex-col items-center gap-1.5 rounded-2xl"
                                 style={{
                                     padding: m ? "12px 6px" : "10px 6px",
-                                    background: on ? "rgba(163,230,53,0.10)" : "rgba(39,39,42,0.4)",
+                                    background: on ? "rgba(var(--accent-rgb),0.10)" : "rgba(39,39,42,0.4)",
                                     border: on
-                                        ? "1px solid rgba(163,230,53,0.30)"
+                                        ? "1px solid rgba(var(--accent-rgb),0.30)"
                                         : `1px solid ${INPUT_BORDER}`,
-                                    color: on ? "#a3e635" : "#a1a1aa",
+                                    color: on ? "var(--color-lime-400)" : "#a1a1aa",
                                 }}
                             >
                                 <Icon size={17} />
@@ -326,7 +336,7 @@ function ProfileTab({ m, profile, onSave, onClose, isSaving }) {
 }
 
 function AppearanceTab({ m, onClose }) {
-    const { preference, setPreference } = useTheme();
+    const { preference, setPreference, accent, setAccent } = useTheme();
 
     const themes = [
         {
@@ -334,21 +344,21 @@ function AppearanceTab({ m, onClose }) {
             label: "Тёмная",
             icon: Moon,
             desc: "Тёмный фон, яркий акцент",
-            preview: ["#0a0a0c", "#27272a", "#a3e635"],
+            preview: ["#0a0a0c", "#27272a", "var(--color-lime-400)"],
         },
         {
             v: "light",
             label: "Светлая",
             icon: Sun,
             desc: "Светлый фон, мягкие тона",
-            preview: ["#f4f4f5", "#d4d4d8", "#65a30d"],
+            preview: ["#f4f4f5", "#d4d4d8", "var(--color-lime-600)"],
         },
         {
             v: "system",
             label: "Системная",
             icon: Monitor,
             desc: "Следовать за ОС",
-            preview: ["#0a0a0c", "#f4f4f5", "#a3e635"],
+            preview: ["#0a0a0c", "#f4f4f5", "var(--color-lime-400)"],
         },
     ];
 
@@ -367,9 +377,11 @@ function AppearanceTab({ m, onClose }) {
                             className="flex flex-col rounded-2xl overflow-hidden text-left"
                             style={{
                                 border: on
-                                    ? "1px solid rgba(163,230,53,0.40)"
+                                    ? "1px solid color-mix(in oklab, var(--color-lime-400) 40%, transparent)"
                                     : `1px solid ${INPUT_BORDER}`,
-                                background: on ? "rgba(163,230,53,0.06)" : "rgba(39,39,42,0.3)",
+                                background: on
+                                    ? "color-mix(in oklab, var(--color-lime-400) 6%, transparent)"
+                                    : "rgba(39,39,42,0.3)",
                             }}
                         >
                             <div className="h-12 flex items-end gap-1 p-2" style={{ background: o.preview[0] }}>
@@ -384,14 +396,14 @@ function AppearanceTab({ m, onClose }) {
                                     <Icon size={13} className={on ? "text-lime-400" : "text-zinc-500"} />
                                     <span
                                         className="text-xs font-semibold"
-                                        style={{ color: on ? "#a3e635" : "#e4e4e7" }}
+                                        style={{ color: on ? "var(--color-lime-400)" : "#e4e4e7" }}
                                     >
                                         {o.label}
                                     </span>
                                 </div>
                                 <span
                                     className="text-[10px] leading-tight"
-                                    style={{ color: on ? "rgba(163,230,53,0.7)" : "#71717a" }}
+                                    style={{ color: on ? "color-mix(in oklab, var(--color-lime-400) 70%, transparent)" : "#71717a" }}
                                 >
                                     {o.desc}
                                 </span>
@@ -402,28 +414,33 @@ function AppearanceTab({ m, onClose }) {
             </div>
 
             <p className="text-xs text-zinc-400 font-medium mt-2">Акцентный цвет</p>
-            <div className="flex items-center gap-2.5">
-                {ACCENT_PALETTE.map((c, i) => (
-                    <span
-                        key={c}
-                        title={i === 0 ? "Lime (текущий)" : "Выбор акцента — скоро"}
-                        className="rounded-full inline-block"
-                        style={{
-                            width: m ? 40 : 34,
-                            height: m ? 40 : 34,
-                            background: c,
-                            opacity: i === 0 ? 1 : 0.5,
-                            boxShadow:
-                                i === 0
-                                    ? `0 0 0 3px #09090b, 0 0 0 5px ${c}`
+            <div className="flex items-center gap-2.5 flex-wrap">
+                {ACCENTS.map((a) => {
+                    const on = accent === a.id;
+                    const size = m ? 40 : 34;
+                    return (
+                        <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => setAccent(a.id)}
+                            title={a.label}
+                            aria-label={a.label}
+                            aria-pressed={on}
+                            className="rounded-full inline-flex items-center justify-center shrink-0 transition-transform active:scale-95"
+                            style={{
+                                width: size,
+                                height: size,
+                                background: a.swatch,
+                                boxShadow: on
+                                    ? "0 0 0 3px var(--color-zinc-900), 0 0 0 5px var(--color-lime-400)"
                                     : "none",
-                        }}
-                    />
-                ))}
+                            }}
+                        >
+                            {on && <Check size={m ? 18 : 15} color="#fff" strokeWidth={3} />}
+                        </button>
+                    );
+                })}
             </div>
-            <p className="text-[10px] text-zinc-500">
-                Выбор акцентного цвета — в разработке.
-            </p>
 
             <EditFooter m={m} onClose={onClose} secondaryOnly />
         </div>
@@ -441,7 +458,7 @@ function SecurityTab({ m, onClose }) {
 
     const strength = Math.min(4, Math.floor(next.length / 3));
     const strengthColor =
-        strength <= 1 ? "#fb7185" : strength <= 2 ? "#fbbf24" : "#a3e635";
+        strength <= 1 ? "#fb7185" : strength <= 2 ? "#fbbf24" : "var(--color-lime-400)";
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -571,9 +588,9 @@ function EditFooter({ m, onClose, onPrimary, isBusy, primaryLabel, primaryType =
                     className="flex-1 flex items-center justify-center gap-2 rounded-2xl font-semibold text-sm active:scale-[0.98] disabled:opacity-60"
                     style={{
                         minHeight: buttonHeight,
-                        background: "#a3e635",
+                        background: "var(--color-lime-400)",
                         color: "#18181b",
-                        boxShadow: "0 8px 24px rgba(163,230,53,0.25)",
+                        boxShadow: "0 8px 24px rgba(var(--accent-rgb),0.25)",
                         transition: "transform .15s ease, background-color .15s ease",
                     }}
                 >

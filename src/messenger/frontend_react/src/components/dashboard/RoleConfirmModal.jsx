@@ -90,7 +90,7 @@ export default function RoleConfirmModal({ open, onClose, target, grant, onConfi
           onKeyDown={(e) => { if (e.key === 'Enter' && matches && !submitting) submit(); }}
           className="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors"
           style={{
-            borderColor: matches ? '#a3e635' : 'rgba(63,63,70,0.7)',
+            borderColor: matches ? 'var(--color-lime-400)' : 'rgba(63,63,70,0.7)',
           }}
         />
 
@@ -113,7 +113,7 @@ export default function RoleConfirmModal({ open, onClose, target, grant, onConfi
             disabled={!matches || submitting}
             className="px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: grant ? '#a3e635' : '#ef4444',
+              background: grant ? 'var(--color-lime-400)' : '#ef4444',
               color: grant ? '#09090b' : '#fff',
             }}
           >

@@ -50,7 +50,7 @@ export default function AdminUsersPage() {
           style={{ background: 'rgba(9,9,11,0.78)', backdropFilter: 'blur(14px) saturate(1.4)', borderBottom: '1px solid rgba(39,39,42,0.6)' }}
         >
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <button onClick={() => navigate('/dashboard')} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#a3e635' }} aria-label="Вернуться к дашборду">
+            <button onClick={() => navigate('/dashboard')} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--color-lime-400)' }} aria-label="Вернуться к дашборду">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#18181b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
             <span className="text-base sm:text-lg font-semibold tracking-tight">WSNox</span>
@@ -99,7 +99,7 @@ export default function AdminUsersPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-zinc-100 truncate">{u.name}</span>
                     {u.is_admin && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase" style={{ background: 'rgba(163,230,53,0.15)', color: '#a3e635', letterSpacing: '0.08em' }}>admin</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase" style={{ background: 'rgba(var(--accent-rgb),0.15)', color: 'var(--color-lime-400)', letterSpacing: '0.08em' }}>admin</span>
                     )}
                   </div>
                   <div className="text-xs text-zinc-500 truncate">{u.email}</div>
@@ -112,9 +112,9 @@ export default function AdminUsersPage() {
                   onClick={() => setPending({ target: u, grant: !u.is_admin })}
                   className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
                   style={{
-                    background: u.is_admin ? 'rgba(248,113,113,0.10)' : 'rgba(163,230,53,0.10)',
-                    color: u.is_admin ? '#f87171' : '#a3e635',
-                    border: `1px solid ${u.is_admin ? 'rgba(248,113,113,0.20)' : 'rgba(163,230,53,0.20)'}`,
+                    background: u.is_admin ? 'rgba(248,113,113,0.10)' : 'rgba(var(--accent-rgb),0.10)',
+                    color: u.is_admin ? '#f87171' : 'var(--color-lime-400)',
+                    border: `1px solid ${u.is_admin ? 'rgba(248,113,113,0.20)' : 'rgba(var(--accent-rgb),0.20)'}`,
                   }}
                 >
                   {u.is_admin ? 'Снять' : 'Выдать админку'}

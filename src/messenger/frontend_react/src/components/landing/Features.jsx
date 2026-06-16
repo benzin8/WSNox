@@ -26,7 +26,7 @@ function FeatureCard({ f, index }) {
         className="absolute pointer-events-none rounded-full"
         style={{
           width: 200, height: 200, top: -80, right: -80,
-          background: 'rgba(163,230,53,0.06)',
+          background: 'rgba(var(--accent-rgb),0.06)',
           filter: 'blur(60px)',
         }}
       />
@@ -34,8 +34,8 @@ function FeatureCard({ f, index }) {
         <div
           className="shrink-0 w-12 h-12 rounded-xl flex items-center justify-center"
           style={{
-            background: 'rgba(163,230,53,0.08)',
-            border: '1px solid rgba(163,230,53,0.20)',
+            background: 'rgba(var(--accent-rgb),0.08)',
+            border: '1px solid rgba(var(--accent-rgb),0.20)',
           }}
         >
           <f.icon size={22} className="text-lime-400" />

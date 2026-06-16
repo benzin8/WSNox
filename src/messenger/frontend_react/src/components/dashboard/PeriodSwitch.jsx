@@ -15,8 +15,8 @@ export default function PeriodSwitch({ days, onChange }) {
             onClick={() => onChange(d)}
             className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${on ? 'font-semibold' : ''}`}
             style={{
-              background: on ? 'rgba(163,230,53,0.12)' : 'transparent',
-              color: on ? '#a3e635' : '#71717a',
+              background: on ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
+              color: on ? 'var(--color-lime-400)' : '#71717a',
             }}
           >
             {d}д

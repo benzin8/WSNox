@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const LIME = '#a3e635';
+const LIME = 'var(--color-lime-400)';
 const NEUTRAL = '#3f3f46';
 
 export default function BarChart({ data, labels, color = LIME }) {
@@ -31,7 +31,7 @@ export default function BarChart({ data, labels, color = LIME }) {
   }
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ color, width: '100%', height: 'auto', display: 'block' }}>
       {data.map((v, i) => {
         const bh = (v / max) * ih;
         const x = i * (bw + gap);
@@ -42,7 +42,7 @@ export default function BarChart({ data, labels, color = LIME }) {
           <g key={i}>
             <rect
               x={x} y={y} width={bw} height={bh} rx="3"
-              fill={isHover || isLast ? color : NEUTRAL}
+              fill={isHover || isLast ? 'currentColor' : NEUTRAL}
               opacity={isHover ? 1 : (isLast ? 1 : 0.85)}
               style={{ transition: 'fill .15s' }}
             />
@@ -66,7 +66,7 @@ export default function BarChart({ data, labels, color = LIME }) {
         <g pointerEvents="none">
           <rect
             x={tip.x} y={tip.y} width={tip.w} height={tip.h} rx="6"
-            fill="rgba(9,9,11,0.95)" stroke="rgba(163,230,53,0.4)" strokeWidth="1"
+            fill="rgba(9,9,11,0.95)" stroke="currentColor" strokeOpacity="0.4" strokeWidth="1"
           />
           <text
             x={tip.x + tip.w / 2} y={tip.y + tip.h / 2 + 4}
@@ -76,7 +76,7 @@ export default function BarChart({ data, labels, color = LIME }) {
             {tip.text}
           </text>
           {/* connector dot */}
-          <circle cx={tip.cx} cy={tip.y + tip.h} r="2.5" fill={color} />
+          <circle cx={tip.cx} cy={tip.y + tip.h} r="2.5" fill="currentColor" />
         </g>
       )}
     </svg>

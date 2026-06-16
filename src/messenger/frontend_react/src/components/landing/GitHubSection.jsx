@@ -15,14 +15,14 @@ export function GitHubSection() {
           className="reveal-scale relative rounded-3xl overflow-hidden"
           style={{
             background:
-              'radial-gradient(ellipse at top right, rgba(163,230,53,0.12) 0%, transparent 60%), linear-gradient(180deg, rgba(24,24,27,0.8) 0%, rgba(9,9,11,1) 100%)',
+              'radial-gradient(ellipse at top right, rgba(var(--accent-rgb),0.12) 0%, transparent 60%), linear-gradient(180deg, rgba(24,24,27,0.8) 0%, rgba(9,9,11,1) 100%)',
             border: '1px solid rgba(63,63,70,0.6)',
           }}
         >
           <div
             className="absolute inset-0 pointer-events-none opacity-[0.15]"
             style={{
-              backgroundImage: 'linear-gradient(rgba(163,230,53,0.30) 1px, transparent 1px)',
+              backgroundImage: 'linear-gradient(rgba(var(--accent-rgb),0.30) 1px, transparent 1px)',
               backgroundSize: '100% 28px',
               maskImage: 'radial-gradient(ellipse at left center, black 0%, transparent 70%)',
               WebkitMaskImage: 'radial-gradient(ellipse at left center, black 0%, transparent 70%)',
@@ -33,7 +33,7 @@ export function GitHubSection() {
             style={{
               width: 500, height: 500, right: -100, top: '50%',
               transform: 'translateY(-50%)',
-              background: 'rgba(163,230,53,0.10)',
+              background: 'rgba(var(--accent-rgb),0.10)',
               filter: 'blur(120px)',
             }}
           />
@@ -78,9 +78,9 @@ export function GitHubSection() {
                   rel="noopener noreferrer"
                   className="group relative inline-flex items-center gap-3 rounded-xl font-semibold pl-5 pr-3 py-3.5 text-zinc-900 overflow-hidden transition-transform hover:scale-[1.01]"
                   style={{
-                    background: 'linear-gradient(135deg, #bef264 0%, #a3e635 50%, #84cc16 100%)',
+                    background: 'linear-gradient(135deg, var(--color-lime-300) 0%, var(--color-lime-400) 50%, var(--color-lime-500) 100%)',
                     boxShadow:
-                      '0 18px 40px rgba(163,230,53,0.30), inset 0 1px 0 rgba(255,255,255,0.4)',
+                      '0 18px 40px rgba(var(--accent-rgb),0.30), inset 0 1px 0 rgba(255,255,255,0.4)',
                   }}
                 >
                   <Github size={20} />
@@ -92,7 +92,7 @@ export function GitHubSection() {
                   </span>
                   <span
                     className="ml-2 w-9 h-9 rounded-lg flex items-center justify-center"
-                    style={{ background: 'rgba(24,24,27,0.85)', color: '#a3e635' }}
+                    style={{ background: 'rgba(24,24,27,0.85)', color: 'var(--color-lime-400)' }}
                   >
                     <ArrowUpRight size={16} />
                   </span>

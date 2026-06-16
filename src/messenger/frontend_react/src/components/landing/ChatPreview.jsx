@@ -1,6 +1,6 @@
 import { User, Phone, MoreVertical, Send } from 'lucide-react';
 
-const LIME = '#a3e635';
+const LIME = 'var(--color-lime-400)';
 
 function MiniBubble({ dir, text, time }) {
   const isOut = dir === 'out';
@@ -48,7 +48,7 @@ export function ChatPreview() {
         background: '#09090b',
         border: '1px solid rgba(63,63,70,0.6)',
         boxShadow:
-          '0 60px 120px -20px rgba(0,0,0,0.7), 0 0 80px rgba(163,230,53,0.12)',
+          '0 60px 120px -20px rgba(0,0,0,0.7), 0 0 80px rgba(var(--accent-rgb),0.12)',
       }}
     >
       {/* Mini sidebar */}
@@ -79,8 +79,8 @@ export function ChatPreview() {
               key={c.name}
               className="flex items-center gap-2 p-2 rounded-xl"
               style={{
-                background: c.selected ? 'rgba(163,230,53,0.10)' : 'transparent',
-                border: c.selected ? '1px solid rgba(163,230,53,0.20)' : '1px solid transparent',
+                background: c.selected ? 'rgba(var(--accent-rgb),0.10)' : 'transparent',
+                border: c.selected ? '1px solid rgba(var(--accent-rgb),0.20)' : '1px solid transparent',
               }}
             >
               <div

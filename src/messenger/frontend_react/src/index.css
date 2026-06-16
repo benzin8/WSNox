@@ -116,6 +116,13 @@
   }
 }
 
+/* Accent RGB triplet (vivid sRGB) for `rgba(var(--accent-rgb), A)` glows and
+ * shadows. ThemeProvider overrides this inline per the chosen accent; this is
+ * the pre‑paint default (lime). */
+:root {
+  --accent-rgb: 163, 230, 53;
+}
+
 /*
  * Light theme — override Tailwind v4 color tokens.
  *
@@ -126,24 +133,43 @@
  * The data-theme attribute is toggled by ThemeProvider.
  */
 [data-theme="light"] {
-  /* Zinc scale — inverted + warm‑tinted for a beige‑white feel */
-  --color-zinc-950: oklch(97.5% .005 85);   /* was deepest dark → now lightest bg */
-  --color-zinc-900: oklch(96%   .007 85);   /* main background — warm off‑white */
-  --color-zinc-800: oklch(93%   .008 85);   /* elevated surfaces */
-  --color-zinc-700: oklch(87%   .008 80);   /* borders */
-  --color-zinc-600: oklch(73%   .010 75);   /* muted UI elements */
-  --color-zinc-500: oklch(55%   .012 285);  /* mid‑gray (unchanged) */
-  --color-zinc-400: oklch(44%   .012 285);  /* secondary text — darker */
-  --color-zinc-300: oklch(37%   .010 285);
-  --color-zinc-200: oklch(27%   .006 286);
-  --color-zinc-100: oklch(21%   .006 286);  /* primary text — near black */
+  /* Zinc scale — inverted for light mode. Crisp, near‑neutral (a whisper of
+     cool, very low chroma so it reads "clean white" not "beige"), with clearly
+     separated surface/border steps so cards visibly lift off the page. */
+  --color-zinc-950: oklch(99%   .002 280);  /* app backdrop — brightest */
+  --color-zinc-900: oklch(97.6% .003 280);  /* main background */
+  --color-zinc-800: oklch(95%   .004 282);  /* elevated surfaces / cards */
+  --color-zinc-700: oklch(90.5% .005 284);  /* borders / dividers */
+  --color-zinc-600: oklch(78%   .008 286);  /* muted UI / disabled */
+  --color-zinc-500: oklch(60%   .012 286);  /* icons, mid‑gray */
+  --color-zinc-400: oklch(47%   .014 286);  /* secondary text */
+  --color-zinc-300: oklch(39%   .013 286);
+  --color-zinc-200: oklch(29%   .011 286);
+  --color-zinc-100: oklch(21%   .009 286);  /* primary text — near‑black */
 
-  /* Lime accent — softer, warmer green for light backgrounds */
-  --color-lime-300: oklch(80%   .155 145);
-  --color-lime-400: oklch(65%   .200 145);  /* primary accent */
-  --color-lime-500: oklch(56%   .185 145);  /* hover accent */
+  /* Lime accent fallback for light surfaces. The JS ThemeProvider overrides
+     --color-lime-300/400/500/600 per the chosen accent; this is the pre‑paint
+     default for the default (lime) accent. */
+  --color-lime-300: oklch(80% .155 130);
+  --color-lime-400: oklch(65% .200 130);
+  --color-lime-500: oklch(56% .185 130);
+  --color-lime-600: oklch(47% .160 130);
 
   color-scheme: light;
+}
+
+/* Match the iOS safe‑area / overscroll backdrop to the light page (dark theme
+   keeps the OLED‑black html background defined in @layer base). */
+[data-theme="light"] html {
+  background-color: oklch(97.6% .003 280);
+}
+
+/* Light surfaces lean on soft shadow + hairline instead of the dark theme's
+   glow, so panels and modals read as elevated. */
+[data-theme="light"] .glass {
+  box-shadow:
+    0 1px 2px rgba(24, 24, 27, 0.04),
+    0 12px 32px -16px rgba(24, 24, 27, 0.16);
 }
 
 /* Custom transitions and glass effects */
@@ -263,9 +289,9 @@
 /* Reply quote → scroll target highlight. Applied for 1.6s after scrolling
    to a message via its reply quote so the user can spot the source quickly. */
 @keyframes messageFlash {
-  0%   { box-shadow: 0 0 0 0 rgba(163, 230, 53, 0.0), 0 0 0 0 rgba(163, 230, 53, 0); }
-  20%  { box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.65), 0 0 24px 4px rgba(163, 230, 53, 0.35); }
-  100% { box-shadow: 0 0 0 0 rgba(163, 230, 53, 0), 0 0 0 0 rgba(163, 230, 53, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(var(--accent-rgb),0.0), 0 0 0 0 rgba(var(--accent-rgb),0); }
+  20%  { box-shadow: 0 0 0 3px rgba(var(--accent-rgb),0.65), 0 0 24px 4px rgba(var(--accent-rgb),0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb),0), 0 0 0 0 rgba(var(--accent-rgb),0); }
 }
 .message-flash {
   animation: messageFlash 1.6s ease-out;
@@ -279,7 +305,7 @@
   display: inline-block;
   width: 8px;
   height: 16px;
-  background: #a3e635;
+  background: var(--color-lime-400);
   vertical-align: middle;
   animation: cursorBlink 1s steps(1) infinite;
 }
@@ -295,29 +321,29 @@
 @keyframes avatarOnlineEnter {
   from {
     box-shadow:
-      0 0 0 0 rgba(163, 230, 53, 0),
-      0 0 0 0 rgba(163, 230, 53, 0);
+      0 0 0 0 rgba(var(--accent-rgb),0),
+      0 0 0 0 rgba(var(--accent-rgb),0);
   }
   to {
     box-shadow:
-      0 0 0 2px #a3e635,
-      0 0 12px 2px rgba(163, 230, 53, 0.55),
-      0 0 22px 4px rgba(163, 230, 53, 0.22);
+      0 0 0 2px var(--color-lime-400),
+      0 0 12px 2px rgba(var(--accent-rgb),0.55),
+      0 0 22px 4px rgba(var(--accent-rgb),0.22);
   }
 }
 
 @keyframes avatarBreathe {
   0%, 100% {
     box-shadow:
-      0 0 0 2px #a3e635,
-      0 0 12px 2px rgba(163, 230, 53, 0.55),
-      0 0 22px 4px rgba(163, 230, 53, 0.22);
+      0 0 0 2px var(--color-lime-400),
+      0 0 12px 2px rgba(var(--accent-rgb),0.55),
+      0 0 22px 4px rgba(var(--accent-rgb),0.22);
   }
   50% {
     box-shadow:
-      0 0 0 2px #a3e635,
-      0 0 20px 4px rgba(163, 230, 53, 0.85),
-      0 0 36px 10px rgba(163, 230, 53, 0.35);
+      0 0 0 2px var(--color-lime-400),
+      0 0 20px 4px rgba(var(--accent-rgb),0.85),
+      0 0 36px 10px rgba(var(--accent-rgb),0.35);
   }
 }
 
@@ -325,8 +351,8 @@
   .avatar-online {
     animation: none;
     box-shadow:
-      0 0 0 2px #a3e635,
-      0 0 12px 2px rgba(163, 230, 53, 0.55);
+      0 0 0 2px var(--color-lime-400),
+      0 0 12px 2px rgba(var(--accent-rgb),0.55);
   }
 }
 

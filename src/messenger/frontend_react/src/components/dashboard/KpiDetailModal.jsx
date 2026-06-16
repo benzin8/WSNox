@@ -32,14 +32,14 @@ export default function KpiDetailModal({ open, onClose, title, icon, headline, h
           background: 'linear-gradient(180deg, rgba(24,24,27,0.96), rgba(9,9,11,0.98))',
           border: '1px solid rgba(63,63,70,0.7)',
           borderRadius: 24,
-          boxShadow: '0 40px 90px -20px rgba(0,0,0,0.7), 0 0 80px rgba(163,230,53,0.10)',
+          boxShadow: '0 40px 90px -20px rgba(0,0,0,0.7), 0 0 80px rgba(var(--accent-rgb),0.10)',
         }}
       >
         <div className="relative p-5 sm:p-7">
-          <div className="absolute pointer-events-none rounded-full" style={{ width: 260, height: 260, top: -90, right: -60, background: 'rgba(163,230,53,0.10)', filter: 'blur(70px)' }} />
+          <div className="absolute pointer-events-none rounded-full" style={{ width: 260, height: 260, top: -90, right: -60, background: 'rgba(var(--accent-rgb),0.10)', filter: 'blur(70px)' }} />
           <div className="relative flex items-start justify-between mb-5 sm:mb-6 gap-3">
             <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(163,230,53,0.10)', border: '1px solid rgba(163,230,53,0.20)', color: '#a3e635' }}>
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'rgba(var(--accent-rgb),0.10)', border: '1px solid rgba(var(--accent-rgb),0.20)', color: 'var(--color-lime-400)' }}>
                 {icon}
               </div>
               <div className="min-w-0">
@@ -79,8 +79,8 @@ export default function KpiDetailModal({ open, onClose, title, icon, headline, h
             </div>
           )}
 
-          <div className="mt-5 sm:mt-6 p-3 sm:p-4 rounded-2xl flex items-start gap-2.5" style={{ background: 'rgba(163,230,53,0.06)', border: '1px solid rgba(163,230,53,0.18)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a3e635" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+          <div className="mt-5 sm:mt-6 p-3 sm:p-4 rounded-2xl flex items-start gap-2.5" style={{ background: 'rgba(var(--accent-rgb),0.06)', border: '1px solid rgba(var(--accent-rgb),0.18)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0" style={{ color: "var(--color-lime-400)" }}>
               <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
             </svg>
             <p className="text-[11px] sm:text-xs text-zinc-400 leading-relaxed">

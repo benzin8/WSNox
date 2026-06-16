@@ -11,7 +11,7 @@ export function Hero() {
         style={{
           width: 900, height: 900, left: '50%', top: '52%',
           transform: 'translate(-50%,-50%)',
-          background: 'rgba(163,230,53,0.05)',
+          background: 'rgba(var(--accent-rgb),0.05)',
           filter: 'blur(140px)',
         }}
       />
@@ -21,7 +21,7 @@ export function Hero() {
         style={{
           width: 420, height: 420, left: '76%', top: '28%',
           transform: 'translate(-50%,-50%)',
-          background: 'rgba(163,230,53,0.04)',
+          background: 'rgba(var(--accent-rgb),0.04)',
           filter: 'blur(100px)',
         }}
       />
@@ -63,7 +63,7 @@ export function Hero() {
             <span className="relative z-10 text-lime-400">лишнего</span>
             <span
               className="absolute left-0 right-0 rounded-sm"
-              style={{ bottom: 10, height: 14, background: 'rgba(163,230,53,0.15)', zIndex: 0 }}
+              style={{ bottom: 10, height: 14, background: 'rgba(var(--accent-rgb),0.15)', zIndex: 0 }}
             />
           </span>
         </h1>
@@ -77,7 +77,7 @@ export function Hero() {
           <Link
             to="/auth/send-code"
             className="group inline-flex items-center justify-center gap-2 rounded-xl font-semibold text-sm bg-lime-400 text-zinc-900 px-7 py-3.5 hover:bg-lime-300 transition-colors"
-            style={{ boxShadow: '0 12px 32px rgba(163,230,53,0.30)' }}
+            style={{ boxShadow: '0 12px 32px rgba(var(--accent-rgb),0.30)' }}
           >
             Попробовать
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />

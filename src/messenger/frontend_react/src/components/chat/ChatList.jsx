@@ -59,12 +59,12 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
             onClick={() => onSelectChat(chat)}
             className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all duration-300 group relative overflow-hidden ${
               isSelected
-                ? 'bg-lime-400/10 border border-lime-400/20 shadow-[0_0_20px_rgba(163,230,53,0.05)]'
+                ? 'bg-lime-400/10 border border-lime-400/20 shadow-[0_0_20px_rgba(var(--accent-rgb),0.05)]'
                 : 'bg-zinc-800/30 border border-zinc-700/50 hover:bg-zinc-800/60 hover:border-zinc-600'
             }`}
           >
             {isSelected && (
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-lime-400 rounded-r-full shadow-[0_0_10px_rgba(163,230,53,0.5)]" />
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-lime-400 rounded-r-full shadow-[0_0_10px_rgba(var(--accent-rgb),0.5)]" />
             )}
 
             {isGroup ? (
