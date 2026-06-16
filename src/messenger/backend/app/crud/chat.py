@@ -10,6 +10,7 @@ from messenger.backend.app.api_v1.schemas.chat import (
 from messenger.backend.core.cache import (
     MEMBERS_TTL,
     PARTNERS_TTL,
+    UNREAD_TTL,
     cached,
     chat_partners,
     chats_of,
@@ -17,6 +18,7 @@ from messenger.backend.core.cache import (
     members,
     notif_muted,
     push_subs,
+    unread_total,
 )
 from messenger.backend.models.chat import Chat, ChatMember
 from messenger.backend.models.message import Message
@@ -437,6 +439,20 @@ async def cached_is_chat_member(
     Fail-open наследуется из cached_chats_of → cached()."""
     chat_ids = await cached_chats_of(redis, session, user_id)
     return chat_id in chat_ids
+
+
+async def cached_unread_total(redis: Redis, db: AsyncSession, user_id: int) -> int:
+    """Глобальный счётчик непрочитанных через read-through кэш unread_total(uid).
+
+    Оборачивает ChatCRUD.get_unread_total. Семантика идентична per-chat unread в
+    get_chats; инвалидация бустит этот ключ на каждое сообщение/read/delete/членство.
+    """
+    return await cached(
+        redis,
+        unread_total(user_id),
+        UNREAD_TTL,
+        lambda: ChatCRUD.get_unread_total(db, user_id),
+    )
 
 
 async def invalidate_membership(

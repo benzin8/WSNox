@@ -112,7 +112,8 @@ async def get_unread_total(
     db: AsyncSession = Depends(get_db_session),
     current_user=Depends(get_current_user),
 ):
-    total = await ChatCRUD.get_unread_total(db, current_user.id)
+    from messenger.backend.app.crud.chat import cached_unread_total
+    total = await cached_unread_total(get_redis(), db, current_user.id)
     return {"unread_total": total}
 
 @chat_router.get("/", response_model=list[ChatResponse])
