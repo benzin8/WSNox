@@ -45,21 +45,32 @@ async def admin_stats(
 ) -> DashboardStats:
     """Полный пакет 90-дневной аналитики. Фронт сам режет на 7/30."""
     redis = get_redis()
-    return DashboardStats(
-        regs=await analytics.reg_series(session),
-        msgs=await analytics.msg_series(session),
-        dau=await analytics.dau_series(session),
-        labels=analytics.labels_series(),
-        kpis=KpisBlock(
-            users=await analytics.kpi_users(session),
-            msgs=await analytics.kpi_msgs(session),
-            dau=await analytics.kpi_dau(session),
-        ),
-        live=LiveBlock(
-            online=await analytics.live_online(redis),
-            msgs_per_min=await analytics.live_msgs_per_min(session),
-        ),
+    from messenger.backend.services.admin_cache import (
+        bucketed_utc_now,
+        get_dashboard_stats_cached,
     )
+
+    async def _build_stats() -> dict:
+        now = bucketed_utc_now()
+        return DashboardStats(
+            regs=await analytics.reg_series(session, now=now),
+            msgs=await analytics.msg_series(session, now=now),
+            dau=await analytics.dau_series(session, now=now),
+            labels=analytics.labels_series(now=now),
+            kpis=KpisBlock(
+                users=await analytics.kpi_users(session, now=now),
+                msgs=await analytics.kpi_msgs(session, now=now),
+                dau=await analytics.kpi_dau(session, now=now),
+            ),
+            # live считаем СВЕЖИМ (не из bucketed stats-кэша).
+            live=LiveBlock(
+                online=await analytics.live_online(redis),
+                msgs_per_min=await analytics.live_msgs_per_min(session),
+            ),
+        ).model_dump(mode="json")
+
+    data = await get_dashboard_stats_cached(redis, _build_stats)
+    return DashboardStats.model_validate(data)
 
 
 @admin_router.get("/live", response_model=LiveBlock)
@@ -73,10 +84,16 @@ async def admin_live(
     тяжёлых 90-дневных агрегатов.
     """
     redis = get_redis()
-    return LiveBlock(
-        online=await analytics.live_online(redis),
-        msgs_per_min=await analytics.live_msgs_per_min(session),
-    )
+    from messenger.backend.services.admin_cache import get_live_block_cached
+
+    async def _build_live() -> dict:
+        return LiveBlock(
+            online=await analytics.live_online(redis),
+            msgs_per_min=await analytics.live_msgs_per_min(session),
+        ).model_dump(mode="json")
+
+    data = await get_live_block_cached(redis, _build_live)
+    return LiveBlock.model_validate(data)
 
 
 @admin_router.get("/users", response_model=list[AdminUserRow])
