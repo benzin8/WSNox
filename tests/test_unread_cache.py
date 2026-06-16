@@ -119,3 +119,47 @@ async def test_expose_false_when_one_disabled(fake_redis):
     session.execute = AsyncMock()
     assert await should_expose_read_receipts(fake_redis, session, 1, 2) is False
     assert session.execute.call_count == 0
+
+
+# ---------------------------------------------------------------------------
+# cached_unread_total
+# ---------------------------------------------------------------------------
+
+from messenger.backend.app.crud.chat import ChatCRUD, cached_unread_total  # noqa: E402
+
+
+@pytest.mark.asyncio
+async def test_unread_total_miss_then_hit(fake_redis, monkeypatch):
+    loader = AsyncMock(return_value=5)
+    monkeypatch.setattr(ChatCRUD, "get_unread_total", staticmethod(loader))
+    session = MagicMock()
+
+    first = await cached_unread_total(fake_redis, session, 7)
+    assert first == 5
+    assert loader.await_count == 1
+    assert await fake_redis.get(unread_total(7)) == "5"
+
+    second = await cached_unread_total(fake_redis, session, 7)
+    assert second == 5
+    assert loader.await_count == 1  # served from cache
+
+
+@pytest.mark.asyncio
+async def test_unread_total_caches_zero(fake_redis, monkeypatch):
+    loader = AsyncMock(return_value=0)
+    monkeypatch.setattr(ChatCRUD, "get_unread_total", staticmethod(loader))
+    session = MagicMock()
+    assert await cached_unread_total(fake_redis, session, 7) == 0
+    assert await fake_redis.get(unread_total(7)) == "0"
+
+
+@pytest.mark.asyncio
+async def test_unread_total_fail_open(monkeypatch):
+    loader = AsyncMock(return_value=3)
+    monkeypatch.setattr(ChatCRUD, "get_unread_total", staticmethod(loader))
+    broken = MagicMock()
+    broken.get = AsyncMock(side_effect=RedisError("boom"))
+    broken.set = AsyncMock()
+    session = MagicMock()
+    assert await cached_unread_total(broken, session, 7) == 3
+    assert loader.await_count == 1
