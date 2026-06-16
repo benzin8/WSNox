@@ -396,7 +396,9 @@ async def get_messages_by_chat_id(
     if chat and chat.chat_type == "private":
         other_user = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, current_user.id)
         if other_user:
-            expose = await should_expose_read_receipts(db, current_user.id, other_user.user_id)
+            expose = await should_expose_read_receipts(
+                get_redis(), db, current_user.id, other_user.user_id
+            )
 
     # For group chats, batch-resolve sender display name + avatar thumb URL
     # so the client can render "{name}" + avatar next to each incoming bubble

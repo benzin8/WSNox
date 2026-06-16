@@ -56,7 +56,9 @@ async def set_read_receipts(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
-    ok = await NotificationCRUD.set_read_receipts_enabled(db, user.id, body.enabled)
+    ok = await NotificationCRUD.set_read_receipts_enabled(
+        db, user.id, body.enabled, redis=get_redis()
+    )
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
