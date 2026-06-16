@@ -1,18 +1,22 @@
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from fastapi import APIRouter, WebSocket
 from fastapi.websockets import WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
+
 from messenger.backend.app.api_v1.auth.dependencies import get_user_from_token
 from messenger.backend.app.api_v1.schemas.message import _utc_iso
-from messenger.backend.app.crud.chat import ChatCRUD
+from messenger.backend.app.crud.chat import ChatCRUD, cached_is_chat_member
 from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.app.crud.notification import (
-    NotificationCRUD,
+    cached_get_dnd,
+    cached_muted_chat_ids,
     should_expose_read_receipts,
 )
 from messenger.backend.app.ws.push import send_push_to_user
@@ -85,7 +89,7 @@ async def _resolve_sender_avatar_url(storage, profile) -> str | None:
     if not profile or not profile.avatar or storage is None:
         return None
     from messenger.backend.services.avatar_urls import resolve_avatar_urls
-    urls = await resolve_avatar_urls(storage, profile.avatar)
+    urls = await resolve_avatar_urls(storage, profile.avatar, redis=get_redis())
     return urls.thumb
 
 
@@ -125,7 +129,8 @@ async def publish_media_message(
                 pass
             reply_to_msg_type = reply_msg.msg_type
 
-    recipient_ids = await _resolve_recipient_ids(db, chat_id, sender_id, chat_type, recipient_id)
+    redis = get_redis()
+    recipient_ids = await _resolve_recipient_ids(db, redis, chat_id, sender_id, chat_type, recipient_id)
     chat_info = await _build_chat_info(db, chat_id, sender_id, recipient_id, chat_type, sender, sender_display_name)
 
     payload = json.dumps({
@@ -148,12 +153,12 @@ async def publish_media_message(
         "attachment_meta": message.attachment_meta,
         "chat_info": chat_info,
     })
-    redis = get_redis()
     await redis.publish(REDIS_CHAT_CHANNEL, payload)
 
 
 async def _resolve_recipient_ids(
     db: AsyncSession,
+    redis: "Redis",
     chat_id: int,
     sender_id: int,
     chat_type: str,
@@ -162,7 +167,8 @@ async def _resolve_recipient_ids(
     """List of users who should receive a message fan-out, sender excluded."""
     if chat_type == "private":
         return [recipient_id] if recipient_id is not None else []
-    members = await ChatCRUD.get_member_ids(db, chat_id)
+    from messenger.backend.app.crud.chat import cached_member_ids
+    members = await cached_member_ids(redis, db, chat_id)
     return [uid for uid in members if uid != sender_id]
 
 
@@ -234,7 +240,8 @@ async def publish_read_receipt(
     other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, reader_id)
     if not other:
         return
-    if not await should_expose_read_receipts(db, reader_id, other.user_id):
+    redis = get_redis()
+    if not await should_expose_read_receipts(redis, db, reader_id, other.user_id):
         return
     payload = json.dumps({
         "type": "messages_read",
@@ -243,7 +250,6 @@ async def publish_read_receipt(
         "read_at": datetime.now(timezone.utc).isoformat(),
         "reader_id": reader_id,
     })
-    redis = get_redis()
     await redis.publish(REDIS_CHAT_CHANNEL + ":read_receipts", payload)
 
 
@@ -292,6 +298,7 @@ class ConnectionManager:
             recipient_id=recipient_id,
             text=text,
             reply_to_id=reply_to_id,
+            redis=get_redis(),
         )
         from sqlalchemy.orm import selectinload as _selectinload
         sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
@@ -309,7 +316,8 @@ class ConnectionManager:
                     pass
                 reply_to_msg_type = reply_msg.msg_type
 
-        recipient_ids = await _resolve_recipient_ids(db, chat_id, sender_id, chat_type, recipient_id)
+        redis = get_redis()
+        recipient_ids = await _resolve_recipient_ids(db, redis, chat_id, sender_id, chat_type, recipient_id)
         chat_info = await _build_chat_info(db, chat_id, sender_id, recipient_id, chat_type, sender, sender_display_name)
 
         payload = json.dumps({
@@ -328,7 +336,6 @@ class ConnectionManager:
             "reply_to_msg_type": reply_to_msg_type,
             "chat_info": chat_info,
         })
-        redis = get_redis()
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
         return message.id
 
@@ -361,23 +368,28 @@ class ConnectionManager:
                 except Exception:  # noqa: BLE001
                     continue
 
+                online_recipients = []
+                offline_recipients = []
                 for recipient_id in recipient_ids:
+                    if self.active_connections.get(recipient_id):
+                        online_recipients.append(recipient_id)
+                    else:
+                        offline_recipients.append(recipient_id)
+
+                # Offline recipients: gate + push in a single shared session.
+                await self._fanout_offline_pushes(
+                    recipient_ids=offline_recipients,
+                    chat_id=chat_id,
+                    chat_info=chat_info,
+                    sender_id=sender_id,
+                    sender_display_name=sender_display_name,
+                    decrypted_text=decrypted_text,
+                )
+
+                # Online recipients: deliver over their live sockets.
+                for recipient_id in online_recipients:
                     sockets = self.active_connections.get(recipient_id, set())
                     if not sockets:
-                        if await self._should_push(recipient_id, chat_id):
-                            chat_type = (chat_info or {}).get("chat_type", "private")
-                            if chat_type == "group":
-                                group_name = (chat_info or {}).get("name", "")
-                                title = f"{sender_display_name or 'Кто-то'} в {group_name}" if group_name else f"Новое сообщение от {sender_display_name or 'участника'}"
-                            else:
-                                sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
-                                title = f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение"
-                            asyncio.create_task(send_push_to_user(recipient_id, {
-                                "title": title,
-                                "body": decrypted_text[:80] if decrypted_text else "Нажмите, чтобы открыть чат",
-                                "chat_id": chat_id,
-                                "sender_id": sender_id,
-                            }))
                         continue
                     payload = {
                         "text": decrypted_text,
@@ -531,24 +543,70 @@ class ConnectionManager:
         except asyncio.CancelledError:
             await pubsub.unsubscribe(channel)
 
-    async def _should_push(self, recipient_id: int, chat_id: int) -> bool:
+    async def _fanout_offline_pushes(
+        self,
+        recipient_ids: list[int],
+        chat_id: int,
+        chat_info: dict | None,
+        sender_id: int | None,
+        sender_display_name: str | None,
+        decrypted_text: str | None,
+    ) -> None:
+        """Отправить пуши всем офлайн-получателям сообщения в ОДНОЙ сессии.
+
+        Сессия открывается один раз на сообщение и переиспользуется в
+        _should_push для всех получателей (батчинг). Сам пуш — fire-and-forget
+        задача со своей короткоживущей сессией.
+        """
+        offline = [rid for rid in recipient_ids if not self.active_connections.get(rid)]
+        if not offline:
+            return
+        async with AsyncSessionLocal() as db:
+            for recipient_id in offline:
+                if not await self._should_push(recipient_id, chat_id, db=db):
+                    continue
+                chat_type = (chat_info or {}).get("chat_type", "private")
+                if chat_type == "group":
+                    group_name = (chat_info or {}).get("name", "")
+                    title = f"{sender_display_name or 'Кто-то'} в {group_name}" if group_name else f"Новое сообщение от {sender_display_name or 'участника'}"
+                else:
+                    sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
+                    title = f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение"
+                asyncio.create_task(send_push_to_user(recipient_id, {
+                    "title": title,
+                    "body": decrypted_text[:80] if decrypted_text else "Нажмите, чтобы открыть чат",
+                    "chat_id": chat_id,
+                    "sender_id": sender_id,
+                }))
+
+    async def _should_push(
+        self, recipient_id: int, chat_id: int, db: AsyncSession | None = None
+    ) -> bool:
         """Apply notification preferences before sending a push.
 
         Returns False when push should be suppressed: user has the chat
         currently open (within grace window), user has DND on, or the chat
         is muted.
+
+        viewing: Redis-проверка идёт первой как самый дешёвый short-circuit.
+        DND и muted читаются через read-through кэш (fail-open в loader).
+        Если *db* передан — переиспользуем эту сессию (батчинг получателей),
+        иначе открываем свою.
         """
         redis = get_redis()
         viewing = await get_viewing_chat(redis, recipient_id)
         if viewing is not None and viewing == chat_id:
             return False
 
-        async with AsyncSessionLocal() as db:
-            if await NotificationCRUD.get_dnd(db, recipient_id):
+        if db is not None:
+            if await cached_get_dnd(redis, db, recipient_id):
                 return False
-            if await NotificationCRUD.is_chat_muted(db, recipient_id, chat_id):
+            return chat_id not in await cached_muted_chat_ids(redis, db, recipient_id)
+
+        async with AsyncSessionLocal() as session:
+            if await cached_get_dnd(redis, session, recipient_id):
                 return False
-        return True
+            return chat_id not in await cached_muted_chat_ids(redis, session, recipient_id)
 
 
 manager = ConnectionManager()
@@ -639,9 +697,9 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     except (TypeError, ValueError):
                         continue
                     async with AsyncSessionLocal() as db:
-                        if not await ChatCRUD.is_chat_member(db, read_chat_id, user_id):
+                        if not await cached_is_chat_member(redis, db, read_chat_id, user_id):
                             continue
-                        await MessageCRUD.mark_as_read_up_to(db, read_chat_id, user_id, last_message_id)
+                        await MessageCRUD.mark_as_read_up_to(db, read_chat_id, user_id, last_message_id, redis=redis)
                         await publish_read_receipt(db, read_chat_id, user_id, last_message_id)
                 continue
 
@@ -655,7 +713,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     except (TypeError, ValueError):
                         continue
                     async with AsyncSessionLocal() as db:
-                        deleted = await MessageCRUD.delete_message(db, del_message_id, user_id)
+                        deleted = await MessageCRUD.delete_message(db, del_message_id, user_id, redis=redis)
                         if deleted:
                             other = await ChatCRUD.get_other_user_by_chat_id(db, del_chat_id, user_id)
                             if other:
@@ -703,7 +761,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     reply_to_id = None
 
             async with AsyncSessionLocal() as db:
-                if not await ChatCRUD.is_chat_member(db, chat_id, user_id):
+                if not await cached_is_chat_member(redis, db, chat_id, user_id):
                     continue
                 chat = await db.get(Chat, chat_id)
                 if chat is None:

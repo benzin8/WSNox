@@ -1,3 +1,4 @@
+from redis.asyncio import Redis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
@@ -5,6 +6,19 @@ from sqlalchemy.orm import aliased, selectinload
 from messenger.backend.app.api_v1.schemas.chat import (
     ChatCreateRequest,
     GroupChatCreateRequest,
+)
+from messenger.backend.core.cache import (
+    MEMBERS_TTL,
+    PARTNERS_TTL,
+    UNREAD_TTL,
+    cached,
+    chat_partners,
+    chats_of,
+    invalidate,
+    members,
+    notif_muted,
+    push_subs,
+    unread_total,
 )
 from messenger.backend.models.chat import Chat, ChatMember
 from messenger.backend.models.message import Message
@@ -371,3 +385,94 @@ class ChatCRUD:
         )
 
         return (private_total or 0) + (group_total or 0)
+
+
+async def cached_chat_partners(redis: Redis, session: AsyncSession, user_id: int) -> list[int]:
+    """Read-through кэш distinct partner-id для user_id (ключ chat_partners(uid)).
+
+    Читается в presence/profile WS-листенерах и в /chats/presence на каждом
+    state-переходе × воркер. Fail-open наследуется из cached()."""
+    return await cached(
+        redis,
+        chat_partners(user_id),
+        PARTNERS_TTL,
+        lambda: ChatCRUD.get_chat_partners(session, user_id),
+    )
+
+
+async def cached_member_ids(redis: Redis, session: AsyncSession, chat_id: int) -> list[int]:
+    """Read-through кэш всех user_id чата (ключ members(chat_id)).
+
+    Горячий путь — фан-аут групповых сообщений (_resolve_recipient_ids).
+    Sender включён в список; вызывающий фильтрует себя сам."""
+    return await cached(
+        redis,
+        members(chat_id),
+        MEMBERS_TTL,
+        lambda: ChatCRUD.get_member_ids(session, chat_id),
+    )
+
+
+async def _chats_of_loader(session: AsyncSession, user_id: int) -> list[int]:
+    """Все chat_id, в которых состоит user_id. Loader для cached_chats_of."""
+    rows = await session.execute(
+        select(ChatMember.chat_id).where(ChatMember.user_id == user_id)
+    )
+    return [row[0] for row in rows.all()]
+
+
+async def cached_chats_of(redis: Redis, session: AsyncSession, user_id: int) -> list[int]:
+    """Read-through кэш chat-id'ов юзера (ключ chats_of(uid))."""
+    return await cached(
+        redis,
+        chats_of(user_id),
+        MEMBERS_TTL,
+        lambda: _chats_of_loader(session, user_id),
+    )
+
+
+async def cached_is_chat_member(
+    redis: Redis, session: AsyncSession, chat_id: int, user_id: int
+) -> bool:
+    """Членство, отвечаемое из кэшированного chats_of(uid) без отдельного SELECT.
+
+    Fail-open наследуется из cached_chats_of → cached()."""
+    chat_ids = await cached_chats_of(redis, session, user_id)
+    return chat_id in chat_ids
+
+
+async def cached_unread_total(redis: Redis, db: AsyncSession, user_id: int) -> int:
+    """Глобальный счётчик непрочитанных через read-through кэш unread_total(uid).
+
+    Оборачивает ChatCRUD.get_unread_total. Семантика идентична per-chat unread в
+    get_chats; инвалидация бустит этот ключ на каждое сообщение/read/delete/членство.
+    """
+    return await cached(
+        redis,
+        unread_total(user_id),
+        UNREAD_TTL,
+        lambda: ChatCRUD.get_unread_total(db, user_id),
+    )
+
+
+async def invalidate_membership(
+    redis: Redis,
+    *,
+    user_ids: list[int],
+    chat_id: int,
+    bust_notif: bool = False,
+) -> None:
+    """Бьёт кэши членства после мутации (ВСЕГДА после commit).
+
+    Удаляет chat_partners(uid) и chats_of(uid) для каждого затронутого юзера
+    плюс members(chat_id). При bust_notif=True (delete_chat / удаление юзера)
+    дополнительно бьёт notif_muted(uid) и push_subs(uid) — CASCADE в Postgres
+    не чистит Redis. Fail-open: ошибки Redis проглатываются в invalidate()."""
+    keys: list[str] = [members(chat_id)]
+    for uid in user_ids:
+        keys.append(chat_partners(uid))
+        keys.append(chats_of(uid))
+        if bust_notif:
+            keys.append(notif_muted(uid))
+            keys.append(push_subs(uid))
+    await invalidate(redis, *keys)

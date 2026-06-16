@@ -4,22 +4,30 @@ Uses dependency_overrides to swap S3Storage, current_user, DB, rate-limit, and
 ProfileCRUD methods for fakes. This verifies routing + HTTPException mapping
 without standing up a real DB or auth pipeline.
 """
-from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fakeredis import aioredis as fake_aioredis
 from fastapi.testclient import TestClient
 
 from messenger.backend.app.api_v1.auth.dependencies import get_current_user
-from messenger.backend.app.api_v1.routers.profile_router import profile_router
 from messenger.backend.app.main import app
 from messenger.backend.core.rate_limit import rate_limit_avatar_upload
 from messenger.backend.db.session import get_db_session
 from messenger.backend.services.deps import get_storage, get_storage_optional
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def _fake_redis_client():
+    """Realistic async fake Redis (cache-miss returns None) for get_redis patches.
+
+    A bare AsyncMock returns a truthy mock from .get(), which the avatar URL
+    cache would mistake for a hit — use fakeredis so misses behave correctly.
+    """
+    return fake_aioredis.FakeRedis(decode_responses=True)
 
 
 class FakeStorage:
@@ -100,7 +108,7 @@ def test_post_avatar_ok(client, fake_storage):
         new=AsyncMock(return_value=True),
     ), patch(
         "messenger.backend.app.api_v1.routers.profile_router.get_redis",
-        return_value=AsyncMock(),
+        return_value=_fake_redis_client(),
     ):
         res = client.post(
             "/profiles/me/avatar",
@@ -161,7 +169,7 @@ def test_delete_avatar_clears(client, fake_storage):
         new=AsyncMock(return_value=True),
     ), patch(
         "messenger.backend.app.api_v1.routers.profile_router.get_redis",
-        return_value=AsyncMock(),
+        return_value=_fake_redis_client(),
     ):
         res = client.delete("/profiles/me/avatar")
     assert res.status_code == 200

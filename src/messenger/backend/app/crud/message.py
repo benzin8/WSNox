@@ -1,10 +1,13 @@
 from datetime import datetime, timezone
 from typing import Any
 
+from redis.asyncio import Redis
 from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from messenger.backend.app.crud.chat import ChatCRUD
+from messenger.backend.core.cache import invalidate, unread_total
 from messenger.backend.core.crypto import decrypt_message, encrypt_message
 from messenger.backend.models import Chat, Message
 from messenger.backend.models.message_read import MessageRead
@@ -12,7 +15,27 @@ from messenger.backend.models.message_read import MessageRead
 
 class MessageCRUD:
     @staticmethod
-    async def create_text_message(db: AsyncSession, chat_id: int, sender_id: int, recipient_id: int, text: str, reply_to_id: int | None = None) -> Message:
+    async def _affected_member_ids(
+        db: AsyncSession, chat_id: int, sender_id: int, recipient_id: int | None
+    ) -> list[int]:
+        """Юзеры, чей unread_total мог измениться от нового сообщения (без отправителя).
+
+        private: один получатель; group: все участники чата минус отправитель
+        (через кэшируемый get_member_ids после Фазы 3)."""
+        if recipient_id is not None:
+            return [recipient_id]
+        members = await ChatCRUD.get_member_ids(db, chat_id)
+        return [uid for uid in members if uid != sender_id]
+
+    @staticmethod
+    async def _bust_unread(redis: Redis | None, user_ids: list[int]) -> None:
+        """DEL unread_total(uid) для всех затронутых юзеров. Fail-open, no-op без redis."""
+        if redis is None or not user_ids:
+            return
+        await invalidate(redis, *[unread_total(uid) for uid in user_ids])
+
+    @staticmethod
+    async def create_text_message(db: AsyncSession, chat_id: int, sender_id: int, recipient_id: int | None, text: str, reply_to_id: int | None = None, *, redis: Redis | None = None) -> Message:
         encrypted_text = encrypt_message(text)
         message = Message(
             chat_id = chat_id,
@@ -29,6 +52,8 @@ class MessageCRUD:
         )
         await db.commit()
         await db.refresh(message)
+        affected = await MessageCRUD._affected_member_ids(db, chat_id, sender_id, recipient_id)
+        await MessageCRUD._bust_unread(redis, affected)
         return message
 
     @staticmethod
@@ -44,6 +69,7 @@ class MessageCRUD:
         attachment_meta: dict[str, Any] | None,
         caption: str = "",
         reply_to_id: int | None = None,
+        redis: Redis | None = None,
     ) -> Message:
         """Persist a media message. Caption is encrypted just like text bodies
         (so an empty caption still produces a valid ciphertext) — callers that
@@ -68,6 +94,8 @@ class MessageCRUD:
         )
         await db.commit()
         await db.refresh(message)
+        affected = await MessageCRUD._affected_member_ids(db, chat_id, sender_id, recipient_id)
+        await MessageCRUD._bust_unread(redis, affected)
         return message
 
     @staticmethod
@@ -103,7 +131,7 @@ class MessageCRUD:
         return messages[::-1]
 
     @staticmethod
-    async def delete_message(db: AsyncSession, message_id: int, user_id: int) -> bool:
+    async def delete_message(db: AsyncSession, message_id: int, user_id: int, *, redis: Redis | None = None) -> bool:
         """Delete a message if the user is the sender. Returns True if deleted."""
         result = await db.execute(
             select(Message).where(Message.id == message_id)
@@ -111,8 +139,13 @@ class MessageCRUD:
         message = result.scalar_one_or_none()
         if not message or message.sender_id != user_id:
             return False
+        recipient_id = message.recipient_id
         await db.delete(message)
         await db.commit()
+        affected = {user_id}
+        if recipient_id is not None:
+            affected.add(recipient_id)
+        await MessageCRUD._bust_unread(redis, list(affected))
         return True
 
     @staticmethod
@@ -167,7 +200,7 @@ class MessageCRUD:
         return len(ids)
 
     @staticmethod
-    async def mark_as_read(db: AsyncSession, chat_id: int, user_id: int) -> int:
+    async def mark_as_read(db: AsyncSession, chat_id: int, user_id: int, *, redis: Redis | None = None) -> int:
         """Mark all unread messages in the chat as read.
 
         Private chats: flip is_read on messages addressed to the user.
@@ -198,10 +231,11 @@ class MessageCRUD:
 
         if max_id or group_marked:
             await db.commit()
+            await MessageCRUD._bust_unread(redis, [user_id])
         return max_id
 
     @staticmethod
-    async def mark_as_read_up_to(db: AsyncSession, chat_id: int, user_id: int, up_to_message_id: int) -> None:
+    async def mark_as_read_up_to(db: AsyncSession, chat_id: int, user_id: int, up_to_message_id: int, *, redis: Redis | None = None) -> None:
         """Mark messages up to a specific message_id as read (private + group)."""
         now = datetime.now(timezone.utc)
         await db.execute(
@@ -214,3 +248,4 @@ class MessageCRUD:
         )
         await MessageCRUD._insert_group_reads(db, chat_id, user_id, up_to_message_id)
         await db.commit()
+        await MessageCRUD._bust_unread(redis, [user_id])

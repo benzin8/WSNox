@@ -15,7 +15,13 @@ from messenger.backend.app.api_v1.schemas.chat import (
 )
 from messenger.backend.app.api_v1.schemas.message import MessageResponse
 from messenger.backend.app.api_v1.schemas.user import UserResponse
-from messenger.backend.app.crud.chat import ChatCRUD
+from messenger.backend.app.crud.chat import (
+    ChatCRUD,
+    cached_chat_partners,
+    cached_is_chat_member,
+    cached_member_ids,
+    invalidate_membership,
+)
 from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.app.crud.profile import ProfileCRUD
 from messenger.backend.app.ws.presence import is_present
@@ -50,7 +56,7 @@ async def search_users(
     for u in chats:
         resp = UserResponse.model_validate(u)
         avatar = getattr(getattr(u, "profile", None), "avatar", None)
-        urls = await resolve_avatar_urls(storage, avatar)
+        urls = await resolve_avatar_urls(storage, avatar, redis=get_redis())
         resp.avatar_thumb_url = urls.thumb
         enriched.append(resp)
     return UserSearchResponse(chats=enriched)
@@ -69,6 +75,11 @@ async def get_or_create_chat(request: ChatCreateRequest, db: AsyncSession = Depe
         members=[current_user.id, request.other_user_id],
         current_user=current_user
     )
+    await invalidate_membership(
+        get_redis(),
+        user_ids=[current_user.id, request.other_user_id],
+        chat_id=new_chat.id,
+    )
     other_user = await ChatCRUD.get_other_user_by_chat_id(db, new_chat.id, current_user.id)
     new_chat.recipient_id = other_user.user_id
     return ChatResponse.model_validate(new_chat)
@@ -80,7 +91,7 @@ async def get_user_data_by_chat_id(
     storage: S3Storage | None = Depends(get_storage_optional),
     current_user=Depends(get_current_user),
 ):
-    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+    if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     user = await ChatCRUD.get_user_data_by_chat_id(db, chat_id, current_user.id)
     if user is None:
@@ -88,7 +99,7 @@ async def get_user_data_by_chat_id(
     resp = UserResponse.model_validate(user)
     resp.display_name = user.profile.display_name if user.profile else None
     avatar = user.profile.avatar if user.profile else None
-    urls = await resolve_avatar_urls(storage, avatar)
+    urls = await resolve_avatar_urls(storage, avatar, redis=get_redis())
     resp.avatar_thumb_url = urls.thumb
     return resp
 
@@ -101,7 +112,8 @@ async def get_unread_total(
     db: AsyncSession = Depends(get_db_session),
     current_user=Depends(get_current_user),
 ):
-    total = await ChatCRUD.get_unread_total(db, current_user.id)
+    from messenger.backend.app.crud.chat import cached_unread_total
+    total = await cached_unread_total(get_redis(), db, current_user.id)
     return {"unread_total": total}
 
 @chat_router.get("/", response_model=list[ChatResponse])
@@ -131,7 +143,7 @@ async def get_chats(
             chat_resp.recipient = UserResponse.model_validate(other_user)
             chat_resp.recipient.display_name = rcpt_display_name
             chat_resp.recipient_id = other_user.id
-            urls = await resolve_avatar_urls(storage, rcpt_avatar)
+            urls = await resolve_avatar_urls(storage, rcpt_avatar, redis=get_redis())
             chat_resp.recipient.avatar_thumb_url = urls.thumb
         else:
             chat_resp.recipient = None
@@ -176,7 +188,8 @@ async def create_group_chat(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    member_ids = await ChatCRUD.get_member_ids(db, chat.id)
+    member_ids = await cached_member_ids(get_redis(), db, chat.id)
+    await invalidate_membership(get_redis(), user_ids=member_ids, chat_id=chat.id)
     resp = ChatResponse.model_validate(chat)
     resp.member_count = len(member_ids)
 
@@ -203,7 +216,7 @@ async def get_group_members(
     storage: S3Storage | None = Depends(get_storage_optional),
     current_user=Depends(get_current_user),
 ):
-    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+    if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     rows = await ChatCRUD.get_chat_members_full(db, chat_id)
     members = []
@@ -216,7 +229,7 @@ async def get_group_members(
             avatar=None,
         )
         if profile and profile.avatar:
-            urls = await resolve_avatar_urls(storage, profile.avatar)
+            urls = await resolve_avatar_urls(storage, profile.avatar, redis=get_redis())
             member_resp.avatar = urls.thumb
         members.append(member_resp)
     return GroupChatMembersResponse(chat_id=chat_id, members=members)
@@ -250,7 +263,8 @@ async def add_group_members(
         raise HTTPException(status_code=400, detail=f"Not a chat partner: {bad}")
 
     added = await ChatCRUD.add_members(db, chat_id, request.member_ids)
-    member_ids_now = await ChatCRUD.get_member_ids(db, chat_id)
+    member_ids_now = await cached_member_ids(get_redis(), db, chat_id)
+    await invalidate_membership(get_redis(), user_ids=member_ids_now, chat_id=chat_id)
 
     if added:
         try:
@@ -274,7 +288,7 @@ async def add_group_members(
             avatar=None,
         )
         if profile and profile.avatar:
-            urls = await resolve_avatar_urls(storage, profile.avatar)
+            urls = await resolve_avatar_urls(storage, profile.avatar, redis=get_redis())
             member_resp.avatar = urls.thumb
         members.append(member_resp)
     return GroupChatMembersResponse(chat_id=chat_id, members=members)
@@ -291,11 +305,12 @@ async def leave_group_chat(
         raise HTTPException(status_code=404, detail="Chat not found")
     if chat.chat_type != "group":
         raise HTTPException(status_code=400, detail="Can leave group chats only")
-    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+    if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
         raise HTTPException(status_code=403, detail="Not a member")
 
-    member_ids = await ChatCRUD.get_member_ids(db, chat_id)
+    member_ids = await cached_member_ids(get_redis(), db, chat_id)
     await ChatCRUD.remove_member(db, chat_id, current_user.id)
+    await invalidate_membership(get_redis(), user_ids=member_ids, chat_id=chat_id)
     try:
         await publish_chat_event({
             "type": "group_member_left",
@@ -323,8 +338,11 @@ async def delete_chat(
     if role != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
 
-    member_ids = await ChatCRUD.get_member_ids(db, chat_id)
+    member_ids = await cached_member_ids(get_redis(), db, chat_id)
     await ChatCRUD.delete_chat(db, chat_id)
+    await invalidate_membership(
+        get_redis(), user_ids=member_ids, chat_id=chat_id, bust_notif=True
+    )
     try:
         await publish_chat_event({
             "type": "group_deleted",
@@ -340,12 +358,12 @@ async def get_chat_presence(
     current_user=Depends(get_current_user),
 ):
     """Return user_ids of chat partners who are currently online AND not invisible."""
-    partner_ids = await ChatCRUD.get_chat_partners(db, current_user.id)
+    redis = get_redis()
+    partner_ids = await cached_chat_partners(redis, db, current_user.id)
     if not partner_ids:
         return {"online_user_ids": []}
 
     prefs = await ProfileCRUD.get_presence_preferences(db, partner_ids)
-    redis = get_redis()
 
     online = []
     for uid in partner_ids:
@@ -363,10 +381,10 @@ async def get_messages_by_chat_id(
     storage: S3Storage | None = Depends(get_storage_optional),
     current_user=Depends(get_current_user),
 ):
-    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+    if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     chat = await ChatCRUD.get_chat(db, chat_id)
-    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
+    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id, redis=get_redis())
     if max_id:
         await publish_read_receipt(db, chat_id, current_user.id, max_id)
     messages = await MessageCRUD.get_messages(db, chat_id)
@@ -379,7 +397,9 @@ async def get_messages_by_chat_id(
     if chat and chat.chat_type == "private":
         other_user = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, current_user.id)
         if other_user:
-            expose = await should_expose_read_receipts(db, current_user.id, other_user.user_id)
+            expose = await should_expose_read_receipts(
+                get_redis(), db, current_user.id, other_user.user_id
+            )
 
     # For group chats, batch-resolve sender display name + avatar thumb URL
     # so the client can render "{name}" + avatar next to each incoming bubble
@@ -400,7 +420,7 @@ async def get_messages_by_chat_id(
             prof = profiles.get(uid)
             sender_display[uid] = prof.display_name if prof else None
             if prof and prof.avatar:
-                urls = await resolve_avatar_urls(storage, prof.avatar)
+                urls = await resolve_avatar_urls(storage, prof.avatar, redis=get_redis())
                 sender_avatar[uid] = urls.thumb
             else:
                 sender_avatar[uid] = None
@@ -441,7 +461,7 @@ async def upload_chat_media(
     same encryption pipeline as text bodies. After persistence the server
     publishes a WS event so the recipient sees the message immediately.
     """
-    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+    if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     chat = await ChatCRUD.get_chat(db, chat_id)
     if not chat:
@@ -486,6 +506,7 @@ async def upload_chat_media(
         attachment_meta=payload.attachment_meta,
         caption=caption,
         reply_to_id=reply_to_id,
+        redis=get_redis(),
     )
 
     full_url, thumb_url = await media_service.resolve_attachment_urls(
@@ -540,8 +561,8 @@ async def upload_chat_media(
 
 @chat_router.post("/{chat_id}/read", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_chat_as_read(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
-    if not await ChatCRUD.is_chat_member(db, chat_id, current_user.id):
+    if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
-    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
+    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id, redis=get_redis())
     if max_id:
         await publish_read_receipt(db, chat_id, current_user.id, max_id)

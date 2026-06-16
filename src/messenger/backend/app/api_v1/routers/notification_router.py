@@ -10,7 +10,7 @@ from messenger.backend.app.api_v1.schemas.notification import (
     NotificationPreferences,
     ReadReceiptsUpdate,
 )
-from messenger.backend.app.crud.chat import ChatCRUD
+from messenger.backend.app.crud.chat import ChatCRUD, cached_is_chat_member
 from messenger.backend.app.crud.notification import NotificationCRUD
 from messenger.backend.app.ws.profile_events import PROFILE_EVENTS_CHANNEL
 from messenger.backend.core.redis import get_redis
@@ -42,7 +42,7 @@ async def set_dnd(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
-    ok = await NotificationCRUD.set_dnd(db, user.id, body.enabled)
+    ok = await NotificationCRUD.set_dnd(db, user.id, body.enabled, redis=get_redis())
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
@@ -56,7 +56,9 @@ async def set_read_receipts(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
-    ok = await NotificationCRUD.set_read_receipts_enabled(db, user.id, body.enabled)
+    ok = await NotificationCRUD.set_read_receipts_enabled(
+        db, user.id, body.enabled, redis=get_redis()
+    )
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
@@ -79,9 +81,9 @@ async def set_chat_mute(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
-    if not await ChatCRUD.is_chat_member(db, chat_id, user.id):
+    if not await cached_is_chat_member(get_redis(), db, chat_id, user.id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
         )
-    await NotificationCRUD.set_chat_mute(db, user.id, chat_id, body.muted)
+    await NotificationCRUD.set_chat_mute(db, user.id, chat_id, body.muted, redis=get_redis())
     return await _build_prefs(db, user.id)

@@ -15,6 +15,7 @@ from messenger.backend.app.crud.profile import ProfileCRUD
 from messenger.backend.app.crud.user import UserCRUD
 from messenger.backend.app.ws.presence import is_visible_online
 from messenger.backend.app.ws.profile_events import publish_profile_event
+from messenger.backend.core.cache import invalidate, user_auth
 from messenger.backend.core.config import settings
 from messenger.backend.core.rate_limit import (
     rate_limit_avatar_upload,
@@ -59,7 +60,7 @@ async def _build_response(user, viewer_id: int, storage: S3Storage | None = None
     else:
         visible_pref = target_pref
 
-    urls = await resolve_avatar_urls(storage, p.avatar if p else None)
+    urls = await resolve_avatar_urls(storage, p.avatar if p else None, redis=get_redis())
 
     return UserProfileResponse(
         user_id=user.id,
@@ -81,7 +82,7 @@ async def _build_response(user, viewer_id: int, storage: S3Storage | None = None
 async def _profile_event_payload(storage: S3Storage | None, user) -> dict:
     """Build the dict that goes into publish_profile_event for WS fan-out."""
     p = user.profile
-    urls = await resolve_avatar_urls(storage, p.avatar if p else None)
+    urls = await resolve_avatar_urls(storage, p.avatar if p else None, redis=get_redis())
     return {
         "name": user.name,
         "username": user.username,
@@ -115,6 +116,9 @@ async def update_my_profile(
     profile = await ProfileCRUD.update_profile(db, current_user.id, data)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
+
+    if data.phone_number is not None:
+        await invalidate(get_redis(), user_auth(current_user.id))
 
     user = await ProfileCRUD.get_user_with_profile(db, current_user.id)
     await publish_profile_event(
@@ -222,6 +226,7 @@ async def verify_phone_code(
     if user:
         user.phone_number = data.phone_number
         await db.commit()
+        await invalidate(redis, user_auth(current_user.id))
 
     user_with_profile = await ProfileCRUD.get_user_with_profile(db, current_user.id)
     return await _build_response(user_with_profile, viewer_id=current_user.id, storage=storage)
@@ -238,7 +243,7 @@ async def change_my_password(
         raise HTTPException(status_code=400, detail="Неверный текущий пароль")
     if data.new_password == data.current_password:
         raise HTTPException(status_code=400, detail="Новый пароль совпадает с текущим")
-    await UserCRUD.set_password(db, user, data.new_password)
+    await UserCRUD.set_password(db, user, data.new_password, redis=get_redis())
     return None
 
 
