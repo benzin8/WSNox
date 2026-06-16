@@ -38,7 +38,7 @@ function Orb({ x, y, size, op, blur }) {
         width: size,
         height: size,
         transform: 'translate(-50%, -50%)',
-        background: `rgba(163,230,53, ${op})`,
+        background: `rgba(var(--accent-rgb),${op})`,
         filter: `blur(${blur}px)`,
       }}
     />

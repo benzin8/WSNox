@@ -5,7 +5,7 @@ export function Terminal() {
       style={{
         background: '#0a0a0c',
         border: '1px solid rgba(63,63,70,0.6)',
-        boxShadow: '0 40px 80px -20px rgba(0,0,0,0.6), 0 0 60px rgba(163,230,53,0.10)',
+        boxShadow: '0 40px 80px -20px rgba(0,0,0,0.6), 0 0 60px rgba(var(--accent-rgb),0.10)',
       }}
     >
       <div

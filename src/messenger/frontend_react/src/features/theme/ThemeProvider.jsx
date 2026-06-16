@@ -54,11 +54,14 @@ function applyTheme(theme) {
 // utility resolves to. Theme-aware: dark uses the bright ramp, light the
 // darker one. Inline style on <html> wins over the [data-theme] rules in CSS.
 function applyAccent(accentId, theme) {
-  const ramp = getAccent(accentId)[theme === "light" ? "light" : "dark"];
+  const accent = getAccent(accentId);
+  const ramp = accent[theme === "light" ? "light" : "dark"];
   const root = document.documentElement;
   for (const shade of ACCENT_SHADES) {
     root.style.setProperty(`--color-lime-${shade}`, ramp[shade]);
   }
+  // Vivid sRGB triplet for `rgba(var(--accent-rgb), A)` glows/shadows.
+  root.style.setProperty("--accent-rgb", accent.rgb);
 }
 
 export function ThemeProvider({ children }) {

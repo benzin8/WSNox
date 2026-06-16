@@ -8,7 +8,7 @@ export function Cover({ height = 112 }) {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(125% 150% at 50% -30%, rgba(163,230,53,0.38), rgba(163,230,53,0.06) 45%, transparent 72%), linear-gradient(180deg, #101013, #0a0a0c)",
+            "radial-gradient(125% 150% at 50% -30%, rgba(var(--accent-rgb),0.38), rgba(var(--accent-rgb),0.06) 45%, transparent 72%), linear-gradient(180deg, #101013, #0a0a0c)",
         }}
       />
       <div
@@ -29,7 +29,7 @@ export function Cover({ height = 112 }) {
           left: "50%",
           bottom: -120,
           transform: "translateX(-50%)",
-          background: "rgba(163,230,53,0.14)",
+          background: "rgba(var(--accent-rgb),0.14)",
           filter: "blur(50px)",
         }}
       />
@@ -38,7 +38,7 @@ export function Cover({ height = 112 }) {
 }
 
 const TONE_STYLES = {
-  lime: { bg: "rgba(163,230,53,0.10)", color: "#a3e635", border: "rgba(163,230,53,0.22)" },
+  lime: { bg: "rgba(var(--accent-rgb),0.10)", color: "var(--color-lime-400)", border: "rgba(var(--accent-rgb),0.22)" },
   zinc: { bg: "rgba(39,39,42,0.5)", color: "#a1a1aa", border: "rgba(63,63,70,0.6)" },
   amber: { bg: "rgba(251,191,36,0.10)", color: "#fbbf24", border: "rgba(251,191,36,0.22)" },
 };
@@ -102,8 +102,8 @@ export function MetaRow({ icon, label, value, copyable }) {
           onClick={copy}
           className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
           style={{
-            color: done ? "#a3e635" : "#71717a",
-            background: done ? "rgba(163,230,53,0.08)" : "transparent",
+            color: done ? "var(--color-lime-400)" : "#71717a",
+            background: done ? "rgba(var(--accent-rgb),0.08)" : "transparent",
             transition: "color .15s ease, background-color .15s ease",
           }}
           aria-label="Скопировать"

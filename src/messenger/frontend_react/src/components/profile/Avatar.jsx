@@ -7,7 +7,7 @@ export function Avatar({ url, initials, online, size = 40, className = "", ring 
   const ringStyle = ring
     ? {
         boxShadow:
-          "0 0 0 4px #09090b, 0 0 0 6px rgba(163,230,53,0.35), 0 12px 32px rgba(163,230,53,0.20)",
+          "0 0 0 4px #09090b, 0 0 0 6px rgba(var(--accent-rgb),0.35), 0 12px 32px rgba(var(--accent-rgb),0.20)",
       }
     : undefined;
 
@@ -50,9 +50,9 @@ export function Avatar({ url, initials, online, size = 40, className = "", ring 
             height: size * 0.2,
             right: size * 0.04,
             bottom: size * 0.04,
-            background: "#a3e635",
+            background: "var(--color-lime-400)",
             border: `${Math.max(2, size * 0.035)}px solid #09090b`,
-            boxShadow: "0 0 10px rgba(163,230,53,0.8)",
+            boxShadow: "0 0 10px rgba(var(--accent-rgb),0.8)",
           }}
         />
       )}

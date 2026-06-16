@@ -7,12 +7,12 @@ export default function ComingSoon({ title, reason }) {
     <div
       className="h-full w-full rounded-2xl flex flex-col items-center justify-center text-center p-6"
       style={{
-        border: '1px dashed rgba(163,230,53,0.25)',
+        border: '1px dashed rgba(var(--accent-rgb),0.25)',
         background: 'linear-gradient(160deg, rgba(24,24,27,0.4), rgba(24,24,27,0.2))',
         minHeight: 120,
       }}
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a3e635" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3 opacity-70">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3 opacity-70" style={{ color: "var(--color-lime-400)" }}>
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
       </svg>

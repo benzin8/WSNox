@@ -37,13 +37,15 @@ function ramp(hue, table) {
   return out;
 }
 
+// `rgb` is the vivid sRGB triplet (comma‑separated) used by the `--accent-rgb`
+// variable so `rgba(var(--accent-rgb), A)` glows/shadows follow the accent too.
 const DEFS = [
-  { id: "lime", label: "Лайм", hue: 130 },
-  { id: "emerald", label: "Изумруд", hue: 162 },
-  { id: "sky", label: "Небо", hue: 245 },
-  { id: "violet", label: "Фиалка", hue: 292 },
-  { id: "rose", label: "Роза", hue: 14 },
-  { id: "amber", label: "Янтарь", hue: 72 },
+  { id: "lime", label: "Лайм", hue: 130, rgb: "163, 230, 53" },
+  { id: "emerald", label: "Изумруд", hue: 162, rgb: "52, 211, 153" },
+  { id: "sky", label: "Небо", hue: 245, rgb: "56, 189, 248" },
+  { id: "violet", label: "Фиалка", hue: 292, rgb: "167, 139, 250" },
+  { id: "rose", label: "Роза", hue: 14, rgb: "251, 113, 133" },
+  { id: "amber", label: "Янтарь", hue: 72, rgb: "251, 191, 36" },
 ];
 
 export const ACCENTS = DEFS.map((a) => ({

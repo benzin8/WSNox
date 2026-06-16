@@ -204,7 +204,7 @@ function ProfileTab({ m, profile, onSave, onClose, isSaving }) {
                     <div
                         className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center"
                         style={{
-                            background: "#a3e635",
+                            background: "var(--color-lime-400)",
                             color: "#18181b",
                             border: "3px solid #09090b",
                         }}
@@ -220,9 +220,9 @@ function ProfileTab({ m, profile, onSave, onClose, isSaving }) {
                         className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 rounded-xl whitespace-nowrap disabled:opacity-50"
                         style={{
                             minHeight: m ? 40 : 34,
-                            background: "rgba(163,230,53,0.10)",
-                            color: "#a3e635",
-                            border: "1px solid rgba(163,230,53,0.22)",
+                            background: "rgba(var(--accent-rgb),0.10)",
+                            color: "var(--color-lime-400)",
+                            border: "1px solid rgba(var(--accent-rgb),0.22)",
                         }}
                     >
                         <Upload size={13} />
@@ -299,11 +299,11 @@ function ProfileTab({ m, profile, onSave, onClose, isSaving }) {
                                 className="flex flex-col items-center gap-1.5 rounded-2xl"
                                 style={{
                                     padding: m ? "12px 6px" : "10px 6px",
-                                    background: on ? "rgba(163,230,53,0.10)" : "rgba(39,39,42,0.4)",
+                                    background: on ? "rgba(var(--accent-rgb),0.10)" : "rgba(39,39,42,0.4)",
                                     border: on
-                                        ? "1px solid rgba(163,230,53,0.30)"
+                                        ? "1px solid rgba(var(--accent-rgb),0.30)"
                                         : `1px solid ${INPUT_BORDER}`,
-                                    color: on ? "#a3e635" : "#a1a1aa",
+                                    color: on ? "var(--color-lime-400)" : "#a1a1aa",
                                 }}
                             >
                                 <Icon size={17} />
@@ -344,21 +344,21 @@ function AppearanceTab({ m, onClose }) {
             label: "Тёмная",
             icon: Moon,
             desc: "Тёмный фон, яркий акцент",
-            preview: ["#0a0a0c", "#27272a", "#a3e635"],
+            preview: ["#0a0a0c", "#27272a", "var(--color-lime-400)"],
         },
         {
             v: "light",
             label: "Светлая",
             icon: Sun,
             desc: "Светлый фон, мягкие тона",
-            preview: ["#f4f4f5", "#d4d4d8", "#65a30d"],
+            preview: ["#f4f4f5", "#d4d4d8", "var(--color-lime-600)"],
         },
         {
             v: "system",
             label: "Системная",
             icon: Monitor,
             desc: "Следовать за ОС",
-            preview: ["#0a0a0c", "#f4f4f5", "#a3e635"],
+            preview: ["#0a0a0c", "#f4f4f5", "var(--color-lime-400)"],
         },
     ];
 
@@ -458,7 +458,7 @@ function SecurityTab({ m, onClose }) {
 
     const strength = Math.min(4, Math.floor(next.length / 3));
     const strengthColor =
-        strength <= 1 ? "#fb7185" : strength <= 2 ? "#fbbf24" : "#a3e635";
+        strength <= 1 ? "#fb7185" : strength <= 2 ? "#fbbf24" : "var(--color-lime-400)";
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -588,9 +588,9 @@ function EditFooter({ m, onClose, onPrimary, isBusy, primaryLabel, primaryType =
                     className="flex-1 flex items-center justify-center gap-2 rounded-2xl font-semibold text-sm active:scale-[0.98] disabled:opacity-60"
                     style={{
                         minHeight: buttonHeight,
-                        background: "#a3e635",
+                        background: "var(--color-lime-400)",
                         color: "#18181b",
-                        boxShadow: "0 8px 24px rgba(163,230,53,0.25)",
+                        boxShadow: "0 8px 24px rgba(var(--accent-rgb),0.25)",
                         transition: "transform .15s ease, background-color .15s ease",
                     }}
                 >

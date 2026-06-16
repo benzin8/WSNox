@@ -16,7 +16,7 @@ export function EnergyOrb() {
         width: orb.size,
         height: orb.size,
         transform: 'translate(-50%, -50%)',
-        background: `rgba(163,230,53, ${orb.opacity})`,
+        background: `rgba(var(--accent-rgb),${orb.opacity})`,
         filter: `blur(${orb.blur}px)`,
         transition: [
           `left ${transitDuration}ms ${TRANSITION_EASING}`,

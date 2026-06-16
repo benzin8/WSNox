@@ -98,8 +98,8 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
               disabled={!inputText.trim() || !isConnected}
               className={`p-3 rounded-xl transition-all duration-300 active:scale-[0.97] disabled:grayscale disabled:opacity-50 ${
                 editingMessage
-                  ? "bg-lime-400 text-zinc-900 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(163,230,53,0.25)]"
-                  : "bg-lime-400 text-zinc-900 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(163,230,53,0.25)]"
+                  ? "bg-lime-400 text-zinc-900 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.25)]"
+                  : "bg-lime-400 text-zinc-900 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.25)]"
               }`}
             >
               {editingMessage ? <Check size={18} /> : <Send size={18} />}

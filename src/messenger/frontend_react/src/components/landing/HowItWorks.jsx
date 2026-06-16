@@ -20,14 +20,14 @@ function StepCard({ s, index }) {
         className="relative w-20 h-20 rounded-2xl flex items-center justify-center mb-5"
         style={{
           background: '#09090b',
-          border: '1px solid rgba(163,230,53,0.25)',
-          boxShadow: '0 0 40px rgba(163,230,53,0.10)',
+          border: '1px solid rgba(var(--accent-rgb),0.25)',
+          boxShadow: '0 0 40px rgba(var(--accent-rgb),0.10)',
         }}
       >
         <s.icon size={28} className="text-lime-400" />
         <div
           className="absolute -top-2 -right-2 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold"
-          style={{ background: '#a3e635', color: '#18181b' }}
+          style={{ background: 'var(--color-lime-400)', color: '#18181b' }}
         >
           {s.n}
         </div>
@@ -64,7 +64,7 @@ export function HowItWorks() {
             style={{
               left: '16%', right: '16%', top: 40, height: 2,
               background:
-                'linear-gradient(to right, transparent, rgba(163,230,53,0.35) 20%, rgba(163,230,53,0.35) 80%, transparent)',
+                'linear-gradient(to right, transparent, rgba(var(--accent-rgb),0.35) 20%, rgba(var(--accent-rgb),0.35) 80%, transparent)',
             }}
           />
           {STEPS.map((s, i) => (

@@ -28,7 +28,7 @@ function ToggleRow({ label, desc, on, onChange, disabled = false }) {
       </div>
       <span
         className="relative shrink-0 rounded-full"
-        style={{ width: 44, height: 26, background: on ? "#a3e635" : "#3f3f46" }}
+        style={{ width: 44, height: 26, background: on ? "var(--color-lime-400)" : "#3f3f46" }}
         aria-hidden
       >
         <span

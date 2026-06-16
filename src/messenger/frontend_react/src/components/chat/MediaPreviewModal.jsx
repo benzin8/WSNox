@@ -60,7 +60,7 @@ export function MediaPreviewModal({ file, onCancel, onSend }) {
     >
       <div
         className="w-full max-w-[520px] rounded-2xl overflow-hidden bg-zinc-900/95 border border-zinc-700/70 animate-popIn"
-        style={{ boxShadow: "0 30px 80px -20px rgba(0,0,0,0.7), 0 0 40px rgba(163,230,53,0.10)" }}
+        style={{ boxShadow: "0 30px 80px -20px rgba(0,0,0,0.7), 0 0 40px rgba(var(--accent-rgb),0.10)" }}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/80">
           <div className="text-sm text-zinc-300">Отправить {isVideo ? "видео" : "фото"}</div>

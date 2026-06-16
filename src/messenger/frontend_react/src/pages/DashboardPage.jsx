@@ -52,7 +52,7 @@ export default function DashboardPage() {
           style={{ background: 'rgba(9,9,11,0.78)', backdropFilter: 'blur(14px) saturate(1.4)', borderBottom: '1px solid rgba(39,39,42,0.6)' }}
         >
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <button onClick={() => navigate('/chat')} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#a3e635' }} aria-label="Вернуться в чат">
+            <button onClick={() => navigate('/chat')} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--color-lime-400)' }} aria-label="Вернуться в чат">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#18181b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
             </button>
             <span className="text-base sm:text-lg font-semibold tracking-tight">WSNox</span>

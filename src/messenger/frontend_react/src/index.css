@@ -116,6 +116,13 @@
   }
 }
 
+/* Accent RGB triplet (vivid sRGB) for `rgba(var(--accent-rgb), A)` glows and
+ * shadows. ThemeProvider overrides this inline per the chosen accent; this is
+ * the pre‑paint default (lime). */
+:root {
+  --accent-rgb: 163, 230, 53;
+}
+
 /*
  * Light theme — override Tailwind v4 color tokens.
  *
@@ -282,9 +289,9 @@
 /* Reply quote → scroll target highlight. Applied for 1.6s after scrolling
    to a message via its reply quote so the user can spot the source quickly. */
 @keyframes messageFlash {
-  0%   { box-shadow: 0 0 0 0 rgba(163, 230, 53, 0.0), 0 0 0 0 rgba(163, 230, 53, 0); }
-  20%  { box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.65), 0 0 24px 4px rgba(163, 230, 53, 0.35); }
-  100% { box-shadow: 0 0 0 0 rgba(163, 230, 53, 0), 0 0 0 0 rgba(163, 230, 53, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(var(--accent-rgb),0.0), 0 0 0 0 rgba(var(--accent-rgb),0); }
+  20%  { box-shadow: 0 0 0 3px rgba(var(--accent-rgb),0.65), 0 0 24px 4px rgba(var(--accent-rgb),0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb),0), 0 0 0 0 rgba(var(--accent-rgb),0); }
 }
 .message-flash {
   animation: messageFlash 1.6s ease-out;
@@ -298,7 +305,7 @@
   display: inline-block;
   width: 8px;
   height: 16px;
-  background: #a3e635;
+  background: var(--color-lime-400);
   vertical-align: middle;
   animation: cursorBlink 1s steps(1) infinite;
 }
@@ -314,29 +321,29 @@
 @keyframes avatarOnlineEnter {
   from {
     box-shadow:
-      0 0 0 0 rgba(163, 230, 53, 0),
-      0 0 0 0 rgba(163, 230, 53, 0);
+      0 0 0 0 rgba(var(--accent-rgb),0),
+      0 0 0 0 rgba(var(--accent-rgb),0);
   }
   to {
     box-shadow:
-      0 0 0 2px #a3e635,
-      0 0 12px 2px rgba(163, 230, 53, 0.55),
-      0 0 22px 4px rgba(163, 230, 53, 0.22);
+      0 0 0 2px var(--color-lime-400),
+      0 0 12px 2px rgba(var(--accent-rgb),0.55),
+      0 0 22px 4px rgba(var(--accent-rgb),0.22);
   }
 }
 
 @keyframes avatarBreathe {
   0%, 100% {
     box-shadow:
-      0 0 0 2px #a3e635,
-      0 0 12px 2px rgba(163, 230, 53, 0.55),
-      0 0 22px 4px rgba(163, 230, 53, 0.22);
+      0 0 0 2px var(--color-lime-400),
+      0 0 12px 2px rgba(var(--accent-rgb),0.55),
+      0 0 22px 4px rgba(var(--accent-rgb),0.22);
   }
   50% {
     box-shadow:
-      0 0 0 2px #a3e635,
-      0 0 20px 4px rgba(163, 230, 53, 0.85),
-      0 0 36px 10px rgba(163, 230, 53, 0.35);
+      0 0 0 2px var(--color-lime-400),
+      0 0 20px 4px rgba(var(--accent-rgb),0.85),
+      0 0 36px 10px rgba(var(--accent-rgb),0.35);
   }
 }
 
@@ -344,8 +351,8 @@
   .avatar-online {
     animation: none;
     box-shadow:
-      0 0 0 2px #a3e635,
-      0 0 12px 2px rgba(163, 230, 53, 0.55);
+      0 0 0 2px var(--color-lime-400),
+      0 0 12px 2px rgba(var(--accent-rgb),0.55);
   }
 }
 

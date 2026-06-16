@@ -37,16 +37,16 @@ export default function KpiCard({
       <div className="flex items-center justify-between mb-3">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{ background: 'rgba(163,230,53,0.08)', border: '1px solid rgba(163,230,53,0.18)', color: '#a3e635' }}
+          style={{ background: 'rgba(var(--accent-rgb),0.08)', border: '1px solid rgba(var(--accent-rgb),0.18)', color: 'var(--color-lime-400)' }}
         >
           {icon}
         </div>
         <span
           className="text-[11px] px-2 py-0.5 rounded-md"
           style={{
-            color: good ? '#a3e635' : '#f87171',
-            background: good ? 'rgba(163,230,53,0.10)' : 'rgba(248,113,113,0.10)',
-            border: `1px solid ${good ? 'rgba(163,230,53,0.20)' : 'rgba(248,113,113,0.20)'}`,
+            color: good ? 'var(--color-lime-400)' : '#f87171',
+            background: good ? 'rgba(var(--accent-rgb),0.10)' : 'rgba(248,113,113,0.10)',
+            border: `1px solid ${good ? 'rgba(var(--accent-rgb),0.20)' : 'rgba(248,113,113,0.20)'}`,
             fontFamily: 'ui-monospace,monospace',
           }}
         >

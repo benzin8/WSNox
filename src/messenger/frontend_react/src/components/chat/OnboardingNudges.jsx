@@ -18,13 +18,13 @@ function Nudge({ icon, title, desc, cta, onAct, onDismiss, busy }) {
     <div
       className="mx-3 mb-2 rounded-2xl p-3 flex items-start gap-3"
       style={{
-        background: "rgba(163,230,53,0.06)",
-        border: "1px solid rgba(163,230,53,0.20)",
+        background: "rgba(var(--accent-rgb),0.06)",
+        border: "1px solid rgba(var(--accent-rgb),0.20)",
       }}
     >
       <span
         className="shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
-        style={{ background: "rgba(163,230,53,0.12)", color: "#a3e635" }}
+        style={{ background: "rgba(var(--accent-rgb),0.12)", color: "var(--color-lime-400)" }}
       >
         {icon}
       </span>
@@ -36,7 +36,7 @@ function Nudge({ icon, title, desc, cta, onAct, onDismiss, busy }) {
           onClick={onAct}
           disabled={busy}
           className="mt-2 inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg disabled:opacity-60"
-          style={{ background: "#a3e635", color: "#18181b" }}
+          style={{ background: "var(--color-lime-400)", color: "#18181b" }}
         >
           {busy ? "…" : cta} <ChevronRight size={13} />
         </button>

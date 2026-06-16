@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { smoothPath, scalePoints } from './smoothPath';
 
-const LIME = '#a3e635';
+const LIME = 'var(--color-lime-400)';
 
 export default function Sparkline({ data, width = 240, height = 56, color = LIME }) {
   const gradId = useId().replace(/:/g, '');
@@ -11,16 +11,16 @@ export default function Sparkline({ data, width = 240, height = 56, color = LIME
   const area = `${line} L ${width} ${height} L 0 ${height} Z`;
   const last = pts[pts.length - 1];
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ width: '100%', height, display: 'block' }}>
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ color, width: '100%', height, display: 'block' }}>
       <defs>
         <linearGradient id={`sg-${gradId}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={color} stopOpacity="0.28" />
-          <stop offset="1" stopColor={color} stopOpacity="0" />
+          <stop offset="0" stopColor="currentColor" stopOpacity="0.28" />
+          <stop offset="1" stopColor="currentColor" stopOpacity="0" />
         </linearGradient>
       </defs>
       <path d={area} fill={`url(#sg-${gradId})`} />
-      <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last[0]} cy={last[1]} r="3" fill={color} />
+      <path d={line} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last[0]} cy={last[1]} r="3" fill="currentColor" />
     </svg>
   );
 }

@@ -84,8 +84,8 @@ export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit, onAddAcco
                             <span
                                 className="w-1.5 h-1.5 rounded-full"
                                 style={{
-                                    background: profile.online ? "#a3e635" : "#71717a",
-                                    boxShadow: profile.online ? "0 0 6px rgba(163,230,53,0.8)" : "none",
+                                    background: profile.online ? "var(--color-lime-400)" : "#71717a",
+                                    boxShadow: profile.online ? "0 0 6px rgba(var(--accent-rgb),0.8)" : "none",
                                 }}
                             />
                             {profile.online ? "в сети" : "не в сети"}
@@ -135,11 +135,11 @@ export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit, onAddAcco
                                 onClick={onEdit}
                                 className="w-full mt-4 flex items-center justify-center gap-2 font-semibold rounded-2xl active:scale-[0.98] hover:bg-lime-300"
                                 style={{
-                                    background: "#a3e635",
+                                    background: "var(--color-lime-400)",
                                     color: "#18181b",
                                     minHeight: isMobile ? 52 : 46,
                                     fontSize: 15,
-                                    boxShadow: "0 10px 30px rgba(163,230,53,0.28)",
+                                    boxShadow: "0 10px 30px rgba(var(--accent-rgb),0.28)",
                                     transition: "transform .15s ease, background-color .15s ease",
                                 }}
                             >
