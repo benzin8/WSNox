@@ -92,7 +92,7 @@ async def admin_list_users(
     rows: list[AdminUserRow] = []
     for u in users:
         avatar = u.profile.avatar if u.profile else None
-        urls = await resolve_avatar_urls(storage, avatar)
+        urls = await resolve_avatar_urls(storage, avatar, redis=get_redis())
         rows.append(AdminUserRow(
             id=u.id, name=u.name, email=u.email, username=u.username,
             is_admin=u.is_admin, created_at=u.created_at, last_seen=u.last_seen,
