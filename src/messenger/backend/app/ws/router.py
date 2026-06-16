@@ -240,7 +240,8 @@ async def publish_read_receipt(
     other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, reader_id)
     if not other:
         return
-    if not await should_expose_read_receipts(db, reader_id, other.user_id):
+    redis = get_redis()
+    if not await should_expose_read_receipts(redis, db, reader_id, other.user_id):
         return
     payload = json.dumps({
         "type": "messages_read",
@@ -249,7 +250,6 @@ async def publish_read_receipt(
         "read_at": datetime.now(timezone.utc).isoformat(),
         "reader_id": reader_id,
     })
-    redis = get_redis()
     await redis.publish(REDIS_CHAT_CHANNEL + ":read_receipts", payload)
 
 
