@@ -310,3 +310,48 @@ async def test_should_push_viewing_short_circuit_skips_cache(fake_redis):
         assert await mgr._should_push(42, 7, db=db) is False
         m_dnd.assert_not_awaited()
         m_muted.assert_not_awaited()
+
+
+# --- Task 2.5: single session for all offline recipients --------------------
+@pytest.mark.asyncio
+async def test_fanout_opens_single_session_for_all_recipients(fake_redis):
+    """Все офлайн-получатели одного сообщения обрабатываются в ОДНОЙ сессии."""
+    from messenger.backend.app.ws import router as router_mod
+
+    mgr = router_mod.ConnectionManager()
+    mgr.active_connections = {}  # everyone offline -> push path
+
+    opened = {"count": 0}
+    captured_dbs = []
+
+    class _Session:
+        async def __aenter__(self):
+            opened["count"] += 1
+            return MagicMock(name="session")
+
+        async def __aexit__(self, *a):
+            return False
+
+    def _factory():
+        return _Session()
+
+    async def _fake_should_push(recipient_id, chat_id, db=None):
+        captured_dbs.append(db)
+        return False  # suppress -> no real push task
+
+    with (
+        patch.object(router_mod, "AsyncSessionLocal", _factory),
+        patch.object(mgr, "_should_push", side_effect=_fake_should_push),
+    ):
+        await mgr._fanout_offline_pushes(
+            recipient_ids=[1, 2, 3],
+            chat_id=7,
+            chat_info={"chat_type": "private"},
+            sender_id=99,
+            sender_display_name="Bob",
+            decrypted_text="hi",
+        )
+
+    assert opened["count"] == 1  # single session for all 3 recipients
+    assert captured_dbs == [captured_dbs[0]] * 3  # same db passed each time
+    assert all(db is not None for db in captured_dbs)
