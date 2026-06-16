@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     redis_url: str
     debug: bool = False
 
+    # Глобальный kill-switch слоя кэширования данных. False → cached() идёт сразу
+    # в loader (как промах без записи), весь кэш данных отключается одной env-переменной.
+    cache_data_enabled: bool = True
+
     # Set the `Secure` flag on auth cookies. Must be False for local http dev
     # (cookie won't be stored over http otherwise), True in production (HTTPS).
     cookie_secure: bool = False
