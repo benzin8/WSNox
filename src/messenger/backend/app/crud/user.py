@@ -1,9 +1,11 @@
+from redis.asyncio import Redis
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.api_v1.schemas.user import UserCreate
 from messenger.backend.app.crud.profile import ProfileCRUD
+from messenger.backend.core.cache import invalidate, user_auth
 from messenger.backend.core.security import hash_password, verify_password
 from messenger.backend.models import User
 
@@ -50,9 +52,12 @@ class UserCRUD:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def set_password(session: AsyncSession, user: User, new_password: str) -> None:
+    async def set_password(
+        session: AsyncSession, user: User, new_password: str, redis: Redis
+    ) -> None:
         user.hashed_password = hash_password(new_password)
         await session.commit()
+        await invalidate(redis, user_auth(user.id))
 
     @staticmethod
     def check_password(user: User, password: str) -> bool:

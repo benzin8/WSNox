@@ -18,6 +18,7 @@ from messenger.backend.app.api_v1.schemas.admin import (
     KpisBlock,
     LiveBlock,
 )
+from messenger.backend.core.cache import invalidate, user_auth
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db import get_db_session
 from messenger.backend.models.user import User
@@ -140,6 +141,7 @@ async def admin_set_role(
     target.is_admin = payload.is_admin
     await session.commit()
     await session.refresh(target)
+    await invalidate(get_redis(), user_auth(target.id))
 
     action = "granted" if payload.is_admin else "revoked"
     logger.warning(
