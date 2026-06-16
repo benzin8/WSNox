@@ -42,7 +42,7 @@ async def set_dnd(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
-    ok = await NotificationCRUD.set_dnd(db, user.id, body.enabled)
+    ok = await NotificationCRUD.set_dnd(db, user.id, body.enabled, redis=get_redis())
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
@@ -83,5 +83,5 @@ async def set_chat_mute(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
         )
-    await NotificationCRUD.set_chat_mute(db, user.id, chat_id, body.muted)
+    await NotificationCRUD.set_chat_mute(db, user.id, chat_id, body.muted, redis=get_redis())
     return await _build_prefs(db, user.id)

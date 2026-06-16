@@ -1,7 +1,15 @@
+from redis.asyncio import Redis
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from messenger.backend.core.cache import (
+    NOTIF_PREF_TTL,
+    cached,
+    invalidate,
+    notif_dnd,
+    notif_muted,
+)
 from messenger.backend.models.chat_mute import ChatMute
 from messenger.backend.models.profile import Profile
 
@@ -38,7 +46,12 @@ class NotificationCRUD:
 
     @staticmethod
     async def set_chat_mute(
-        db: AsyncSession, user_id: int, chat_id: int, muted: bool
+        db: AsyncSession,
+        user_id: int,
+        chat_id: int,
+        muted: bool,
+        *,
+        redis: Redis | None = None,
     ) -> None:
         if muted:
             db.add(ChatMute(user_id=user_id, chat_id=chat_id))
@@ -53,6 +66,8 @@ class NotificationCRUD:
                 )
             )
             await db.commit()
+        if redis is not None:
+            await invalidate(redis, notif_muted(user_id))
 
     @staticmethod
     async def get_dnd(db: AsyncSession, user_id: int) -> bool:
@@ -63,7 +78,9 @@ class NotificationCRUD:
         return bool(value)
 
     @staticmethod
-    async def set_dnd(db: AsyncSession, user_id: int, enabled: bool) -> bool:
+    async def set_dnd(
+        db: AsyncSession, user_id: int, enabled: bool, *, redis: Redis | None = None
+    ) -> bool:
         result = await db.execute(
             select(Profile).where(Profile.user_id == user_id)
         )
@@ -72,6 +89,8 @@ class NotificationCRUD:
             return False
         profile.notification_dnd = enabled
         await db.commit()
+        if redis is not None:
+            await invalidate(redis, notif_dnd(user_id))
         return True
 
     @staticmethod
@@ -93,3 +112,23 @@ class NotificationCRUD:
         profile.read_receipts_enabled = enabled
         await db.commit()
         return True
+
+
+async def cached_get_dnd(redis: Redis, db: AsyncSession, user_id: int) -> bool:
+    """Read-through кэш DND-флага. Кэшируем и негативный кейс (False)."""
+    return await cached(
+        redis,
+        notif_dnd(user_id),
+        NOTIF_PREF_TTL,
+        lambda: NotificationCRUD.get_dnd(db, user_id),
+    )
+
+
+async def cached_muted_chat_ids(redis: Redis, db: AsyncSession, user_id: int) -> list[int]:
+    """Read-through кэш списка замьюченных чатов. Пустой список кэшируется тоже."""
+    return await cached(
+        redis,
+        notif_muted(user_id),
+        NOTIF_PREF_TTL,
+        lambda: NotificationCRUD.list_muted_chat_ids(db, user_id),
+    )
