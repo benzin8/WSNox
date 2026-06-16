@@ -60,7 +60,7 @@ async def _build_response(user, viewer_id: int, storage: S3Storage | None = None
     else:
         visible_pref = target_pref
 
-    urls = await resolve_avatar_urls(storage, p.avatar if p else None)
+    urls = await resolve_avatar_urls(storage, p.avatar if p else None, redis=get_redis())
 
     return UserProfileResponse(
         user_id=user.id,
@@ -82,7 +82,7 @@ async def _build_response(user, viewer_id: int, storage: S3Storage | None = None
 async def _profile_event_payload(storage: S3Storage | None, user) -> dict:
     """Build the dict that goes into publish_profile_event for WS fan-out."""
     p = user.profile
-    urls = await resolve_avatar_urls(storage, p.avatar if p else None)
+    urls = await resolve_avatar_urls(storage, p.avatar if p else None, redis=get_redis())
     return {
         "name": user.name,
         "username": user.username,

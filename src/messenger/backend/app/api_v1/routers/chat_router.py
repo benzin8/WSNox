@@ -56,7 +56,7 @@ async def search_users(
     for u in chats:
         resp = UserResponse.model_validate(u)
         avatar = getattr(getattr(u, "profile", None), "avatar", None)
-        urls = await resolve_avatar_urls(storage, avatar)
+        urls = await resolve_avatar_urls(storage, avatar, redis=get_redis())
         resp.avatar_thumb_url = urls.thumb
         enriched.append(resp)
     return UserSearchResponse(chats=enriched)
@@ -99,7 +99,7 @@ async def get_user_data_by_chat_id(
     resp = UserResponse.model_validate(user)
     resp.display_name = user.profile.display_name if user.profile else None
     avatar = user.profile.avatar if user.profile else None
-    urls = await resolve_avatar_urls(storage, avatar)
+    urls = await resolve_avatar_urls(storage, avatar, redis=get_redis())
     resp.avatar_thumb_url = urls.thumb
     return resp
 
@@ -143,7 +143,7 @@ async def get_chats(
             chat_resp.recipient = UserResponse.model_validate(other_user)
             chat_resp.recipient.display_name = rcpt_display_name
             chat_resp.recipient_id = other_user.id
-            urls = await resolve_avatar_urls(storage, rcpt_avatar)
+            urls = await resolve_avatar_urls(storage, rcpt_avatar, redis=get_redis())
             chat_resp.recipient.avatar_thumb_url = urls.thumb
         else:
             chat_resp.recipient = None
@@ -229,7 +229,7 @@ async def get_group_members(
             avatar=None,
         )
         if profile and profile.avatar:
-            urls = await resolve_avatar_urls(storage, profile.avatar)
+            urls = await resolve_avatar_urls(storage, profile.avatar, redis=get_redis())
             member_resp.avatar = urls.thumb
         members.append(member_resp)
     return GroupChatMembersResponse(chat_id=chat_id, members=members)
@@ -288,7 +288,7 @@ async def add_group_members(
             avatar=None,
         )
         if profile and profile.avatar:
-            urls = await resolve_avatar_urls(storage, profile.avatar)
+            urls = await resolve_avatar_urls(storage, profile.avatar, redis=get_redis())
             member_resp.avatar = urls.thumb
         members.append(member_resp)
     return GroupChatMembersResponse(chat_id=chat_id, members=members)
@@ -420,7 +420,7 @@ async def get_messages_by_chat_id(
             prof = profiles.get(uid)
             sender_display[uid] = prof.display_name if prof else None
             if prof and prof.avatar:
-                urls = await resolve_avatar_urls(storage, prof.avatar)
+                urls = await resolve_avatar_urls(storage, prof.avatar, redis=get_redis())
                 sender_avatar[uid] = urls.thumb
             else:
                 sender_avatar[uid] = None

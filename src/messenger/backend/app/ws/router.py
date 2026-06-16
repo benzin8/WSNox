@@ -89,7 +89,7 @@ async def _resolve_sender_avatar_url(storage, profile) -> str | None:
     if not profile or not profile.avatar or storage is None:
         return None
     from messenger.backend.services.avatar_urls import resolve_avatar_urls
-    urls = await resolve_avatar_urls(storage, profile.avatar)
+    urls = await resolve_avatar_urls(storage, profile.avatar, redis=get_redis())
     return urls.thumb
 
 
