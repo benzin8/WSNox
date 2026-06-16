@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.core.config import settings
-from messenger.backend.core.last_seen import bump_last_seen
+from messenger.backend.core.last_seen import acquire_last_seen_slot, write_last_seen
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db import get_db_session
 from messenger.backend.db.session import AsyncSessionLocal
@@ -19,11 +19,13 @@ logger = logging.getLogger(__name__)
 
 
 async def _bump_last_seen_bg(user_id: int) -> None:
-    """Фоновая задача: открывает свою сессию, никаких exception'ов наружу."""
+    """Фоновая задача: слот через SETNX ДО открытия сессии. Без exception'ов наружу."""
     try:
         redis = get_redis()
+        if not await acquire_last_seen_slot(redis, user_id):
+            return  # троттл не пройден — сессию вообще не открываем
         async with AsyncSessionLocal() as session:
-            await bump_last_seen(redis, session, user_id)
+            await write_last_seen(session, user_id)
     except Exception:  # noqa: BLE001 — это телеметрия
         logger.debug("bump_last_seen failed", exc_info=True)
 
