@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from messenger.backend.app.api_v1.auth.dependencies import get_current_user
 from messenger.backend.app.crud.push_subscription import PushSubscriptionCRUD
 from messenger.backend.core.config import settings
+from messenger.backend.core.redis import get_redis
 from messenger.backend.db import get_db_session
 from messenger.backend.models.user import User
 
@@ -33,12 +34,16 @@ async def subscribe(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
+    redis = get_redis()
     existing = await PushSubscriptionCRUD.get_by_endpoint(db, body.endpoint)
     if existing:
         if existing.user_id == user.id:
             return {"ok": True}
-        # Endpoint transferred to a different user — delete old and re-create
-        await PushSubscriptionCRUD.delete_by_endpoint(db, body.endpoint)
+        # Endpoint transferred to a different user — delete old and re-create.
+        # endpoint глобально UNIQUE: бьём кэш и старого, и нового владельца.
+        await PushSubscriptionCRUD.delete_by_endpoint(
+            db, body.endpoint, user_id=existing.user_id, redis=redis
+        )
 
     await PushSubscriptionCRUD.create(
         db=db,
@@ -46,6 +51,7 @@ async def subscribe(
         endpoint=body.endpoint,
         p256dh=body.p256dh,
         auth=body.auth,
+        redis=redis,
     )
     return {"ok": True}
 
@@ -56,5 +62,7 @@ async def unsubscribe(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_session),
 ):
-    await PushSubscriptionCRUD.delete_by_endpoint(db, body.endpoint)
+    await PushSubscriptionCRUD.delete_by_endpoint(
+        db, body.endpoint, user_id=user.id, redis=get_redis()
+    )
     return {"ok": True}
