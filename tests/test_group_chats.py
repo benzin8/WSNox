@@ -26,28 +26,31 @@ from messenger.backend.app.ws.router import (
 @pytest.mark.asyncio
 async def test_resolve_recipient_ids_private_returns_single():
     db = AsyncMock()
-    ids = await _resolve_recipient_ids(db, chat_id=1, sender_id=10, chat_type="private", recipient_id=20)
+    redis = AsyncMock()
+    ids = await _resolve_recipient_ids(db, redis, chat_id=1, sender_id=10, chat_type="private", recipient_id=20)
     assert ids == [20]
 
 
 @pytest.mark.asyncio
 async def test_resolve_recipient_ids_private_with_no_recipient_returns_empty():
     db = AsyncMock()
-    ids = await _resolve_recipient_ids(db, chat_id=1, sender_id=10, chat_type="private", recipient_id=None)
+    redis = AsyncMock()
+    ids = await _resolve_recipient_ids(db, redis, chat_id=1, sender_id=10, chat_type="private", recipient_id=None)
     assert ids == []
 
 
 @pytest.mark.asyncio
 async def test_resolve_recipient_ids_group_excludes_sender():
     db = AsyncMock()
+    redis = AsyncMock()
     with patch(
-        "messenger.backend.app.ws.router.ChatCRUD.get_member_ids",
+        "messenger.backend.app.crud.chat.cached_member_ids",
         new_callable=AsyncMock,
     ) as mock_get:
         mock_get.return_value = [10, 11, 12, 13]
-        ids = await _resolve_recipient_ids(db, chat_id=5, sender_id=11, chat_type="group", recipient_id=None)
+        ids = await _resolve_recipient_ids(db, redis, chat_id=5, sender_id=11, chat_type="group", recipient_id=None)
         assert sorted(ids) == [10, 12, 13]
-        mock_get.assert_awaited_once_with(db, 5)
+        mock_get.assert_awaited_once_with(redis, db, 5)
 
 
 @pytest.mark.asyncio

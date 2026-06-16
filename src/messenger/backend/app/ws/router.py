@@ -1,15 +1,18 @@
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from fastapi import APIRouter, WebSocket
 from fastapi.websockets import WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
+
 from messenger.backend.app.api_v1.auth.dependencies import get_user_from_token
 from messenger.backend.app.api_v1.schemas.message import _utc_iso
-from messenger.backend.app.crud.chat import ChatCRUD
+from messenger.backend.app.crud.chat import ChatCRUD, cached_is_chat_member
 from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.app.crud.notification import (
     cached_get_dnd,
@@ -126,7 +129,8 @@ async def publish_media_message(
                 pass
             reply_to_msg_type = reply_msg.msg_type
 
-    recipient_ids = await _resolve_recipient_ids(db, chat_id, sender_id, chat_type, recipient_id)
+    redis = get_redis()
+    recipient_ids = await _resolve_recipient_ids(db, redis, chat_id, sender_id, chat_type, recipient_id)
     chat_info = await _build_chat_info(db, chat_id, sender_id, recipient_id, chat_type, sender, sender_display_name)
 
     payload = json.dumps({
@@ -149,12 +153,12 @@ async def publish_media_message(
         "attachment_meta": message.attachment_meta,
         "chat_info": chat_info,
     })
-    redis = get_redis()
     await redis.publish(REDIS_CHAT_CHANNEL, payload)
 
 
 async def _resolve_recipient_ids(
     db: AsyncSession,
+    redis: "Redis",
     chat_id: int,
     sender_id: int,
     chat_type: str,
@@ -163,7 +167,8 @@ async def _resolve_recipient_ids(
     """List of users who should receive a message fan-out, sender excluded."""
     if chat_type == "private":
         return [recipient_id] if recipient_id is not None else []
-    members = await ChatCRUD.get_member_ids(db, chat_id)
+    from messenger.backend.app.crud.chat import cached_member_ids
+    members = await cached_member_ids(redis, db, chat_id)
     return [uid for uid in members if uid != sender_id]
 
 
@@ -310,7 +315,8 @@ class ConnectionManager:
                     pass
                 reply_to_msg_type = reply_msg.msg_type
 
-        recipient_ids = await _resolve_recipient_ids(db, chat_id, sender_id, chat_type, recipient_id)
+        redis = get_redis()
+        recipient_ids = await _resolve_recipient_ids(db, redis, chat_id, sender_id, chat_type, recipient_id)
         chat_info = await _build_chat_info(db, chat_id, sender_id, recipient_id, chat_type, sender, sender_display_name)
 
         payload = json.dumps({
@@ -329,7 +335,6 @@ class ConnectionManager:
             "reply_to_msg_type": reply_to_msg_type,
             "chat_info": chat_info,
         })
-        redis = get_redis()
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
         return message.id
 
@@ -691,7 +696,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     except (TypeError, ValueError):
                         continue
                     async with AsyncSessionLocal() as db:
-                        if not await ChatCRUD.is_chat_member(db, read_chat_id, user_id):
+                        if not await cached_is_chat_member(redis, db, read_chat_id, user_id):
                             continue
                         await MessageCRUD.mark_as_read_up_to(db, read_chat_id, user_id, last_message_id)
                         await publish_read_receipt(db, read_chat_id, user_id, last_message_id)
@@ -755,7 +760,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     reply_to_id = None
 
             async with AsyncSessionLocal() as db:
-                if not await ChatCRUD.is_chat_member(db, chat_id, user_id):
+                if not await cached_is_chat_member(redis, db, chat_id, user_id):
                     continue
                 chat = await db.get(Chat, chat_id)
                 if chat is None:

@@ -37,7 +37,7 @@ async def profile_listener(manager: "ConnectionManager") -> None:
 
     Only delivers to users who share a chat with the affected user.
     """
-    from messenger.backend.app.crud.chat import ChatCRUD
+    from messenger.backend.app.crud.chat import cached_chat_partners
     from messenger.backend.db.session import AsyncSessionLocal
 
     redis = get_redis()
@@ -58,7 +58,7 @@ async def profile_listener(manager: "ConnectionManager") -> None:
                 continue
 
             async with AsyncSessionLocal() as db:
-                partner_ids = await ChatCRUD.get_chat_partners(db, affected_user_id)
+                partner_ids = await cached_chat_partners(redis, db, affected_user_id)
 
             payload = {"type": "profile_update", "user_id": affected_user_id, **profile}
             for partner_id in partner_ids:

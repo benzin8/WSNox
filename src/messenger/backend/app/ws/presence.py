@@ -102,7 +102,7 @@ async def presence_listener(manager: "ConnectionManager") -> None:
     Resolves partners lazily on each event — cheap because Redis pub/sub
     fans out only state-transition events, not every ping.
     """
-    from messenger.backend.app.crud.chat import ChatCRUD
+    from messenger.backend.app.crud.chat import cached_chat_partners
     from messenger.backend.db.session import AsyncSessionLocal
 
     redis = get_redis()
@@ -123,7 +123,7 @@ async def presence_listener(manager: "ConnectionManager") -> None:
                 continue
 
             async with AsyncSessionLocal() as db:
-                partner_ids = await ChatCRUD.get_chat_partners(db, affected_user_id)
+                partner_ids = await cached_chat_partners(redis, db, affected_user_id)
 
             payload = {"type": "presence", "user_id": affected_user_id, "online": online}
             for partner_id in partner_ids:
