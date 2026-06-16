@@ -15,18 +15,21 @@ THROTTLE_KEY_PREFIX = "user_active:"
 THROTTLE_TTL_SECONDS = 60
 
 
-async def bump_last_seen(redis: Redis, session: AsyncSession, user_id: int) -> None:
-    """SETNX-throttle: обновляет `users.last_seen` не чаще раз в минуту на юзера.
+async def acquire_last_seen_slot(redis: Redis, user_id: int) -> bool:
+    """SETNX-троттл: True, если слот свободен (раз в минуту на юзера).
 
-    Silent fail: любая ошибка Redis или БД глушится — это телеметрия, не бизнес.
+    Fail-open: любая ошибка Redis → False (запись пропускаем, наружу не падаем).
     """
     key = f"{THROTTLE_KEY_PREFIX}{user_id}"
     try:
         acquired = await redis.set(key, "1", ex=THROTTLE_TTL_SECONDS, nx=True)
     except RedisError:
-        return
-    if not acquired:
-        return
+        return False
+    return bool(acquired)
+
+
+async def write_last_seen(session: AsyncSession, user_id: int) -> None:
+    """Пишет `users.last_seen = now()`. Silent fail: ошибка БД → rollback."""
     try:
         await session.execute(
             update(User).where(User.id == user_id).values(last_seen=func.now())
@@ -34,3 +37,10 @@ async def bump_last_seen(redis: Redis, session: AsyncSession, user_id: int) -> N
         await session.commit()
     except SQLAlchemyError:
         await session.rollback()
+
+
+async def bump_last_seen(redis: Redis, session: AsyncSession, user_id: int) -> None:
+    """Бэк-совместимая обёртка: сначала слот, потом запись. Телеметрия, не бизнес."""
+    if not await acquire_last_seen_slot(redis, user_id):
+        return
+    await write_last_seen(session, user_id)
