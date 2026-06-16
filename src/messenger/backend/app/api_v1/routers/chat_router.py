@@ -384,7 +384,7 @@ async def get_messages_by_chat_id(
     if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     chat = await ChatCRUD.get_chat(db, chat_id)
-    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
+    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id, redis=get_redis())
     if max_id:
         await publish_read_receipt(db, chat_id, current_user.id, max_id)
     messages = await MessageCRUD.get_messages(db, chat_id)
@@ -506,6 +506,7 @@ async def upload_chat_media(
         attachment_meta=payload.attachment_meta,
         caption=caption,
         reply_to_id=reply_to_id,
+        redis=get_redis(),
     )
 
     full_url, thumb_url = await media_service.resolve_attachment_urls(
@@ -562,6 +563,6 @@ async def upload_chat_media(
 async def mark_chat_as_read(chat_id: int, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
-    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id)
+    max_id = await MessageCRUD.mark_as_read(db, chat_id, current_user.id, redis=get_redis())
     if max_id:
         await publish_read_receipt(db, chat_id, current_user.id, max_id)

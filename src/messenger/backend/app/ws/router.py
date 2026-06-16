@@ -298,6 +298,7 @@ class ConnectionManager:
             recipient_id=recipient_id,
             text=text,
             reply_to_id=reply_to_id,
+            redis=get_redis(),
         )
         from sqlalchemy.orm import selectinload as _selectinload
         sender = await db.get(User, sender_id, options=[_selectinload(User.profile)])
@@ -698,7 +699,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     async with AsyncSessionLocal() as db:
                         if not await cached_is_chat_member(redis, db, read_chat_id, user_id):
                             continue
-                        await MessageCRUD.mark_as_read_up_to(db, read_chat_id, user_id, last_message_id)
+                        await MessageCRUD.mark_as_read_up_to(db, read_chat_id, user_id, last_message_id, redis=redis)
                         await publish_read_receipt(db, read_chat_id, user_id, last_message_id)
                 continue
 
@@ -712,7 +713,7 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     except (TypeError, ValueError):
                         continue
                     async with AsyncSessionLocal() as db:
-                        deleted = await MessageCRUD.delete_message(db, del_message_id, user_id)
+                        deleted = await MessageCRUD.delete_message(db, del_message_id, user_id, redis=redis)
                         if deleted:
                             other = await ChatCRUD.get_other_user_by_chat_id(db, del_chat_id, user_id)
                             if other:
