@@ -25,8 +25,8 @@ class ErrorBoundary extends Component {
       return (
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', height: '100%', background: '#09090b',
-          color: '#e4e4e7', fontFamily: 'system-ui, sans-serif', padding: 24,
+          justifyContent: 'center', height: '100%', background: 'var(--color-zinc-950)',
+          color: 'var(--color-zinc-100)', fontFamily: 'system-ui, sans-serif', padding: 24,
           textAlign: 'center',
         }}>
           <p style={{ fontSize: 18, marginBottom: 16 }}>

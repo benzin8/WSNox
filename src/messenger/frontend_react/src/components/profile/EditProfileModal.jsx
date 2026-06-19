@@ -36,8 +36,8 @@ const TABS = [
     { id: "notifications", label: "Уведомления",  icon: Bell },
 ];
 
-const INPUT_BG = "rgba(39,39,42,0.4)";
-const INPUT_BORDER = "rgba(63,63,70,0.6)";
+const INPUT_BG = "color-mix(in oklab, var(--color-zinc-800) 40%, transparent)";
+const INPUT_BORDER = "color-mix(in oklab, var(--color-zinc-700) 60%, transparent)";
 
 function inputStyle(m, extra = {}) {
     return {
@@ -81,8 +81,8 @@ function Tabs({ active, onChange, m }) {
                 }
             }}
             style={{
-                background: "rgba(24,24,27,0.6)",
-                border: "1px solid rgba(39,39,42,0.85)",
+                background: "color-mix(in oklab, var(--color-zinc-900) 60%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-zinc-800) 85%, transparent)",
             }}
         >
             {TABS.map((t) => {
@@ -98,7 +98,7 @@ function Tabs({ active, onChange, m }) {
                             padding: m ? "10px 14px" : "8px 12px",
                             minHeight: m ? 40 : undefined,
                             transition: "color .15s ease",
-                            color: on ? "var(--color-lime-400)" : "#a1a1aa",
+                            color: on ? "var(--color-lime-400)" : "var(--color-zinc-400)",
                             background: on
                                 ? "color-mix(in oklab, var(--color-lime-400) 10%, transparent)"
                                 : "transparent",
@@ -206,7 +206,7 @@ function ProfileTab({ m, profile, onSave, onClose, isSaving }) {
                         style={{
                             background: "var(--color-lime-400)",
                             color: "#18181b",
-                            border: "3px solid #09090b",
+                            border: "3px solid var(--color-zinc-950)",
                         }}
                     >
                         <Camera size={14} />
@@ -299,11 +299,11 @@ function ProfileTab({ m, profile, onSave, onClose, isSaving }) {
                                 className="flex flex-col items-center gap-1.5 rounded-2xl"
                                 style={{
                                     padding: m ? "12px 6px" : "10px 6px",
-                                    background: on ? "rgba(var(--accent-rgb),0.10)" : "rgba(39,39,42,0.4)",
+                                    background: on ? "rgba(var(--accent-rgb),0.10)" : "color-mix(in oklab, var(--color-zinc-800) 40%, transparent)",
                                     border: on
                                         ? "1px solid rgba(var(--accent-rgb),0.30)"
                                         : `1px solid ${INPUT_BORDER}`,
-                                    color: on ? "var(--color-lime-400)" : "#a1a1aa",
+                                    color: on ? "var(--color-lime-400)" : "var(--color-zinc-400)",
                                 }}
                             >
                                 <Icon size={17} />
@@ -344,21 +344,21 @@ function AppearanceTab({ m, onClose }) {
             label: "Тёмная",
             icon: Moon,
             desc: "Тёмный фон, яркий акцент",
-            preview: ["#0a0a0c", "#27272a", "var(--color-lime-400)"],
+            preview: ["#0a0a0c", "var(--color-zinc-800)", "var(--color-lime-400)"],
         },
         {
             v: "light",
             label: "Светлая",
             icon: Sun,
             desc: "Светлый фон, мягкие тона",
-            preview: ["#f4f4f5", "#d4d4d8", "var(--color-lime-600)"],
+            preview: ["var(--color-zinc-100)", "var(--color-zinc-300)", "var(--color-lime-600)"],
         },
         {
             v: "system",
             label: "Системная",
             icon: Monitor,
             desc: "Следовать за ОС",
-            preview: ["#0a0a0c", "#f4f4f5", "var(--color-lime-400)"],
+            preview: ["#0a0a0c", "var(--color-zinc-100)", "var(--color-lime-400)"],
         },
     ];
 
@@ -381,7 +381,7 @@ function AppearanceTab({ m, onClose }) {
                                     : `1px solid ${INPUT_BORDER}`,
                                 background: on
                                     ? "color-mix(in oklab, var(--color-lime-400) 6%, transparent)"
-                                    : "rgba(39,39,42,0.3)",
+                                    : "color-mix(in oklab, var(--color-zinc-800) 30%, transparent)",
                             }}
                         >
                             <div className="h-12 flex items-end gap-1 p-2" style={{ background: o.preview[0] }}>
@@ -396,14 +396,14 @@ function AppearanceTab({ m, onClose }) {
                                     <Icon size={13} className={on ? "text-lime-400" : "text-zinc-500"} />
                                     <span
                                         className="text-xs font-semibold"
-                                        style={{ color: on ? "var(--color-lime-400)" : "#e4e4e7" }}
+                                        style={{ color: on ? "var(--color-lime-400)" : "var(--color-zinc-100)" }}
                                     >
                                         {o.label}
                                     </span>
                                 </div>
                                 <span
                                     className="text-[10px] leading-tight"
-                                    style={{ color: on ? "color-mix(in oklab, var(--color-lime-400) 70%, transparent)" : "#71717a" }}
+                                    style={{ color: on ? "color-mix(in oklab, var(--color-lime-400) 70%, transparent)" : "var(--color-zinc-500)" }}
                                 >
                                     {o.desc}
                                 </span>
@@ -518,7 +518,7 @@ function SecurityTab({ m, onClose }) {
                         <div
                             key={i}
                             className="h-1 flex-1 rounded-full"
-                            style={{ background: i < strength ? strengthColor : "#3f3f46" }}
+                            style={{ background: i < strength ? strengthColor : "var(--color-zinc-700)" }}
                         />
                     ))}
                 </div>
@@ -560,8 +560,8 @@ function EditFooter({ m, onClose, onPrimary, isBusy, primaryLabel, primaryType =
         <div
             className="flex gap-2 px-5 py-4 -mx-5 -mb-4 mt-2"
             style={{
-                borderTop: "1px solid rgba(39,39,42,0.85)",
-                background: "rgba(9,9,11,0.6)",
+                borderTop: "1px solid color-mix(in oklab, var(--color-zinc-800) 85%, transparent)",
+                background: "color-mix(in oklab, var(--color-zinc-950) 60%, transparent)",
                 backdropFilter: "blur(8px)",
                 WebkitBackdropFilter: "blur(8px)",
                 paddingBottom: m ? "max(16px, env(safe-area-inset-bottom))" : 16,
@@ -573,7 +573,7 @@ function EditFooter({ m, onClose, onPrimary, isBusy, primaryLabel, primaryType =
                 className="flex-1 rounded-2xl font-medium text-sm text-zinc-300 active:scale-[0.98]"
                 style={{
                     minHeight: buttonHeight,
-                    background: "rgba(39,39,42,0.5)",
+                    background: "color-mix(in oklab, var(--color-zinc-800) 50%, transparent)",
                     border: `1px solid ${INPUT_BORDER}`,
                     transition: "transform .15s ease",
                 }}
@@ -633,7 +633,7 @@ export const EditProfileModal = ({ profile, onClose, onSave, initialTab = "profi
                     style={{
                         width: isMobile ? 40 : 34,
                         height: isMobile ? 40 : 34,
-                        background: "rgba(39,39,42,0.5)",
+                        background: "color-mix(in oklab, var(--color-zinc-800) 50%, transparent)",
                         transition: "color .15s ease, background-color .15s ease",
                     }}
                     aria-label="Закрыть"

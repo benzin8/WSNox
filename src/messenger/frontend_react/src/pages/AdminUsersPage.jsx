@@ -47,7 +47,7 @@ export default function AdminUsersPage() {
       <div style={{ position: 'relative', zIndex: 1 }}>
         <header
           className="sticky top-0 z-40 flex items-center justify-between gap-3 px-4 sm:px-8 h-16"
-          style={{ background: 'rgba(9,9,11,0.78)', backdropFilter: 'blur(14px) saturate(1.4)', borderBottom: '1px solid rgba(39,39,42,0.6)' }}
+          style={{ background: 'color-mix(in oklab, var(--color-zinc-950) 78%, transparent)', backdropFilter: 'blur(14px) saturate(1.4)', borderBottom: '1px solid color-mix(in oklab, var(--color-zinc-800) 60%, transparent)' }}
         >
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button onClick={() => navigate('/dashboard')} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--color-lime-400)' }} aria-label="Вернуться к дашборду">
@@ -63,7 +63,7 @@ export default function AdminUsersPage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="px-3 py-1.5 text-sm rounded-lg bg-zinc-900 border text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-lime-400 transition-colors w-48 sm:w-64"
-            style={{ borderColor: 'rgba(63,63,70,0.5)' }}
+            style={{ borderColor: 'color-mix(in oklab, var(--color-zinc-700) 50%, transparent)' }}
           />
         </header>
 
@@ -85,8 +85,8 @@ export default function AdminUsersPage() {
                 key={u.id}
                 className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl"
                 style={{
-                  background: 'linear-gradient(160deg, rgba(24,24,27,0.7), rgba(24,24,27,0.4))',
-                  border: '1px solid rgba(39,39,42,0.85)',
+                  background: 'linear-gradient(160deg, color-mix(in oklab, var(--color-zinc-900) 70%, transparent), color-mix(in oklab, var(--color-zinc-900) 40%, transparent))',
+                  border: '1px solid color-mix(in oklab, var(--color-zinc-800) 85%, transparent)',
                 }}
               >
                 <Avatar

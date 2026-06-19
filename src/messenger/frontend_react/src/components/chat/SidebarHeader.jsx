@@ -51,7 +51,7 @@ export function SidebarHeader({
     <div className="relative">
       <div
         className="px-3 py-3"
-        style={{ borderBottom: "1px solid rgba(39,39,42,0.6)" }}
+        style={{ borderBottom: "1px solid color-mix(in oklab, var(--color-zinc-800) 60%, transparent)" }}
       >
         <button
           ref={buttonRef}
@@ -61,11 +61,11 @@ export function SidebarHeader({
           aria-expanded={menuOpen}
           className="w-full flex items-center gap-3 px-2 py-2 rounded-2xl text-left"
           style={{
-            background: menuOpen ? "rgba(63,63,70,0.4)" : "transparent",
+            background: menuOpen ? "color-mix(in oklab, var(--color-zinc-700) 40%, transparent)" : "transparent",
             transition: "background-color .12s ease",
           }}
           onMouseEnter={(e) => {
-            if (!menuOpen) e.currentTarget.style.background = "rgba(63,63,70,0.25)";
+            if (!menuOpen) e.currentTarget.style.background = "color-mix(in oklab, var(--color-zinc-700) 25%, transparent)";
           }}
           onMouseLeave={(e) => {
             if (!menuOpen) e.currentTarget.style.background = "transparent";
@@ -82,9 +82,9 @@ export function SidebarHeader({
               <span
                 className="absolute inset-0 rounded-full flex items-center justify-center pointer-events-none"
                 style={{
-                  background: "rgba(9,9,11,0.5)",
-                  border: "1.5px dashed #52525b",
-                  color: "#a1a1aa",
+                  background: "color-mix(in oklab, var(--color-zinc-950) 50%, transparent)",
+                  border: "1.5px dashed var(--color-zinc-600)",
+                  color: "var(--color-zinc-400)",
                 }}
                 title="Добавить фото"
               >
@@ -109,8 +109,8 @@ export function SidebarHeader({
           <span
             className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400"
             style={{
-              background: "rgba(39,39,42,0.7)",
-              border: "1px solid rgba(63,63,70,0.5)",
+              background: "color-mix(in oklab, var(--color-zinc-800) 70%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--color-zinc-700) 50%, transparent)",
             }}
           >
             <ChevronDown

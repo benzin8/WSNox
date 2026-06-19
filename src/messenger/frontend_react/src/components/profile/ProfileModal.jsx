@@ -84,7 +84,7 @@ export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit, onAddAcco
                             <span
                                 className="w-1.5 h-1.5 rounded-full"
                                 style={{
-                                    background: profile.online ? "var(--color-lime-400)" : "#71717a",
+                                    background: profile.online ? "var(--color-lime-400)" : "var(--color-zinc-500)",
                                     boxShadow: profile.online ? "0 0 6px rgba(var(--accent-rgb),0.8)" : "none",
                                 }}
                             />

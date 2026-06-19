@@ -18,13 +18,15 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useNotificationSettings } from "../../features/notifications";
 import { useTheme } from "../../features/theme";
 
-const ROW_BG_HOVER = "rgba(63,63,70,0.4)";
+// Theme-aware via zinc CSS vars (override per [data-theme]) so the menu reads
+// correctly on both dark and light backgrounds.
+const ROW_BG_HOVER = "var(--color-zinc-800)";
 
 function MenuItem({ icon, label, hint, trailing, danger, onClick, m, navOnRight = true }) {
-  const labelColor = danger ? "#f87171" : "#e4e4e7";
-  const tileBg = danger ? "rgba(248,113,113,0.10)" : "rgba(39,39,42,0.7)";
-  const tileBorder = danger ? "rgba(248,113,113,0.18)" : "rgba(63,63,70,0.6)";
-  const tileColor = danger ? "#f87171" : "#a1a1aa";
+  const labelColor = danger ? "#f87171" : "var(--color-zinc-100)";
+  const tileBg = danger ? "rgba(248,113,113,0.10)" : "var(--color-zinc-800)";
+  const tileBorder = danger ? "rgba(248,113,113,0.18)" : "var(--color-zinc-700)";
+  const tileColor = danger ? "#f87171" : "var(--color-zinc-400)";
   return (
     <button
       type="button"
@@ -60,7 +62,7 @@ function Toggle({ on }) {
   return (
     <span
       className="relative shrink-0 rounded-full"
-      style={{ width: 40, height: 23, background: on ? "var(--color-lime-400)" : "#3f3f46" }}
+      style={{ width: 40, height: 23, background: on ? "var(--color-lime-400)" : "var(--color-zinc-600)" }}
       aria-hidden
     >
       <span
@@ -75,7 +77,7 @@ function Badge({ tone = "zinc", children }) {
   const tones = {
     amber: ["rgba(251,191,36,0.12)", "#fbbf24"],
     lime: ["rgba(var(--accent-rgb),0.12)", "var(--color-lime-400)"],
-    zinc: ["rgba(63,63,70,0.5)", "#a1a1aa"],
+    zinc: ["var(--color-zinc-800)", "var(--color-zinc-400)"],
   };
   const [bg, color] = tones[tone] || tones.zinc;
   return (
@@ -126,7 +128,7 @@ function MenuBody({
         </div>
       </div>
 
-      <div style={{ height: 1, background: "rgba(63,63,70,0.4)", margin: "4px 8px" }} />
+      <div style={{ height: 1, background: "var(--color-zinc-700)", margin: "4px 8px" }} />
 
       <MenuItem
         m={m}
@@ -170,7 +172,7 @@ function MenuBody({
         />
       )}
 
-      <div style={{ height: 1, background: "rgba(63,63,70,0.4)", margin: "4px 8px" }} />
+      <div style={{ height: 1, background: "var(--color-zinc-700)", margin: "4px 8px" }} />
       <div className="px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider text-zinc-600">
         Аккаунты
       </div>
@@ -221,7 +223,7 @@ function MenuBody({
         navOnRight={false}
       />
 
-      <div style={{ height: 1, background: "rgba(63,63,70,0.4)", margin: "4px 8px" }} />
+      <div style={{ height: 1, background: "var(--color-zinc-700)", margin: "4px 8px" }} />
 
       <MenuItem
         m={m}
@@ -309,7 +311,7 @@ export function AccountMenu({
       ref={popoverRef}
       className="absolute z-40 left-3 right-3 top-full mt-2 rounded-2xl border border-zinc-800/80 overflow-hidden flex flex-col animate-popIn"
       style={{
-        background: "rgba(20,20,23,0.98)",
+        background: "color-mix(in oklab, var(--color-zinc-900) 97%, transparent)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         boxShadow: "0 24px 60px -12px rgba(0,0,0,0.7)",

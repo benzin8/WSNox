@@ -8,8 +8,8 @@ import { isDesktopNotificationSupported, getDesktopPermission } from "../utils/p
 import { isIosSafariNotStandalone } from "../utils/platform.js";
 
 const ROW_STYLE = {
-  background: "rgba(39,39,42,0.3)",
-  border: "1px solid rgba(63,63,70,0.6)",
+  background: "color-mix(in oklab, var(--color-zinc-800) 30%, transparent)",
+  border: "1px solid color-mix(in oklab, var(--color-zinc-700) 60%, transparent)",
 };
 
 function ToggleRow({ label, desc, on, onChange, disabled = false }) {
@@ -28,7 +28,7 @@ function ToggleRow({ label, desc, on, onChange, disabled = false }) {
       </div>
       <span
         className="relative shrink-0 rounded-full"
-        style={{ width: 44, height: 26, background: on ? "var(--color-lime-400)" : "#3f3f46" }}
+        style={{ width: 44, height: 26, background: on ? "var(--color-lime-400)" : "var(--color-zinc-700)" }}
         aria-hidden
       >
         <span
