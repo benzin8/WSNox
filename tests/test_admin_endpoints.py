@@ -96,6 +96,11 @@ def test_stats_forbidden_for_user_allowed_for_moderator():
         m.kpi_dau = AsyncMock(return_value={"value": 0, "mau": 0, "stickiness": 0.0, "deltas": {"7": 0.0, "30": 0.0, "90": 0.0}})
         m.live_online = AsyncMock(return_value=0)
         m.live_msgs_per_min = AsyncMock(return_value=0)
+        m.funnel = AsyncMock(return_value=[])
+        m.recent_signups = AsyncMock(return_value=[])
+        m.retention = AsyncMock(return_value={})
+        m.breakdowns = AsyncMock(return_value={})
+        m.health = AsyncMock(return_value={})
         try:
             with TestClient(app) as c:
                 assert c.get("/api/admin/stats", headers={"Authorization": "Bearer x"}).status_code == 200
@@ -239,6 +244,11 @@ def test_admin_stats_returns_full_shape():
         m.kpi_dau = AsyncMock(return_value={"value": 0, "mau": 0, "stickiness": 0.0, "deltas": {"7": 0.0, "30": 0.0, "90": 0.0}})
         m.live_online = AsyncMock(return_value=0)
         m.live_msgs_per_min = AsyncMock(return_value=0)
+        m.funnel = AsyncMock(return_value=[])
+        m.recent_signups = AsyncMock(return_value=[])
+        m.retention = AsyncMock(return_value={})
+        m.breakdowns = AsyncMock(return_value={})
+        m.health = AsyncMock(return_value={})
         try:
             with TestClient(app) as c:
                 r = c.get("/api/admin/stats", headers={"Authorization": "Bearer x"})
