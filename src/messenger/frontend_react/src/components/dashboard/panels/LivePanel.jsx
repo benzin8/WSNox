@@ -1,5 +1,3 @@
-import ComingSoon from '../ComingSoon';
-
 export default function LivePanel({ live }) {
   return (
     <div className="p-6" style={{ background: 'linear-gradient(160deg, color-mix(in oklab, var(--color-zinc-900) 70%, transparent), color-mix(in oklab, var(--color-zinc-900) 40%, transparent))', border: '1px solid color-mix(in oklab, var(--color-zinc-800) 85%, transparent)', borderRadius: 18 }}>
@@ -16,15 +14,16 @@ export default function LivePanel({ live }) {
             <span className="relative inline-flex rounded-full h-3 w-3" style={{ background: 'var(--color-lime-400)' }} />
           </span>
         </div>
-        <div className="p-4 rounded-2xl" style={{ background: 'color-mix(in oklab, var(--color-zinc-800) 40%, transparent)', border: '1px solid color-mix(in oklab, var(--color-zinc-700) 50%, transparent)' }}>
-          <div className="text-xs text-zinc-500 mb-0.5">Сообщ./мин</div>
-          <div className="text-xl font-bold" style={{ fontFamily: 'ui-monospace,monospace' }}>{live.msgs_per_min}</div>
-        </div>
-        {live.ws_connections === null && (
-          <div className="min-h-[140px]">
-            <ComingSoon title="WS-соединения и latency" reason="Появится после prometheus-metrics middleware" />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 rounded-2xl" style={{ background: 'color-mix(in oklab, var(--color-zinc-800) 40%, transparent)', border: '1px solid color-mix(in oklab, var(--color-zinc-700) 50%, transparent)' }}>
+            <div className="text-xs text-zinc-500 mb-0.5">Сообщ./мин</div>
+            <div className="text-xl font-bold" style={{ fontFamily: 'ui-monospace,monospace' }}>{live.msgs_per_min}</div>
           </div>
-        )}
+          <div className="p-4 rounded-2xl" style={{ background: 'color-mix(in oklab, var(--color-zinc-800) 40%, transparent)', border: '1px solid color-mix(in oklab, var(--color-zinc-700) 50%, transparent)' }}>
+            <div className="text-xs text-zinc-500 mb-0.5">WS-соединения</div>
+            <div className="text-xl font-bold" style={{ fontFamily: 'ui-monospace,monospace' }}>{live.ws_connections ?? '—'}</div>
+          </div>
+        </div>
       </div>
     </div>
   );

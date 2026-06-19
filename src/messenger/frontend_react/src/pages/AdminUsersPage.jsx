@@ -5,6 +5,8 @@ import AmbientGlow from '../components/dashboard/AmbientGlow';
 import RoleConfirmModal from '../components/dashboard/RoleConfirmModal';
 import { Avatar } from '../components/profile/Avatar';
 import { useAdminUsers } from '../hooks/useAdminUsers';
+import { useIsAdmin } from '../hooks/useIsAdmin';
+import { ROLE_LABELS, ROLE_BADGE, assignableRoles } from '../features/roles';
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -20,8 +22,9 @@ function initials(name) {
 export default function AdminUsersPage() {
   const navigate = useNavigate();
   const { users, loading, error, setRole } = useAdminUsers();
+  const { role: actorRole, canManageRoles } = useIsAdmin();
   const [query, setQuery] = useState('');
-  const [pending, setPending] = useState(null); // { target, grant }
+  const [pendingTarget, setPendingTarget] = useState(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -101,9 +104,14 @@ export default function AdminUsersPage() {
                     {u.username && (
                       <span className="text-xs text-zinc-500 shrink-0">@{u.username}</span>
                     )}
-                    {u.is_admin && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase" style={{ background: 'rgba(var(--accent-rgb),0.15)', color: 'var(--color-lime-400)', letterSpacing: '0.08em' }}>admin</span>
-                    )}
+                    {(() => {
+                      const b = ROLE_BADGE[u.role] || ROLE_BADGE.user;
+                      return (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase" style={{ background: b.bg, color: b.fg, letterSpacing: '0.08em' }}>
+                          {ROLE_LABELS[u.role] || u.role}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div className="text-xs text-zinc-500 truncate">{u.email}</div>
                   <div className="text-[10px] text-zinc-600 mt-0.5">
@@ -111,17 +119,19 @@ export default function AdminUsersPage() {
                     {u.last_seen && <> · был {formatDate(u.last_seen)}</>}
                   </div>
                 </div>
-                <button
-                  onClick={() => setPending({ target: u, grant: !u.is_admin })}
-                  className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
-                  style={{
-                    background: u.is_admin ? 'rgba(248,113,113,0.10)' : 'rgba(var(--accent-rgb),0.10)',
-                    color: u.is_admin ? '#f87171' : 'var(--color-lime-400)',
-                    border: `1px solid ${u.is_admin ? 'rgba(248,113,113,0.20)' : 'rgba(var(--accent-rgb),0.20)'}`,
-                  }}
-                >
-                  {u.is_admin ? 'Снять' : 'Выдать админку'}
-                </button>
+                {canManageRoles && assignableRoles(actorRole, u.role).length > 0 && (
+                  <button
+                    onClick={() => setPendingTarget(u)}
+                    className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
+                    style={{
+                      background: 'rgba(var(--accent-rgb),0.10)',
+                      color: 'var(--color-lime-400)',
+                      border: '1px solid rgba(var(--accent-rgb),0.20)',
+                    }}
+                  >
+                    Изменить роль
+                  </button>
+                )}
               </div>
             ))}
             {filtered.length === 0 && (
@@ -132,10 +142,10 @@ export default function AdminUsersPage() {
       </div>
 
       <RoleConfirmModal
-        open={pending !== null}
-        onClose={() => setPending(null)}
-        target={pending?.target}
-        grant={pending?.grant ?? false}
+        open={pendingTarget !== null}
+        onClose={() => setPendingTarget(null)}
+        target={pendingTarget}
+        options={pendingTarget ? assignableRoles(actorRole, pendingTarget.role) : []}
         onConfirm={setRole}
       />
     </div>

@@ -156,17 +156,17 @@ export default function DashboardPage() {
 
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
             <ActivityPanel msgs={stats.msgs} labels={stats.labels} days={days} />
-            <FunnelPanel />
+            <FunnelPanel funnel={stats.funnel} />
           </section>
 
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-            <HealthPanel />
-            <GeoPanel />
-            <FeedPanel />
+            <HealthPanel health={stats.health} />
+            <GeoPanel breakdown={stats.breakdown} />
+            <FeedPanel feed={stats.feed} />
           </section>
 
           <section>
-            <RetentionStrip />
+            <RetentionStrip retention={stats.retention} stickiness={stats.kpis.dau.stickiness} />
           </section>
         </main>
       </div>

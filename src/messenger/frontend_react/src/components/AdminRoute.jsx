@@ -1,9 +1,13 @@
 import { Navigate } from 'react-router-dom';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 
-export default function AdminRoute({ children }) {
+/**
+ * Гейт по RBAC-праву. `need` — требуемое permission (по умолчанию доступ к
+ * дашборду). Бэкенд всё равно проверяет права — это лишь UX-редирект.
+ */
+export default function AdminRoute({ children, need = 'view_dashboard' }) {
   const token = localStorage.getItem('access_token');
-  const { isAdmin, loading } = useIsAdmin();
+  const { permissions, loading } = useIsAdmin();
 
   if (!token) return <Navigate to="/auth/send-code" replace />;
   if (loading) {
@@ -13,6 +17,6 @@ export default function AdminRoute({ children }) {
       </div>
     );
   }
-  if (!isAdmin) return <Navigate to="/chat" replace />;
+  if (!permissions.includes(need)) return <Navigate to="/chat" replace />;
   return children;
 }

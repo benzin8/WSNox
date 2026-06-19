@@ -25,7 +25,7 @@ export function useAdminUsers() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const setRole = useCallback(async (userId, isAdmin, confirmEmail) => {
+  const setRole = useCallback(async (userId, role, confirmEmail) => {
     const token = localStorage.getItem('access_token');
     const r = await fetch(`/api/admin/users/${userId}/admin`, {
       method: 'PATCH',
@@ -33,7 +33,7 @@ export function useAdminUsers() {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ is_admin: isAdmin, confirm_email: confirmEmail }),
+      body: JSON.stringify({ role, confirm_email: confirmEmail }),
     });
     if (!r.ok) {
       const data = await r.json().catch(() => ({}));

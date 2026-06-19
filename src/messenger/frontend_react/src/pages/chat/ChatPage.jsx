@@ -104,7 +104,7 @@ function ChatPage() {
           deleteChat,
   } = useChatAction();
   const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
-  const { isAdmin } = useIsAdmin();
+  const { canViewDashboard } = useIsAdmin();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const { orb, settleInChat, randomInChat } = useEnergy();
@@ -820,7 +820,7 @@ function ChatPage() {
             }`}>
             <SidebarHeader
               myProfile={myProfile}
-              isAdmin={isAdmin}
+              isAdmin={canViewDashboard}
               onOpenOwnProfile={handleOpenOwnProfile}
               onOpenEditProfile={async (tab = "profile") => {
                 await handleOpenOwnProfile();
