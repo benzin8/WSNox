@@ -4,7 +4,7 @@ export default function PeriodSwitch({ days, onChange }) {
   return (
     <div
       className="flex items-center gap-1 p-1 rounded-xl"
-      style={{ background: 'rgba(39,39,42,0.4)', border: '1px solid rgba(63,63,70,0.5)' }}
+      style={{ background: 'color-mix(in oklab, var(--color-zinc-800) 40%, transparent)', border: '1px solid color-mix(in oklab, var(--color-zinc-700) 50%, transparent)' }}
     >
       {PERIODS.map(d => {
         const on = d === days;
@@ -16,7 +16,7 @@ export default function PeriodSwitch({ days, onChange }) {
             className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${on ? 'font-semibold' : ''}`}
             style={{
               background: on ? 'rgba(var(--accent-rgb),0.12)' : 'transparent',
-              color: on ? 'var(--color-lime-400)' : '#71717a',
+              color: on ? 'var(--color-lime-400)' : 'var(--color-zinc-500)',
             }}
           >
             {d}д

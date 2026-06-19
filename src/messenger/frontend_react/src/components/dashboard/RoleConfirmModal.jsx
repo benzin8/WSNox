@@ -56,8 +56,8 @@ export default function RoleConfirmModal({ open, onClose, target, grant, onConfi
       <div
         style={{
           width: '100%', maxWidth: 480,
-          background: 'linear-gradient(180deg, rgba(24,24,27,0.96), rgba(9,9,11,0.98))',
-          border: '1px solid rgba(63,63,70,0.7)',
+          background: 'linear-gradient(180deg, color-mix(in oklab, var(--color-zinc-900) 96%, transparent), color-mix(in oklab, var(--color-zinc-950) 98%, transparent))',
+          border: '1px solid color-mix(in oklab, var(--color-zinc-700) 70%, transparent)',
           borderRadius: 24,
           padding: 28,
         }}
@@ -90,7 +90,7 @@ export default function RoleConfirmModal({ open, onClose, target, grant, onConfi
           onKeyDown={(e) => { if (e.key === 'Enter' && matches && !submitting) submit(); }}
           className="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors"
           style={{
-            borderColor: matches ? 'var(--color-lime-400)' : 'rgba(63,63,70,0.7)',
+            borderColor: matches ? 'var(--color-lime-400)' : 'color-mix(in oklab, var(--color-zinc-700) 70%, transparent)',
           }}
         />
 

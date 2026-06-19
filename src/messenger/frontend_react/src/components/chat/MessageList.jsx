@@ -232,7 +232,7 @@ const MessageBubble = ({
                     )}
                 </div>
             )}
-            <div className="relative flex items-center gap-2" style={{ maxWidth: "75%" }}>
+            <div className="relative flex items-center gap-2 min-w-0" style={{ maxWidth: "75%" }}>
                 {/* Reply indicator (appears on swipe) */}
                 <div
                     className="absolute -left-8 flex items-center justify-center transition-opacity"
@@ -247,7 +247,7 @@ const MessageBubble = ({
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
-                    className={`text-sm leading-relaxed shadow-md cursor-pointer select-none transition-transform ${
+                    className={`text-sm leading-relaxed shadow-md cursor-pointer select-none transition-transform min-w-0 ${
                         isMedia
                             ? "p-1"
                             : "px-3.5 py-2"

@@ -23,8 +23,8 @@ export default function KpiCard({
       onKeyDown={interactive ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } } : undefined}
       className={`p-5 relative overflow-hidden transition-all ${interactive ? 'hover:-translate-y-0.5 hover:border-lime-400/40' : ''}`}
       style={{
-        background: 'linear-gradient(160deg, rgba(24,24,27,0.7), rgba(24,24,27,0.4))',
-        border: '1px solid rgba(39,39,42,0.85)',
+        background: 'linear-gradient(160deg, color-mix(in oklab, var(--color-zinc-900) 70%, transparent), color-mix(in oklab, var(--color-zinc-900) 40%, transparent))',
+        border: '1px solid color-mix(in oklab, var(--color-zinc-800) 85%, transparent)',
         borderRadius: 18,
         cursor: interactive ? 'pointer' : 'default',
       }}

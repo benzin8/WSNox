@@ -49,7 +49,7 @@ export default function DashboardPage() {
       <div style={{ position: 'relative', zIndex: 1 }}>
         <header
           className="sticky top-0 z-40 flex items-center justify-between gap-3 px-4 sm:px-8 h-16"
-          style={{ background: 'rgba(9,9,11,0.78)', backdropFilter: 'blur(14px) saturate(1.4)', borderBottom: '1px solid rgba(39,39,42,0.6)' }}
+          style={{ background: 'color-mix(in oklab, var(--color-zinc-950) 78%, transparent)', backdropFilter: 'blur(14px) saturate(1.4)', borderBottom: '1px solid color-mix(in oklab, var(--color-zinc-800) 60%, transparent)' }}
         >
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button onClick={() => navigate('/chat')} className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--color-lime-400)' }} aria-label="Вернуться в чат">

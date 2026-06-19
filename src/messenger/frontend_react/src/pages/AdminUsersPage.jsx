@@ -98,6 +98,9 @@ export default function AdminUsersPage() {
                 <div className="flex-grow min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-zinc-100 truncate">{u.name}</span>
+                    {u.username && (
+                      <span className="text-xs text-zinc-500 shrink-0">@{u.username}</span>
+                    )}
                     {u.is_admin && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase" style={{ background: 'rgba(var(--accent-rgb),0.15)', color: 'var(--color-lime-400)', letterSpacing: '0.08em' }}>admin</span>
                     )}

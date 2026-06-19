@@ -8,7 +8,7 @@ export default function ComingSoon({ title, reason }) {
       className="h-full w-full rounded-2xl flex flex-col items-center justify-center text-center p-6"
       style={{
         border: '1px dashed rgba(var(--accent-rgb),0.25)',
-        background: 'linear-gradient(160deg, rgba(24,24,27,0.4), rgba(24,24,27,0.2))',
+        background: 'linear-gradient(160deg, color-mix(in oklab, var(--color-zinc-900) 40%, transparent), color-mix(in oklab, var(--color-zinc-900) 20%, transparent))',
         minHeight: 120,
       }}
     >

@@ -2,7 +2,7 @@ import ComingSoon from '../ComingSoon';
 
 export default function LivePanel({ live }) {
   return (
-    <div className="p-6" style={{ background: 'linear-gradient(160deg, rgba(24,24,27,0.7), rgba(24,24,27,0.4))', border: '1px solid rgba(39,39,42,0.85)', borderRadius: 18 }}>
+    <div className="p-6" style={{ background: 'linear-gradient(160deg, color-mix(in oklab, var(--color-zinc-900) 70%, transparent), color-mix(in oklab, var(--color-zinc-900) 40%, transparent))', border: '1px solid color-mix(in oklab, var(--color-zinc-800) 85%, transparent)', borderRadius: 18 }}>
       <div className="text-[11px] uppercase text-zinc-500 mb-1.5" style={{ letterSpacing: '0.16em' }}>Прямо сейчас</div>
       <h3 className="text-lg font-bold mb-5">Live</h3>
       <div className="space-y-4">
@@ -16,7 +16,7 @@ export default function LivePanel({ live }) {
             <span className="relative inline-flex rounded-full h-3 w-3" style={{ background: 'var(--color-lime-400)' }} />
           </span>
         </div>
-        <div className="p-4 rounded-2xl" style={{ background: 'rgba(39,39,42,0.4)', border: '1px solid rgba(63,63,70,0.5)' }}>
+        <div className="p-4 rounded-2xl" style={{ background: 'color-mix(in oklab, var(--color-zinc-800) 40%, transparent)', border: '1px solid color-mix(in oklab, var(--color-zinc-700) 50%, transparent)' }}>
           <div className="text-xs text-zinc-500 mb-0.5">Сообщ./мин</div>
           <div className="text-xl font-bold" style={{ fontFamily: 'ui-monospace,monospace' }}>{live.msgs_per_min}</div>
         </div>
