@@ -199,3 +199,110 @@ async def test_live_msgs_per_min_returns_count():
     session = _mock_session_scalars([47])
     count = await live_msgs_per_min(session, now=NOW)
     assert count == 47
+
+
+# --- new analytics: retention / funnel / breakdowns / feed / health ---
+
+from messenger.backend.services.analytics import (  # noqa: E402
+    breakdowns,
+    funnel,
+    health,
+    recent_signups,
+    retention,
+)
+
+
+def _res_scalar(v):
+    r = MagicMock()
+    r.scalar = MagicMock(return_value=v)
+    return r
+
+
+def _res_rows(rows):
+    r = MagicMock()
+    r.all = MagicMock(return_value=rows)
+    return r
+
+
+def _session_seq(results):
+    s = MagicMock()
+    s.execute = AsyncMock(side_effect=list(results))
+    return s
+
+
+@pytest.mark.asyncio
+async def test_retention_percentages():
+    # order per window (1,7,30): cohort, retained
+    session = _session_seq([
+        _res_scalar(100), _res_scalar(30),
+        _res_scalar(100), _res_scalar(50),
+        _res_scalar(100), _res_scalar(70),
+    ])
+    out = await retention(session, now=NOW)
+    assert out == {"d1": 30.0, "d7": 50.0, "d30": 70.0}
+
+
+@pytest.mark.asyncio
+async def test_retention_empty_cohort_is_zero():
+    session = _session_seq([_res_scalar(0)] * 3)
+    out = await retention(session, now=NOW)
+    assert out == {"d1": 0.0, "d7": 0.0, "d30": 0.0}
+
+
+@pytest.mark.asyncio
+async def test_funnel_stages_and_pct():
+    session = _session_seq([_res_scalar(100), _res_scalar(60), _res_scalar(40)])
+    stages = await funnel(session, now=NOW)
+    assert [s["stage"] for s in stages] == ["Регистрация", "Написал сообщение", "Активен (7д)"]
+    assert stages[0]["pct"] == 100.0
+    assert stages[1]["count"] == 60 and stages[1]["pct"] == 60.0
+    assert stages[2]["pct"] == 40.0
+
+
+@pytest.mark.asyncio
+async def test_funnel_zero_users():
+    session = _session_seq([_res_scalar(0), _res_scalar(0), _res_scalar(0)])
+    stages = await funnel(session, now=NOW)
+    assert all(s["pct"] == 0.0 for s in stages)
+
+
+@pytest.mark.asyncio
+async def test_breakdowns_shapes():
+    session = _session_seq([
+        _res_rows([("text", 80), ("image", 20)]),    # msg_types
+        _res_rows([("private", 10), ("group", 2)]),  # chat_types
+        _res_scalar(25),                              # media count
+        _res_scalar(15),                              # reply count
+    ])
+    out = await breakdowns(session)
+    assert out["msg_types"] == {"text": 80, "image": 20}
+    assert out["chat_types"] == {"private": 10, "group": 2}
+    assert out["media_pct"] == 25.0
+    assert out["reply_pct"] == 15.0
+
+
+@pytest.mark.asyncio
+async def test_recent_signups_projection():
+    session = _session_seq([_res_rows([
+        ("alice", "Alice", NOW),
+        ("bob", "Bob", NOW - timedelta(days=1)),
+    ])])
+    feed = await recent_signups(session, limit=5)
+    assert len(feed) == 2
+    assert feed[0] == {"type": "signup", "username": "alice", "name": "Alice", "at": NOW.isoformat()}
+
+
+@pytest.mark.asyncio
+async def test_health_ok(fake_redis):
+    # execute: select(1) [ok], then _total x3 (users/messages/chats)
+    session = _session_seq([
+        MagicMock(),               # select(1)
+        _res_scalar(42),           # users
+        _res_scalar(1000),         # messages
+        _res_scalar(13),           # chats
+    ])
+    out = await health(session, fake_redis)
+    assert out["db_ok"] is True
+    assert out["redis_ok"] is True
+    assert out["users"] == 42 and out["messages"] == 1000 and out["chats"] == 13
+    assert "cache_enabled" in out

@@ -66,7 +66,7 @@ class KpisBlock(BaseModel):
 class LiveBlock(BaseModel):
     online: int
     msgs_per_min: int
-    ws_connections: None = None
+    ws_connections: int | None = None
     latency_p50: None = None
     latency_p95: None = None
 
@@ -78,10 +78,13 @@ class DashboardStats(BaseModel):
     labels: list[str]
     kpis: KpisBlock
     live: LiveBlock
-    # placeholder-секции
+    # wired analytics sections
     funnel: list[Any] | None = None
-    problems_by_severity: list[Any] | None = None
-    geo: list[Any] | None = None
     feed: list[Any] | None = None
     retention: dict[str, Any] | None = None
+    breakdown: dict[str, Any] | None = None
+    health: dict[str, Any] | None = None
+    # still placeholder (needs data we don't store)
+    problems_by_severity: list[Any] | None = None
+    geo: list[Any] | None = None
     details: dict[str, Any] | None = None

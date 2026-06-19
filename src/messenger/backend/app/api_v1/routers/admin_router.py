@@ -42,6 +42,15 @@ logger = logging.getLogger(__name__)
 admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
+def _ws_connection_count() -> int:
+    """Live count of open WebSocket sockets across all connected users."""
+    try:
+        from messenger.backend.app.ws.router import manager
+        return sum(len(socks) for socks in manager.active_connections.values())
+    except Exception:  # noqa: BLE001
+        return 0
+
+
 @admin_router.get("/me", response_model=AdminMeResponse)
 async def admin_me(current_user: User = Depends(get_current_user)) -> AdminMeResponse:
     """Лёгкий ping: роль и права текущего юзера. Доступно любому залогиненному."""
@@ -76,10 +85,16 @@ async def admin_stats(
                 msgs=await analytics.kpi_msgs(session, now=now),
                 dau=await analytics.kpi_dau(session, now=now),
             ),
+            funnel=await analytics.funnel(session, now=now),
+            feed=await analytics.recent_signups(session),
+            retention=await analytics.retention(session, now=now),
+            breakdown=await analytics.breakdowns(session),
+            health=await analytics.health(session, redis),
             # live считаем СВЕЖИМ (не из bucketed stats-кэша).
             live=LiveBlock(
                 online=await analytics.live_online(redis),
                 msgs_per_min=await analytics.live_msgs_per_min(session),
+                ws_connections=_ws_connection_count(),
             ),
         ).model_dump(mode="json")
 
@@ -104,6 +119,7 @@ async def admin_live(
         return LiveBlock(
             online=await analytics.live_online(redis),
             msgs_per_min=await analytics.live_msgs_per_min(session),
+            ws_connections=_ws_connection_count(),
         ).model_dump(mode="json")
 
     data = await get_live_block_cached(redis, _build_live)
