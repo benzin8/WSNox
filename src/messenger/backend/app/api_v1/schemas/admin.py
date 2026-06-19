@@ -7,6 +7,8 @@ from pydantic import BaseModel
 
 class AdminMeResponse(BaseModel):
     is_admin: bool
+    role: str = "user"
+    permissions: list[str] = []
 
 
 class AdminUserRow(BaseModel):
@@ -15,14 +17,18 @@ class AdminUserRow(BaseModel):
     email: str
     username: str
     is_admin: bool
+    role: str = "user"
     created_at: datetime | None
     last_seen: datetime | None
     avatar_thumb_url: str | None = None
 
 
 class AdminSetRoleRequest(BaseModel):
-    is_admin: bool
     confirm_email: str  # должен совпасть с email целевого юзера
+    # Новое поле RBAC: user|moderator|admin|owner.
+    role: str | None = None
+    # Legacy: True -> admin, False -> user (для обратной совместимости).
+    is_admin: bool | None = None
 
 
 class StatItem(BaseModel):

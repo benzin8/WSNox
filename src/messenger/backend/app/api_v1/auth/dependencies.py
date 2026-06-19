@@ -86,10 +86,26 @@ async def get_current_user(
 
 
 async def get_current_admin(current_user: CachedUser = Depends(get_current_user)) -> CachedUser:
-    """Гейт для /api/admin/* — 403 если не админ."""
+    """Гейт «есть админ-доступ» — 403 если роль не admin/owner (is_admin)."""
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
         )
     return current_user
+
+
+def require_permission(permission: str):
+    """Зависимость-фабрика: 403, если у роли текущего юзера нет permission.
+
+    Использование: `_=Depends(require_permission(PERM_VIEW_DASHBOARD))`.
+    """
+    async def _dep(current_user: CachedUser = Depends(get_current_user)) -> CachedUser:
+        if not current_user.has(permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Недостаточно прав",
+            )
+        return current_user
+
+    return _dep
