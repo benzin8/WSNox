@@ -649,9 +649,9 @@ function ChatPage() {
   const handleSelectChat = async (selectedChat) => {
     setChatListBlurred(false);
     randomInChat();
-    if (selectedChat.chat_type === "group") {
+    if (selectedChat.chat_type === "group" || selectedChat.chat_type === "channel") {
       setActiveChat(selectedChat);
-      setChatName(selectedChat.name || "Группа");
+      setChatName(selectedChat.name || (selectedChat.chat_type === "channel" ? "WSNox" : "Группа"));
       setMobileView('chat');
       setReplyTo(null);
       setEditingMessage(null);

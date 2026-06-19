@@ -72,6 +72,7 @@ export function useIsAdmin() {
     canViewDashboard: perms.includes('view_dashboard'),
     canManageUsers: perms.includes('manage_users'),
     canManageRoles: perms.includes('manage_roles'),
+    canPostAnnouncements: perms.includes('post_announcements'),
     loading,
   };
 }
