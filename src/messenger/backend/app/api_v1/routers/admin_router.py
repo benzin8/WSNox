@@ -14,6 +14,8 @@ from messenger.backend.app.api_v1.schemas.admin import (
     AdminMeResponse,
     AdminSetRoleRequest,
     AdminUserRow,
+    AnnouncementRequest,
+    AnnouncementResponse,
     DashboardStats,
     KpisBlock,
     LiveBlock,
@@ -23,6 +25,7 @@ from messenger.backend.core.permissions import (
     ALL_ROLES,
     PERM_MANAGE_ROLES,
     PERM_MANAGE_USERS,
+    PERM_POST_ANNOUNCEMENTS,
     PERM_VIEW_DASHBOARD,
     can_assign_role,
     is_admin_role,
@@ -100,6 +103,44 @@ async def admin_stats(
 
     data = await get_dashboard_stats_cached(redis, _build_stats)
     return DashboardStats.model_validate(data)
+
+
+@admin_router.post("/announcements", response_model=AnnouncementResponse)
+async def admin_post_announcement(
+    payload: AnnouncementRequest,
+    current_admin: User = Depends(require_permission(PERM_POST_ANNOUNCEMENTS)),
+    session: AsyncSession = Depends(get_db_session),
+    storage: S3Storage | None = Depends(get_storage_optional),
+) -> AnnouncementResponse:
+    """Опубликовать сообщение в официальный канал WSNox (читают все юзеры).
+
+    Канал — singleton (chat_type="channel"). Постить может только обладатель
+    права post_announcements; для остальных канал read-only.
+    """
+    text = payload.text.strip()
+    if not text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Пустое сообщение")
+
+    from messenger.backend.app.ws.router import manager
+    from messenger.backend.services.announcements import get_or_create_channel
+
+    chat = await get_or_create_channel(session)
+    await session.commit()
+
+    message_id = await manager.send_personal_message(
+        chat_id=chat.id,
+        text=text,
+        recipient_id=None,
+        sender_id=current_admin.id,
+        db=session,
+        chat_type="channel",
+        storage=storage,
+    )
+    logger.warning(
+        "announcement posted by=%s(%s) chat=%s msg=%s",
+        current_admin.id, current_admin.email, chat.id, message_id,
+    )
+    return AnnouncementResponse(chat_id=chat.id, message_id=message_id)
 
 
 @admin_router.get("/live", response_model=LiveBlock)

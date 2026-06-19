@@ -204,7 +204,7 @@ async def _build_chat_info(
     return {
         "id": chat_id,
         "name": chat.name if chat else f"chat_{chat_id}",
-        "chat_type": "group",
+        "chat_type": chat.chat_type if chat else "group",
         "recipient_id": None,
         "recipient": None,
     }
@@ -566,11 +566,13 @@ class ConnectionManager:
                 if not await self._should_push(recipient_id, chat_id, db=db):
                     continue
                 chat_type = (chat_info or {}).get("chat_type", "private")
-                if chat_type == "group":
+                if chat_type == "channel":
+                    title = f"📣 {(chat_info or {}).get('name') or 'WSNox'}"
+                elif chat_type == "group":
                     group_name = (chat_info or {}).get("name", "")
                     title = f"{sender_display_name or 'Кто-то'} в {group_name}" if group_name else f"Новое сообщение от {sender_display_name or 'участника'}"
                 else:
-                    sender_name = (chat_info or {}).get("recipient", {}).get("name", "")
+                    sender_name = ((chat_info or {}).get("recipient") or {}).get("name", "")
                     title = f"Новое сообщение от {sender_name}" if sender_name else "Новое сообщение"
                 asyncio.create_task(send_push_to_user(recipient_id, {
                     "title": title,
@@ -765,6 +767,10 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     continue
                 chat = await db.get(Chat, chat_id)
                 if chat is None:
+                    continue
+                # The announcements channel is read-only over WS — posting goes
+                # exclusively through the permission-gated admin endpoint.
+                if chat.chat_type == "channel":
                     continue
                 if chat.chat_type == "private":
                     other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, user_id)

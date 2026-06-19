@@ -31,6 +31,15 @@ class AdminSetRoleRequest(BaseModel):
     is_admin: bool | None = None
 
 
+class AnnouncementRequest(BaseModel):
+    text: str
+
+
+class AnnouncementResponse(BaseModel):
+    chat_id: int
+    message_id: int
+
+
 class StatItem(BaseModel):
     label: str
     value: str
