@@ -11,6 +11,44 @@ import { Avatar } from "../profile/Avatar";
 const GROUP_AVATAR_SIZE = 28;
 const GROUP_AVATAR_GAP = 8;
 
+// Turn http(s) URLs inside message text into clickable links. Returns the
+// original string when there are no links, otherwise an array of strings and
+// <a> nodes. stopPropagation keeps the tap from triggering the bubble's
+// action-menu / reply handlers.
+const URL_RE = /(https?:\/\/[^\s]+)/g;
+
+function linkify(text) {
+    if (!text) return text;
+    const nodes = [];
+    let last = 0;
+    let m;
+    URL_RE.lastIndex = 0;
+    while ((m = URL_RE.exec(text)) !== null) {
+        if (m.index > last) nodes.push(text.slice(last, m.index));
+        let url = m[0];
+        const tm = url.match(/[.,!?)\]}>"'»]+$/); // strip trailing punctuation
+        const trail = tm ? tm[0] : "";
+        if (trail) url = url.slice(0, -trail.length);
+        nodes.push(
+            <a
+                key={m.index}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 break-all hover:opacity-80"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {url}
+            </a>,
+        );
+        if (trail) nodes.push(trail);
+        last = m.index + m[0].length;
+    }
+    if (last === 0) return text;
+    if (last < text.length) nodes.push(text.slice(last));
+    return nodes;
+}
+
 function replyQuotePreview(msg) {
     // The replied-to message may have been a media post without a caption;
     // in that case the backend returns reply_to_text="" — surface a clear
@@ -329,7 +367,7 @@ const MessageBubble = ({
                     {(!isMedia || msg.text) && (
                         <div className={`flex items-end gap-2 ${isMedia ? "px-2 pt-1 pb-0.5" : ""}`}>
                             {msg.text && (
-                                <span className="whitespace-pre-wrap break-words flex-1 min-w-0">{msg.text}</span>
+                                <span className="whitespace-pre-wrap break-words flex-1 min-w-0">{linkify(msg.text)}</span>
                             )}
                             <span className="flex items-center gap-1 shrink-0 self-end mb-0.5 ml-auto">
                                 {msg.edited_at && (
