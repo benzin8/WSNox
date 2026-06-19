@@ -13,7 +13,7 @@ export function Avatar({ url, initials, online, size = 40, className = "", ring 
 
   return (
     <div
-      className={`relative shrink-0 ${className}`}
+      className={`relative shrink-0 rounded-full ${className}`}
       style={{ width: size, height: size }}
     >
       <div

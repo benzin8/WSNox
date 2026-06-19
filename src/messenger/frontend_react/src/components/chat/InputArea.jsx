@@ -1,11 +1,19 @@
 import React from "react";
 import { useState } from "react";
-import { Send, X, Reply, Pencil, Check } from "lucide-react";
+import { Send, X, Reply, Pencil, Check, Smile } from "lucide-react";
 import { AttachmentPicker } from "./AttachmentPicker";
+import { useTheme } from "../../features/theme";
+
+// Full emoji picker — lazy so it stays out of the main bundle until opened.
+const EmojiPicker = React.lazy(() => import("emoji-picker-react"));
 
 export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit, onPickMedia }) => {
     const [inputText, setInputText] = useState("");
+    const [showEmoji, setShowEmoji] = useState(false);
     const inputRef = React.useRef(null);
+    const emojiWrapRef = React.useRef(null);
+    const emojiBtnRef = React.useRef(null);
+    const { theme } = useTheme();
 
     // When entering edit mode, populate input with existing message text
     React.useEffect(() => {
@@ -15,8 +23,39 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
       }
     }, [editingMessage]);
 
+    // Close the emoji picker on outside click / Escape.
+    React.useEffect(() => {
+      if (!showEmoji) return undefined;
+      const onDown = (e) => {
+        if (
+          !emojiWrapRef.current?.contains(e.target) &&
+          !emojiBtnRef.current?.contains(e.target)
+        ) setShowEmoji(false);
+      };
+      const onKey = (e) => { if (e.key === "Escape") setShowEmoji(false); };
+      document.addEventListener("mousedown", onDown);
+      document.addEventListener("keydown", onKey);
+      return () => {
+        document.removeEventListener("mousedown", onDown);
+        document.removeEventListener("keydown", onKey);
+      };
+    }, [showEmoji]);
+
+    const insertEmoji = (emoji) => {
+      const el = inputRef.current;
+      const start = el?.selectionStart ?? inputText.length;
+      const end = el?.selectionEnd ?? inputText.length;
+      setInputText((t) => t.slice(0, start) + emoji + t.slice(end));
+      requestAnimationFrame(() => {
+        el?.focus();
+        const pos = start + emoji.length;
+        try { el?.setSelectionRange(pos, pos); } catch { /* input may be unmounted */ }
+      });
+    };
+
     const handleSubmit = (e) => {
       e.preventDefault();
+      setShowEmoji(false);
       if (!inputText.trim() || !isConnected) return;
 
       if (editingMessage) {
@@ -41,7 +80,7 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
     }, [replyTo]);
 
     return (
-        <div className="p-6 bg-zinc-950/50 border-t border-zinc-800/80">
+        <div className="relative p-6 bg-zinc-950/50 border-t border-zinc-800/80">
           {/* Edit preview bar */}
           {editingMessage && (
             <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-zinc-800/80 border border-lime-400/30 rounded-xl animate-fadeIn">
@@ -74,6 +113,33 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
               </button>
             </div>
           )}
+
+          {/* Emoji picker popover */}
+          {showEmoji && (
+            <div
+              ref={emojiWrapRef}
+              className="absolute bottom-full right-4 mb-2 z-50 animate-fadeIn shadow-2xl rounded-2xl overflow-hidden"
+            >
+              <React.Suspense
+                fallback={
+                  <div className="w-[300px] h-[120px] flex items-center justify-center bg-zinc-900 text-zinc-500 text-sm">
+                    Загрузка эмодзи…
+                  </div>
+                }
+              >
+                <EmojiPicker
+                  onEmojiClick={(emojiData) => insertEmoji(emojiData.emoji)}
+                  theme={theme === "light" ? "light" : "dark"}
+                  width={Math.min(340, typeof window !== "undefined" ? window.innerWidth - 32 : 340)}
+                  height={400}
+                  lazyLoadEmojis
+                  searchPlaceHolder="Поиск"
+                  previewConfig={{ showPreview: false }}
+                />
+              </React.Suspense>
+            </div>
+          )}
+
           <form
             onSubmit={handleSubmit}
             className={`flex items-center gap-2 bg-zinc-800/30 rounded-2xl p-2 pl-2 border transition-all duration-300 ${
@@ -94,13 +160,20 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
               onChange={(e) => setInputText(e.target.value)}
             />
             <button
+              type="button"
+              ref={emojiBtnRef}
+              onClick={() => { setShowEmoji((v) => !v); }}
+              aria-label="Эмодзи"
+              className={`shrink-0 p-2 rounded-xl transition-colors ${
+                showEmoji ? "text-lime-400" : "text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Smile size={20} />
+            </button>
+            <button
               type="submit"
               disabled={!inputText.trim() || !isConnected}
-              className={`p-3 rounded-xl transition-all duration-300 active:scale-[0.97] disabled:grayscale disabled:opacity-50 ${
-                editingMessage
-                  ? "bg-lime-400 text-zinc-900 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.25)]"
-                  : "bg-lime-400 text-zinc-900 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.25)]"
-              }`}
+              className="p-3 rounded-xl transition-all duration-300 active:scale-[0.97] disabled:grayscale disabled:opacity-50 bg-lime-400 text-zinc-900 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.25)]"
             >
               {editingMessage ? <Check size={18} /> : <Send size={18} />}
             </button>
