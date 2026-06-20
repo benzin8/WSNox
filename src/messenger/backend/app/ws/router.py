@@ -354,6 +354,7 @@ class ConnectionManager:
                 chat_id = data.get("chat_id")
                 chat_info = data.get("chat_info")
                 sender_display_name = data.get("sender_display_name")
+                message_id = data.get("message_id")
                 # New payloads include `recipient_ids` (list). Old single-
                 # recipient payloads (or anything from before this migration)
                 # fall back to wrapping `recipient_id` in a 1-element list so
@@ -380,6 +381,7 @@ class ConnectionManager:
                 await self._fanout_offline_pushes(
                     recipient_ids=offline_recipients,
                     chat_id=chat_id,
+                    message_id=message_id,
                     chat_info=chat_info,
                     sender_id=sender_id,
                     sender_display_name=sender_display_name,
@@ -551,6 +553,7 @@ class ConnectionManager:
         sender_id: int | None,
         sender_display_name: str | None,
         decrypted_text: str | None,
+        message_id: int | None = None,
     ) -> None:
         """Отправить пуши всем офлайн-получателям сообщения в ОДНОЙ сессии.
 
@@ -561,9 +564,25 @@ class ConnectionManager:
         offline = [rid for rid in recipient_ids if not self.active_connections.get(rid)]
         if not offline:
             return
+        from messenger.backend.app.ws.presence import is_present
+        redis = get_redis()
         async with AsyncSessionLocal() as db:
             for recipient_id in offline:
+                # `active_connections` is per-worker; with several uvicorn workers
+                # a user connected to ANOTHER worker looks "offline" here. Redis
+                # presence is cross-worker — if they're online anywhere, their live
+                # socket already shows an in-app notification, so a push would be a
+                # duplicate of it.
+                if await is_present(redis, recipient_id):
+                    continue
                 if not await self._should_push(recipient_id, chat_id, db=db):
+                    continue
+                # Every worker's pubsub listener runs this fan-out, so a truly
+                # offline user would otherwise be pushed once per worker. The first
+                # worker to claim the (message, recipient) key sends; the rest skip.
+                if message_id is not None and not await redis.set(
+                    f"push:dedup:{message_id}:{recipient_id}", "1", nx=True, ex=120,
+                ):
                     continue
                 chat_type = (chat_info or {}).get("chat_type", "private")
                 if chat_type == "channel":

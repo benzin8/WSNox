@@ -341,6 +341,7 @@ async def test_fanout_opens_single_session_for_all_recipients(fake_redis):
 
     with (
         patch.object(router_mod, "AsyncSessionLocal", _factory),
+        patch.object(router_mod, "get_redis", return_value=fake_redis),
         patch.object(mgr, "_should_push", side_effect=_fake_should_push),
     ):
         await mgr._fanout_offline_pushes(
