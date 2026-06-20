@@ -79,11 +79,15 @@ tests/                  # pytest
 - **Аутентификация**: email-код + JWT (короткий access + refresh в httpOnly-куке), авто-refresh на `401`, rate-limit на login/refresh, [восстановление и смена пароля](docs/features/password-reset.md)
 - **[Мультиаккаунтинг](docs/features/multi-account.md)**: несколько аккаунтов одновременно, переключение в один клик из профиля, бейдж непрочитанного по каждому; добавление через обычный вход. Эндпоинты `GET /chats/unread-total`, `POST /auth/refresh`
 - **Чат**: WebSocket, история, поиск пользователей, последнее сообщение и счётчик непрочитанных в списке
-- **[Media-сообщения](docs/features/media-messages.md)**: фото и видео с подписью, серверный resize фото (Pillow), presigned S3 URLs, оптимистичный UI с прогрессом, фуллскрин-просмотрщик через React Portal, scroll-to-reply по клику на quote
+- **[Media-сообщения](docs/features/media-messages.md)**: фото / видео / голосовые с подписью, серверный resize фото (Pillow), **очистка метаданных** (EXIF у фото, ffmpeg `-map_metadata -1` у видео/аудио), presigned S3 URLs, оптимистичный UI с прогрессом, фуллскрин-просмотрщик через React Portal, scroll-to-reply по клику на quote
+- **[Голосовые сообщения](docs/features/voice-messages.md)**: запись в браузере через `MediaRecorder`, инлайн-плеер с «волной» и перемоткой, тот же upload-путь что у медиа (`msg_type=voice`)
 - **[Групповые чаты](docs/features/group-chats.md)**: создание, fan-out по `chat_members`, имя автора в чужих сообщениях, превью «Иван: …» в списке чатов, модалка участников, добавление участников админом, выход/удаление группы
+- **[Официальный канал WSNox](docs/features/announcements-channel.md)**: singleton-канал, куда автоматически добавлены все юзеры; read-only для всех, постинг — только по праву `post_announcements` через композер в дашборде
 - **Профили**: `display_name`, `bio`, фото; модалка с табами «Личные данные» / «Безопасность»
 - **[Аватарки](docs/features/avatars.md)**: Yandex S3 (приватный bucket + presigned GET), client-side круговой crop, server-side resize в WebP, realtime через `profile_update`
-- **[Дашборд основателя](docs/features/founder-dashboard.md)**: защищённая `/dashboard` с метриками (регистрации, сообщения, DAU, online), `users.is_admin` гейт, placeholder'ы под будущие секции
+- **[RBAC](docs/features/rbac.md)**: роли user / moderator / admin / owner с иерархией рангов и правами (`view_dashboard` / `manage_users` / `manage_roles` / `post_announcements`); `is_admin` производное от роли, гейтинг через `require_permission`
+- **[Дашборд основателя](docs/features/founder-dashboard.md)**: защищённая `/dashboard` (гейт по праву `view_dashboard`, модератор — read-only) с живой аналитикой — регистрации, сообщения, DAU, online, воронка, retention (D1/D7/D30), health, разбивка сообщений, WS-соединения
+- **[Журнал изменений ролей](docs/features/role-audit-log.md)**: append-only audit RBAC-действий (кто/кому/когда, только метаданные — без приватного контента)
 - **[Онлайн-статус в реал-тайме](docs/features/online-status.md)**: Redis TTL + heartbeat, режимы «не беспокоить» и «невидимка»
 - **[Уведомления](docs/features/notifications.md)**: 4 канала (звук / title-бейдж / browser / push), per-chat mute, глобальный DND, suppression для активного чата
 - **[Отметки о прочтении](docs/features/read-receipts.md)** с взаимной приватностью: серая/зелёная точка под исходящим
@@ -139,10 +143,14 @@ GitHub Actions (`.github/workflows/`):
 - [Мобильная навигация](docs/features/mobile-navigation.md) — слайд между списком и чатом, edge-swipe back
 - [Профили](docs/features/profiles.md) — модель, API, редактирование
 - [Аватарки](docs/features/avatars.md) — S3-хранение, presigned URLs, круговой crop, realtime
-- [Дашборд основателя](docs/features/founder-dashboard.md) — `/dashboard`, метрики из БД + presence, placeholder'ы под Sentry/GeoIP/events
+- [RBAC — роли и права](docs/features/rbac.md) — user/moderator/admin/owner, ранги, `require_permission`, `can_assign_role`, миграция-бэкфилл
+- [Дашборд основателя](docs/features/founder-dashboard.md) — `/dashboard`, гейт по `view_dashboard`, живая аналитика (воронка/retention/health/breakdown/WS), placeholder'ы под Sentry/GeoIP
+- [Журнал изменений ролей](docs/features/role-audit-log.md) — append-only audit RBAC-действий, `GET /api/admin/audit`, privacy-safe
+- [Официальный канал WSNox](docs/features/announcements-channel.md) — singleton-канал, авто-join, read-only + постинг по праву
 - [Групповые чаты](docs/features/group-chats.md) — MVP: создание, fan-out, добавление участников, выход. [Roadmap](docs/features/group-chats-roadmap.md) для следующих итераций (seen-by, переименование, mentions, pinned)
 - [Восстановление и смена пароля](docs/features/password-reset.md) — reset по email-ссылке, смена через профиль, SMTP-конфиг
-- [Media-сообщения](docs/features/media-messages.md) — фото/видео в чат, optimistic upload с прогрессом, лимиты, lightbox-портал, reply-to-photo
+- [Media-сообщения](docs/features/media-messages.md) — фото/видео/голосовые, очистка метаданных, optimistic upload с прогрессом, лимиты, lightbox-портал, reply-to-photo
+- [Голосовые сообщения](docs/features/voice-messages.md) — запись через `MediaRecorder`, инлайн-плеер, `process_audio` / `msg_type=voice`
 
 **Деплой**
 

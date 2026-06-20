@@ -161,6 +161,8 @@ async def get_chats(
             decoded = "📷 Фото"
         elif not decoded and last_msg_type == "video":
             decoded = "🎥 Видео"
+        elif not decoded and last_msg_type == "voice":
+            decoded = "🎤 Голосовое сообщение"
         chat_resp.last_message = decoded
         chat_resp.last_message_time = last_msg_time
         chat_resp.unread_count = unread_cnt or 0
@@ -476,12 +478,16 @@ async def upload_chat_media(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Чат без второго участника")
         recipient_id = other.user_id
 
-    content_type = file.content_type or ""
+    # Normalise away any codecs parameter (e.g. "audio/webm;codecs=opus" from
+    # MediaRecorder) before matching the allowlists.
+    content_type = (file.content_type or "").split(";")[0].strip()
     try:
         if content_type in media_service.ALLOWED_IMAGE_MIME:
             payload = await media_service.process_image(storage, current_user.id, file)
         elif content_type in media_service.ALLOWED_VIDEO_MIME:
             payload = await media_service.process_video(storage, current_user.id, file, client_meta)
+        elif content_type in media_service.ALLOWED_AUDIO_MIME:
+            payload = await media_service.process_audio(storage, current_user.id, file, client_meta)
         else:
             raise HTTPException(status_code=415, detail="Unsupported media type")
     except media_service.FileTooLarge as e:

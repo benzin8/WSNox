@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useRef, useCallback } from "react";
-import { Image as ImageIcon, MessageSquare, Reply, Video as VideoIcon } from "lucide-react";
+import { Image as ImageIcon, MessageSquare, Mic as MicIcon, Reply, Video as VideoIcon } from "lucide-react";
 import { MessageActionMenu } from "./MessageActionMenu";
 import { MediaMessage } from "./MediaMessage";
+import { VoiceMessage } from "./VoiceMessage";
 import { MessageStatus } from "./MessageStatus";
 import { Avatar } from "../profile/Avatar";
 
@@ -56,6 +57,7 @@ function replyQuotePreview(msg) {
     if (msg.reply_to_text) return { text: msg.reply_to_text, icon: null };
     if (msg.reply_to_msg_type === "image") return { text: "Фото", icon: "image" };
     if (msg.reply_to_msg_type === "video") return { text: "Видео", icon: "video" };
+    if (msg.reply_to_msg_type === "voice") return { text: "Голосовое", icon: "voice" };
     return null;
 }
 
@@ -170,6 +172,7 @@ const MessageBubble = ({
     const [swipeX, setSwipeX] = useState(0);
 
     const isMedia = msg.msg_type === "image" || msg.msg_type === "video";
+    const isVoice = msg.msg_type === "voice";
     const replyPreview = msg.reply_to_id ? replyQuotePreview(msg) : null;
 
     // --- Swipe to reply (horizontal swipe on message) ---
@@ -324,6 +327,7 @@ const MessageBubble = ({
                             <span className="flex items-center gap-1 line-clamp-1">
                                 {replyPreview.icon === "image" && <ImageIcon size={11} className="shrink-0 opacity-70" />}
                                 {replyPreview.icon === "video" && <VideoIcon size={11} className="shrink-0 opacity-70" />}
+                                {replyPreview.icon === "voice" && <MicIcon size={11} className="shrink-0 opacity-70" />}
                                 <span className="truncate">{truncate(replyPreview.text)}</span>
                             </span>
                         </button>
@@ -360,6 +364,15 @@ const MessageBubble = ({
                                 </span>
                             )}
                         </div>
+                    )}
+
+                    {isVoice && (
+                        <VoiceMessage
+                            url={msg.attachment_url}
+                            durationMs={msg.attachment_meta?.duration_ms}
+                            isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
+                            isOut={isOut}
+                        />
                     )}
 
                     {/* Text bubble OR media with caption — keep the timestamp on the

@@ -22,8 +22,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install system dependencies
+# ffmpeg: strips metadata (GPS/device) from uploaded video & voice notes via a
+# stream copy. Without it the media pipeline falls back to storing raw bytes.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install --upgrade pip && pip install "poetry==$POETRY_VERSION"

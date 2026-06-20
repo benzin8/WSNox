@@ -529,7 +529,11 @@ function ChatPage() {
     if (!activeChat?.id) return;
     const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const localUrl = URL.createObjectURL(file);
-    const msgType = file.type.startsWith('image/') ? 'image' : 'video';
+    const msgType = file.type.startsWith('image/')
+      ? 'image'
+      : file.type.startsWith('audio/')
+      ? 'voice'
+      : 'video';
 
     setPendingMediaFile(null);
     setMessages((prev) => [...prev, {
@@ -590,6 +594,12 @@ function ChatPage() {
     setMessages((prev) => prev.filter((m) => m.id !== msg.id));
     handleSendMedia(msg._retry_file, msg._retry_caption || '', msg._retry_meta || null);
   }, [handleSendMedia, setMessages]);
+
+  // Voice notes reuse the media upload path — they're just an audio file with
+  // a {duration_ms} meta and no caption. The backend tags them msg_type=voice.
+  const handleSendVoice = useCallback((file, meta) => {
+    handleSendMedia(file, '', meta || null);
+  }, [handleSendMedia]);
 
   const handleReply = useCallback((msg) => {
     setReplyTo(msg);
@@ -922,6 +932,7 @@ function ChatPage() {
              onCancelEdit={handleCancelEdit}
              onConfirmEdit={handleConfirmEdit}
              onPickMedia={handlePickMedia}
+             onSendVoice={handleSendVoice}
              onRetryMedia={handleRetryMedia}
              onLeaveGroup={handleLeaveGroup}
              onDeleteGroup={isGroupAdmin ? handleDeleteGroup : null}
