@@ -1,6 +1,7 @@
 from .chat import Chat, ChatMember
 from .chat_mute import ChatMute
 from .message import Message
+from .message_reaction import MessageReaction
 from .message_read import MessageRead
 from .profile import Profile
 from .push_subscription import PushSubscription
@@ -12,6 +13,7 @@ __all__ = [
     "ChatMember",
     "ChatMute",
     "Message",
+    "MessageReaction",
     "MessageRead",
     "User",
     "Profile",

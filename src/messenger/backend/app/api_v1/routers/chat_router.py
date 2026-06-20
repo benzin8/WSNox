@@ -391,6 +391,13 @@ async def get_messages_by_chat_id(
         await publish_read_receipt(db, chat_id, current_user.id, max_id)
     messages = await MessageCRUD.get_messages(db, chat_id)
 
+    # Reaction summaries (counts + this viewer's own reaction) for all messages
+    # in one query, so reactions are already on the bubbles when the chat opens.
+    from messenger.backend.app.crud.reaction import ReactionCRUD
+    reaction_summary = await ReactionCRUD.summary_for_messages(
+        db, [m.id for m in messages], current_user.id
+    )
+
     # Per-user read receipts in groups are a separate iteration — for MVP we
     # hide read_at in groups entirely. Private chats follow the reciprocity
     # rule based on the two participants' settings.
@@ -441,6 +448,7 @@ async def get_messages_by_chat_id(
         if sender_display:
             resp.sender_display_name = sender_display.get(message.sender_id)
             resp.sender_avatar_url = sender_avatar.get(message.sender_id)
+        resp.reactions = reaction_summary.get(message.id)
         result.append(resp)
     return result
 

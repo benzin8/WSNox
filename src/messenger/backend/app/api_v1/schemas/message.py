@@ -45,6 +45,9 @@ class MessageBase(BaseModel):
     # knows the counterpart) and when the sender has no profile/avatar.
     sender_display_name: Optional[str] = None
     sender_avatar_url: Optional[str] = None
+    # Reaction summary: {emoji: {emoji: count}, aura: count, my_emoji, my_aura}.
+    # Populated per-message by the messages endpoint for the requesting viewer.
+    reactions: Optional[dict] = None
 
     @field_serializer("created_at", "read_at", "edited_at", when_used="json")
     def _serialize_dt(self, value: Optional[datetime]) -> Optional[str]:

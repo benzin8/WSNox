@@ -19,6 +19,7 @@ from messenger.backend.app.crud.notification import (
     cached_muted_chat_ids,
     should_expose_read_receipts,
 )
+from messenger.backend.app.crud.reaction import ReactionCRUD
 from messenger.backend.app.ws.push import send_push_to_user
 from messenger.backend.app.ws.viewing_chat import (
     clear_viewing_chat,
@@ -545,6 +546,38 @@ class ConnectionManager:
         except asyncio.CancelledError:
             await pubsub.unsubscribe(channel)
 
+    async def reactions_listener(self) -> None:
+        """Listen for reaction_update events and fan out to live sockets.
+
+        Like edits/deletions: broadcast to all local sockets; clients apply the
+        update only to a message they have loaded (and ignore the rest).
+        """
+        redis = get_redis()
+        pubsub = redis.pubsub()
+        channel = REDIS_CHAT_CHANNEL + ":reactions"
+        await pubsub.subscribe(channel)
+
+        try:
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                data = json.loads(message["data"])
+                if data.get("type") != "reaction_update":
+                    continue
+                for uid, sockets in list(self.active_connections.items()):
+                    dead = []
+                    for ws in sockets:
+                        try:
+                            await ws.send_json(data)
+                        except Exception:  # noqa: BLE001
+                            dead.append(ws)
+                    for ws in dead:
+                        sockets.discard(ws)
+                    if not sockets and uid in self.active_connections:
+                        del self.active_connections[uid]
+        except asyncio.CancelledError:
+            await pubsub.unsubscribe(channel)
+
     async def _fanout_offline_pushes(
         self,
         recipient_ids: list[int],
@@ -767,6 +800,43 @@ async def websocket_chat(websocket: WebSocket) -> None:
                                 "edited_at": _utc_iso(updated_msg.edited_at),
                             })
                             await redis.publish(REDIS_CHAT_CHANNEL + ":edits", edit_payload)
+                continue
+
+            if msg_type == "react":
+                react_message_id = msg_data.get("message_id")
+                react_chat_id = msg_data.get("chat_id")
+                react_type = msg_data.get("react_type")
+                react_emoji = msg_data.get("emoji")
+                if not (react_message_id and react_chat_id):
+                    continue
+                try:
+                    react_message_id = int(react_message_id)
+                    react_chat_id = int(react_chat_id)
+                except (TypeError, ValueError):
+                    continue
+                if not ReactionCRUD.is_valid(react_type, react_emoji):
+                    continue
+                async with AsyncSessionLocal() as db:
+                    # Reactions ARE allowed in read-only channels (audience
+                    # engagement) — gated only by membership, not by posting
+                    # rights. Channels auto-add every user, so members react.
+                    if not await cached_is_chat_member(redis, db, react_chat_id, user_id):
+                        continue
+                    if await ReactionCRUD.chat_id_for_message(db, react_message_id) != react_chat_id:
+                        continue
+                    await ReactionCRUD.toggle(db, react_message_id, user_id, react_type, react_emoji)
+                    summary = await ReactionCRUD.summary_for_message(db, react_message_id, user_id)
+                react_payload = json.dumps({
+                    "type": "reaction_update",
+                    "chat_id": react_chat_id,
+                    "message_id": react_message_id,
+                    "emoji": summary["emoji"],
+                    "aura": summary["aura"],
+                    "actor_id": user_id,
+                    "actor_emoji": summary["my_emoji"],
+                    "actor_aura": summary["my_aura"],
+                })
+                await redis.publish(REDIS_CHAT_CHANNEL + ":reactions", react_payload)
                 continue
 
             chat_id = msg_data.get("chat_id")
