@@ -8,7 +8,9 @@ function fmt(sec) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-// Static decorative bars — a lightweight "waveform" look without decoding audio.
+// Fallback bars for voice notes with no server-computed waveform (older
+// messages, or when ffmpeg decoding failed). Real notes carry a `waveform`
+// array of amplitude peaks (0..100) in attachment_meta.
 const BARS = [6, 10, 14, 9, 16, 11, 7, 13, 18, 10, 6, 12, 15, 8, 11, 14, 9, 7, 12, 16, 10, 6];
 
 /**
@@ -19,7 +21,7 @@ const BARS = [6, 10, 14, 9, 16, 11, 7, 13, 18, 10, 6, 12, 15, 8, 11, 14, 9, 7, 1
  * elapsed/total time. `durationMs` (from client meta) seeds the total before
  * the audio element reports its own duration.
  */
-export function VoiceMessage({ url, durationMs, isUploading, isOut }) {
+export function VoiceMessage({ url, durationMs, isUploading, isOut, waveform }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [cur, setCur] = useState(0);
@@ -65,6 +67,11 @@ export function VoiceMessage({ url, durationMs, isUploading, isOut }) {
 
   const progress = dur ? Math.min(1, cur / dur) : 0;
   const accent = isOut ? "#18181b" : "var(--color-lime-400)";
+  // Real amplitude peaks (0..100) computed on the server when available; else
+  // the static placeholder. The just-sent (optimistic) note has no waveform yet
+  // — it appears for everyone once the server-processed message is fetched.
+  const hasWave = Array.isArray(waveform) && waveform.length > 0;
+  const bars = hasWave ? waveform : BARS;
 
   return (
     <div className="flex items-center gap-3 py-1" style={{ width: "min(240px, 62vw)" }}>
@@ -93,11 +100,13 @@ export function VoiceMessage({ url, durationMs, isUploading, isOut }) {
           aria-label="Перемотка"
           aria-valuenow={Math.round(progress * 100)}
         >
-          {BARS.map((h, i) => {
-            const filled = (i + 1) / BARS.length <= progress;
-            // Unfilled bars use a translucent tint of the accent (not a flat
-            // white/black track) so the waveform stays visible on both light and
-            // dark bubbles — the old white track was invisible on the light theme.
+          {bars.map((v, i) => {
+            const filled = (i + 1) / bars.length <= progress;
+            // Real waveform values are 0..100 → scale to 3..20px; the static
+            // placeholder values are already pixel heights. Unfilled bars use a
+            // translucent tint of the accent (not a flat white/black track) so
+            // the waveform stays visible on both light and dark bubbles.
+            const h = hasWave ? 3 + (v / 100) * 17 : v;
             return (
               <span
                 key={i}

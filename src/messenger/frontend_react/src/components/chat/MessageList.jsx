@@ -370,6 +370,7 @@ const MessageBubble = ({
                         <VoiceMessage
                             url={msg.attachment_url}
                             durationMs={msg.attachment_meta?.duration_ms}
+                            waveform={msg.attachment_meta?.waveform}
                             isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
                             isOut={isOut}
                         />

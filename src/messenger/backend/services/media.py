@@ -14,11 +14,13 @@ Both flows raise typed exceptions so the router can translate to HTTP cleanly.
 """
 from __future__ import annotations
 
+import array
 import asyncio
 import json
 import logging
 import os
 import shutil
+import sys
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -71,6 +73,9 @@ THUMB_MAX_SIDE = 720
 IMAGE_QUALITY = 82
 THUMB_QUALITY = 82
 READ_CHUNK = 64 * 1024
+# Number of amplitude bars in a voice-note waveform (computed server-side from
+# the decoded audio and stored in attachment_meta["waveform"]).
+WAVEFORM_BUCKETS = 40
 
 # Decompression-bomb guard for Pillow.
 Image.MAX_IMAGE_PIXELS = 24_000_000
@@ -271,6 +276,81 @@ async def _strip_av_metadata(raw: bytes, ext: str) -> bytes:
                     pass
 
 
+def _pcm_to_peaks(pcm: bytes, buckets: int = WAVEFORM_BUCKETS) -> list[int] | None:
+    """Reduce signed 16-bit little-endian mono PCM to `buckets` peak amplitudes.
+
+    Each bucket is the max absolute sample in its slice, normalized so the
+    loudest bucket is 100 (relative scaling keeps quiet recordings visible).
+    Empty or pure-silence audio → None, so the caller can fall back to a static
+    placeholder waveform.
+    """
+    usable = len(pcm) - (len(pcm) % 2)
+    if usable <= 0:
+        return None
+    samples = array.array("h")
+    samples.frombytes(pcm[:usable])
+    if sys.byteorder == "big":  # ffmpeg emits little-endian; match native
+        samples.byteswap()
+    n = len(samples)
+    if n == 0:
+        return None
+    step = max(1, n // buckets)
+    peaks: list[int] = []
+    for i in range(buckets):
+        start = i * step
+        end = n if i == buckets - 1 else min(n, start + step)
+        chunk = samples[start:end]
+        peaks.append(max(max(chunk), -min(chunk)) if chunk else 0)
+    top = max(peaks)
+    if top <= 0:
+        return None
+    return [round(p * 100 / top) for p in peaks]
+
+
+async def _compute_waveform(raw: bytes, ext: str, buckets: int = WAVEFORM_BUCKETS) -> list[int] | None:
+    """Decode an audio blob to mono PCM via ffmpeg and reduce it to amplitude peaks.
+
+    Best-effort: ffmpeg missing/timeout/failure or silent audio → None and the
+    client renders a static placeholder instead. Decodes at 8 kHz mono — plenty
+    for an amplitude envelope and cheap to process.
+    """
+    if not FFMPEG_BIN:
+        return None
+    in_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as fin:
+            fin.write(raw)
+            in_path = fin.name
+        args = [
+            FFMPEG_BIN, "-v", "error", "-i", in_path,
+            "-ac", "1", "-ar", "8000", "-f", "s16le", "-",
+        ]
+        proc = await asyncio.create_subprocess_exec(
+            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            pcm, stderr = await asyncio.wait_for(proc.communicate(), timeout=FFMPEG_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            logger.warning("ffmpeg waveform decode timed out")
+            return None
+        if proc.returncode != 0 or not pcm:
+            logger.warning("ffmpeg waveform decode failed (%s)",
+                           (stderr or b"").decode("utf-8", "ignore")[:200])
+            return None
+        return _pcm_to_peaks(pcm, buckets)
+    except Exception:  # noqa: BLE001
+        logger.exception("waveform computation errored")
+        return None
+    finally:
+        if in_path and os.path.exists(in_path):
+            try:
+                os.remove(in_path)
+            except OSError:
+                pass
+
+
 async def _process_av(
     storage: S3Storage,
     user_id: int,
@@ -280,6 +360,7 @@ async def _process_av(
     allowed_mime: set[str],
     max_bytes: int,
     msg_type: str,
+    compute_waveform: bool = False,
 ) -> MediaPayload:
     """Shared path for video + voice: bound size/mime, strip metadata, store."""
     base_mime = (file.content_type or "").split(";")[0].strip()
@@ -306,6 +387,10 @@ async def _process_av(
         "content_type": base_mime,
     }
     meta.update(client_meta)
+    if compute_waveform:
+        peaks = await _compute_waveform(cleaned, ext)
+        if peaks:
+            meta["waveform"] = peaks
     return MediaPayload(
         attachment_key=full_key,
         attachment_thumb_key=None,
@@ -332,10 +417,11 @@ async def process_audio(
     file: UploadFile,
     client_meta_raw: str,
 ) -> MediaPayload:
-    """Voice note: same pipeline as video, msg_type='voice'."""
+    """Voice note: same pipeline as video, msg_type='voice', plus a waveform."""
     return await _process_av(
         storage, user_id, file, client_meta_raw,
         allowed_mime=ALLOWED_AUDIO_MIME, max_bytes=MAX_AUDIO_BYTES, msg_type="voice",
+        compute_waveform=True,
     )
 
 
