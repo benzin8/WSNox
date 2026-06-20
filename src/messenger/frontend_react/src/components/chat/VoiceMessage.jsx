@@ -65,11 +65,14 @@ export function VoiceMessage({ url, durationMs, isUploading, isOut }) {
 
   const progress = dur ? Math.min(1, cur / dur) : 0;
   const accent = isOut ? "#18181b" : "var(--color-lime-400)";
-  const track = isOut ? "rgba(0,0,0,0.25)" : "rgba(255,255,255,0.15)";
 
   return (
     <div className="flex items-center gap-3 py-1" style={{ width: "min(240px, 62vw)" }}>
-      <audio ref={audioRef} src={url} preload="metadata" />
+      {/* preload="auto" fetches the audio ahead of the first tap. With
+          "metadata" the first play could start before any samples were
+          buffered, producing a silent first play that only worked on the
+          second tap (once the data was cached). */}
+      <audio ref={audioRef} src={url} preload="auto" />
       <button
         type="button"
         onClick={toggle}
@@ -92,11 +95,14 @@ export function VoiceMessage({ url, durationMs, isUploading, isOut }) {
         >
           {BARS.map((h, i) => {
             const filled = (i + 1) / BARS.length <= progress;
+            // Unfilled bars use a translucent tint of the accent (not a flat
+            // white/black track) so the waveform stays visible on both light and
+            // dark bubbles — the old white track was invisible on the light theme.
             return (
               <span
                 key={i}
                 className="flex-1 rounded-full"
-                style={{ height: h, background: filled ? accent : track, opacity: filled ? 1 : 0.7 }}
+                style={{ height: h, background: accent, opacity: filled ? 1 : 0.32 }}
               />
             );
           })}
