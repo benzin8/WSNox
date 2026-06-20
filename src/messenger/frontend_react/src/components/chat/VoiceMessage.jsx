@@ -43,7 +43,10 @@ export function VoiceMessage({ url, durationMs, isUploading, isOut }) {
     };
   }, [url]);
 
-  const toggle = () => {
+  const toggle = (e) => {
+    // Stop the tap from bubbling to the message bubble, which would otherwise
+    // open the copy/reply action menu.
+    e?.stopPropagation();
     const a = audioRef.current;
     if (!a || isUploading) return;
     if (playing) { a.pause(); setPlaying(false); }
@@ -51,6 +54,7 @@ export function VoiceMessage({ url, durationMs, isUploading, isOut }) {
   };
 
   const seek = (e) => {
+    e.stopPropagation();
     const a = audioRef.current;
     if (!a || !dur) return;
     const rect = e.currentTarget.getBoundingClientRect();
