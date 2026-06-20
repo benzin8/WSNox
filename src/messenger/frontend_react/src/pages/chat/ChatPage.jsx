@@ -575,19 +575,40 @@ function ChatPage() {
       URL.revokeObjectURL(localUrl);
     } catch (err) {
       console.error('media upload failed', err);
-      // Wait briefly — the server may have processed the upload and is
-      // sending a WS `message_ack` even though our HTTP response was
-      // lost (slow link / proxy timeout / network blip). If the ack
-      // beats us, tempId no longer exists and this map is a no-op.
-      setTimeout(() => {
-        setMessages((prev) => prev.map((m) =>
-          m.id === tempId
-            ? { ...m, client_status: 'failed' }
-            : m,
-        ));
-      }, 2500);
+      // The upload's HTTP response can be lost (proxy/tunnel timeout, flaky
+      // mobile link) even though the server stored the message and emitted a
+      // WS `message_ack`. Give the ack a moment to reconcile; if the message
+      // is still optimistic, VERIFY against the server before showing a red
+      // "failed" — a delivered media message must never look unsent.
+      setTimeout(async () => {
+        let fresh = null;
+        try { fresh = await getMessagesByChatId(activeChat.id); } catch { /* offline */ }
+        setMessages((prev) => {
+          if (!prev.some((m) => m.id === tempId)) return prev; // WS ack already reconciled → sent
+          const known = new Set(prev.map((m) => m.id));
+          const landed = (fresh || [])
+            .filter((m) => m.sender_id === currentUser?.id
+                        && m.msg_type === msgType
+                        && !known.has(m.id))
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+          if (landed) {
+            if (landed.attachment_url) { try { URL.revokeObjectURL(localUrl); } catch { /* noop */ } }
+            return prev.map((m) => m.id === tempId ? {
+              ...m,
+              id: landed.id,
+              attachment_url: landed.attachment_url || m.attachment_url,
+              attachment_thumb_url: landed.attachment_thumb_url || landed.attachment_url || m.attachment_thumb_url,
+              attachment_meta: landed.attachment_meta || m.attachment_meta,
+              client_status: 'sent',
+              upload_progress: undefined,
+              _retry_file: undefined, _retry_caption: undefined, _retry_meta: undefined,
+            } : m);
+          }
+          return prev.map((m) => m.id === tempId ? { ...m, client_status: 'failed' } : m);
+        });
+      }, 3000);
     }
-  }, [activeChat?.id, setMessages, uploadMediaToChat]);
+  }, [activeChat?.id, setMessages, uploadMediaToChat, getMessagesByChatId, currentUser?.id]);
 
   const handleRetryMedia = useCallback((msg) => {
     if (!msg?._retry_file) return;
