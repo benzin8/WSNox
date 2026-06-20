@@ -25,7 +25,11 @@ export function MediaMessage({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef(null);
-  const url = thumbUrl || fullUrl;
+  // Prefer the full-res image in the bubble (lazy-loaded). The thumbnail was
+  // only 320px and looked blurry when upscaled on high-DPI phones; full is
+  // capped at 1920px/q82 and stays sharp. Existing photos benefit immediately
+  // (they already have a full version), not just newly uploaded ones.
+  const url = fullUrl || thumbUrl;
   // Compute the displayed aspect-ratio so the bubble doesn't jump when the
   // image finishes loading. Cap the ratio to keep portrait media compact.
   const w = meta?.width ?? meta?.original_width ?? 4;

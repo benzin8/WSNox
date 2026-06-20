@@ -65,9 +65,11 @@ _AV_EXT = {
 }
 
 IMAGE_MAX_SIDE = 1920
-THUMB_MAX_SIDE = 320
+# Thumb is shown in the chat bubble (~260 CSS px) on devices up to ~3x DPR, so
+# a 320px thumb was upscaled and looked blurry. 720px keeps it crisp there.
+THUMB_MAX_SIDE = 720
 IMAGE_QUALITY = 82
-THUMB_QUALITY = 75
+THUMB_QUALITY = 82
 READ_CHUNK = 64 * 1024
 
 # Decompression-bomb guard for Pillow.
