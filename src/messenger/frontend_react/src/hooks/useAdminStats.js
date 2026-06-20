@@ -67,6 +67,8 @@ export function useAdminStats(initialDays = 30) {
       geo: raw.geo,
       feed: raw.feed,
       retention: raw.retention,
+      breakdown: raw.breakdown,
+      health: raw.health,
       details: raw.details,
     };
   }, [raw, days, live]);

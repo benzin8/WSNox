@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Sparkles } from 'lucide-react';
+import { User, Sparkles, Megaphone, BadgeCheck } from 'lucide-react';
 import { useEnergy } from '../../features/energy';
 import { Avatar } from '../profile/Avatar';
 import { GroupAvatar } from './GroupAvatar';
@@ -37,8 +37,11 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
     <div className="flex-grow overflow-y-auto p-2 space-y-1 scrollbar-hide">
       {sortedChats.map((chat) => {
         const isSelected = activeChatId === chat.id;
+        const isChannel = chat.chat_type === "channel";
         const isGroup = chat.chat_type === "group";
-        const displayName = isGroup
+        const displayName = isChannel
+          ? (chat.name || "WSNox")
+          : isGroup
           ? (chat.name || "Группа")
           : (chat.recipient?.display_name || chat.recipient?.name || chat.name || "Чат");
         // Group preview: "{sender_display_name || username}: {message}".
@@ -67,7 +70,16 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-lime-400 rounded-r-full shadow-[0_0_10px_rgba(var(--accent-rgb),0.5)]" />
             )}
 
-            {isGroup ? (
+            {isChannel ? (
+              <div
+                className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  isSelected ? 'scale-105 shadow-lg shadow-lime-400/20' : ''
+                }`}
+                style={{ background: 'rgba(var(--accent-rgb),0.15)', border: '1px solid rgba(var(--accent-rgb),0.35)' }}
+              >
+                <Megaphone size={22} style={{ color: 'var(--color-lime-400)' }} />
+              </div>
+            ) : isGroup ? (
               <GroupAvatar
                 id={chat.id}
                 name={displayName}
@@ -90,10 +102,11 @@ export const ChatList = ({ chats, activeChatId, onSelectChat, onlineUsers }) => 
 
             <div className="flex-grow min-w-0">
               <div className="flex justify-between items-baseline mb-1">
-                <h4 className={`font-bold truncate transition-colors duration-300 ${
+                <h4 className={`font-bold truncate transition-colors duration-300 flex items-center gap-1 ${
                   isSelected ? 'text-white' : 'text-zinc-100 group-hover:text-white'
                 }`}>
-                  {displayName}
+                  <span className="truncate">{displayName}</span>
+                  {isChannel && <BadgeCheck size={15} className="shrink-0" style={{ color: 'var(--color-lime-400)' }} />}
                 </h4>
                 <span className={`text-[10px] font-medium uppercase tracking-wider transition-colors duration-300 ${
                   isSelected ? 'text-lime-400/80' : 'text-zinc-500 group-hover:text-zinc-400'

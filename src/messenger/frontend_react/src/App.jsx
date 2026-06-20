@@ -92,7 +92,7 @@ function App() {
           <Route
             path="/dashboard/users"
             element={
-              <AdminRoute>
+              <AdminRoute need="manage_users">
                 <AdminUsersPage />
               </AdminRoute>
             }

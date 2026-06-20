@@ -1,21 +1,29 @@
 import { useState, useEffect } from 'react';
+import { ROLE_LABELS } from '../../features/roles';
 
 /**
- * Confirm-модалка: чтобы выдать/снять админку, надо вписать email юзера exact match.
- * Защита от случайного клика.
+ * Confirm-модалка смены роли: выбрать новую роль из доступных + вписать email
+ * юзера exact match (защита от случайного клика).
+ *
+ * props:
+ *   open, onClose, target {id,name,email,role}
+ *   options: string[] — роли, которые актор может назначить этому таргету
+ *   onConfirm(targetId, role, email) -> Promise
  */
-export default function RoleConfirmModal({ open, onClose, target, grant, onConfirm }) {
+export default function RoleConfirmModal({ open, onClose, target, options = [], onConfirm }) {
+  const [role, setRole] = useState('');
   const [input, setInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setRole(options[0] || '');
       setInput('');
       setSubmitting(false);
       setError(null);
     }
-  }, [open]);
+  }, [open, target?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open) return undefined;
@@ -28,13 +36,15 @@ export default function RoleConfirmModal({ open, onClose, target, grant, onConfi
 
   const expected = target.email;
   const matches = input.trim().toLowerCase() === expected.toLowerCase();
+  const changed = role && role !== target.role;
+  const ready = matches && changed;
 
   const submit = async () => {
-    if (!matches) return;
+    if (!ready) return;
     setSubmitting(true);
     setError(null);
     try {
-      await onConfirm(target.id, grant, input.trim());
+      await onConfirm(target.id, role, input.trim());
       onClose();
     } catch (e) {
       setError(e.message || 'Ошибка');
@@ -66,16 +76,28 @@ export default function RoleConfirmModal({ open, onClose, target, grant, onConfi
           <div className="text-[11px] uppercase text-zinc-500 mb-1" style={{ letterSpacing: '0.16em' }}>
             Подтверждение действия
           </div>
-          <h2 className="text-xl font-bold tracking-tight">
-            {grant ? 'Выдать админку' : 'Снять админку'}
-          </h2>
+          <h2 className="text-xl font-bold tracking-tight">Изменить роль</h2>
         </div>
 
         <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-          Действие: <span className={grant ? 'text-lime-400' : 'text-red-400'}>{grant ? 'выдать' : 'снять'}</span> роль admin для{' '}
-          <span className="text-zinc-200 font-medium">{target.name}</span>{' '}
+          Пользователь <span className="text-zinc-200 font-medium">{target.name}</span>{' '}
           (<code className="text-xs text-zinc-300">{target.email}</code>).
+          Текущая роль: <span className="text-zinc-200">{ROLE_LABELS[target.role] || target.role}</span>.
         </p>
+
+        <label className="text-sm text-zinc-400 mb-1.5 block">Новая роль</label>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          disabled={submitting}
+          className="w-full px-4 py-2.5 mb-4 rounded-xl bg-zinc-900 border text-zinc-100 focus:outline-none transition-colors"
+          style={{ borderColor: 'color-mix(in oklab, var(--color-zinc-700) 70%, transparent)' }}
+        >
+          {options.map((r) => (
+            <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>
+          ))}
+        </select>
+
         <p className="text-sm text-zinc-400 mb-3">
           Для подтверждения введи email юзера ровно как выше:
         </p>
@@ -87,7 +109,7 @@ export default function RoleConfirmModal({ open, onClose, target, grant, onConfi
           placeholder={expected}
           autoFocus
           disabled={submitting}
-          onKeyDown={(e) => { if (e.key === 'Enter' && matches && !submitting) submit(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && ready && !submitting) submit(); }}
           className="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border text-zinc-100 placeholder:text-zinc-600 focus:outline-none transition-colors"
           style={{
             borderColor: matches ? 'var(--color-lime-400)' : 'color-mix(in oklab, var(--color-zinc-700) 70%, transparent)',
@@ -110,14 +132,11 @@ export default function RoleConfirmModal({ open, onClose, target, grant, onConfi
           <button
             type="button"
             onClick={submit}
-            disabled={!matches || submitting}
+            disabled={!ready || submitting}
             className="px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: grant ? 'var(--color-lime-400)' : '#ef4444',
-              color: grant ? '#09090b' : '#fff',
-            }}
+            style={{ background: 'var(--color-lime-400)', color: '#09090b' }}
           >
-            {submitting ? '…' : (grant ? 'Выдать' : 'Снять')}
+            {submitting ? '…' : 'Применить'}
           </button>
         </div>
       </div>

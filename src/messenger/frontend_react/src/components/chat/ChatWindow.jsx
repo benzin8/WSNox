@@ -1,5 +1,5 @@
 import React from "react";
-import { Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle, LogOut, Trash2 } from 'lucide-react';
+import { Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle, LogOut, Trash2, Megaphone, BadgeCheck } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 import { ChatMuteToggle } from "../../features/notifications";
@@ -17,6 +17,7 @@ export const ChatWindow = ({
 }) => {
     const [menuOpen, setMenuOpen] = React.useState(false);
     React.useEffect(() => { setMenuOpen(false); }, [activeChat?.id]);
+    const isChannel = activeChat?.chat_type === "channel";
     const isGroup = activeChat?.chat_type === "group";
     if (!activeChat) {
         return (
@@ -48,9 +49,16 @@ export const ChatWindow = ({
               type="button"
               onClick={onOpenProfile}
               className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl active:scale-[0.98] transition-all min-w-0 hover:bg-zinc-800/50"
-              title={isGroup ? "Участники группы" : "Открыть профиль"}
+              title={isChannel ? "Официальный канал WSNox" : isGroup ? "Участники группы" : "Открыть профиль"}
             >
-              {isGroup ? (
+              {isChannel ? (
+                <div
+                  className="shrink-0 w-11 h-11 rounded-full flex items-center justify-center"
+                  style={{ background: 'rgba(var(--accent-rgb),0.15)', border: '1px solid rgba(var(--accent-rgb),0.35)' }}
+                >
+                  <Megaphone size={20} style={{ color: 'var(--color-lime-400)' }} />
+                </div>
+              ) : isGroup ? (
                 <GroupAvatar
                   id={activeChat?.id}
                   name={activeChat?.name || chatName}
@@ -67,11 +75,14 @@ export const ChatWindow = ({
                 />
               )}
               <div className="text-left min-w-0">
-                <h3 className={`font-bold leading-tight truncate ${isGroup ? "text-zinc-100" : "group-hover:text-lime-400 transition-colors"}`}>
-                  {isGroup ? (activeChat?.name || chatName) : chatName}
+                <h3 className={`font-bold leading-tight truncate flex items-center gap-1 ${isGroup || isChannel ? "text-zinc-100" : "group-hover:text-lime-400 transition-colors"}`}>
+                  <span className="truncate">{isChannel ? (activeChat?.name || "WSNox") : isGroup ? (activeChat?.name || chatName) : chatName}</span>
+                  {isChannel && <BadgeCheck size={16} className="shrink-0" style={{ color: 'var(--color-lime-400)' }} />}
                 </h3>
                 <div className="flex items-center gap-1.5">
-                  {isGroup ? (
+                  {isChannel ? (
+                    <p className="text-xs font-medium text-zinc-500">Официальный канал</p>
+                  ) : isGroup ? (
                     <p className="text-xs font-medium text-zinc-500">
                       {activeChat?.member_count ? `${activeChat.member_count} участников` : "группа"}
                     </p>
@@ -91,7 +102,7 @@ export const ChatWindow = ({
           </div>
           <div className="flex items-center gap-4 text-zinc-400 relative">
             <ChatMuteToggle chatId={activeChat?.id} />
-            {!isGroup && (
+            {!isGroup && !isChannel && (
               <Phone size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
             )}
             <button
@@ -139,24 +150,31 @@ export const ChatWindow = ({
           messages={messages}
           setMessages={setMessages}
           messagesEndRef={messagesEndRef}
-          onReply={onReply}
-          onDeleteMessage={onDeleteMessage}
-          onEditMessage={onEditMessage}
+          onReply={isChannel ? undefined : onReply}
+          onDeleteMessage={isChannel ? undefined : onDeleteMessage}
+          onEditMessage={isChannel ? undefined : onEditMessage}
           onRetryMedia={onRetryMedia}
           isGroup={isGroup}
         />
-        <InputArea
-          inputText={inputText}
-          setInputText={setInputText}
-          sendMessage={sendMessage}
-          isConnected={isConnected}
-          replyTo={replyTo}
-          onCancelReply={onCancelReply}
-          editingMessage={editingMessage}
-          onCancelEdit={onCancelEdit}
-          onConfirmEdit={onConfirmEdit}
-          onPickMedia={onPickMedia}
-        />
+        {isChannel ? (
+          <div className="flex-shrink-0 flex items-center justify-center gap-2 px-6 py-4 border-t border-zinc-800/80 bg-zinc-950/90 text-zinc-500 text-sm">
+            <Megaphone size={16} style={{ color: 'var(--color-lime-400)' }} />
+            <span>Только команда WSNox может писать в этот канал</span>
+          </div>
+        ) : (
+          <InputArea
+            inputText={inputText}
+            setInputText={setInputText}
+            sendMessage={sendMessage}
+            isConnected={isConnected}
+            replyTo={replyTo}
+            onCancelReply={onCancelReply}
+            editingMessage={editingMessage}
+            onCancelEdit={onCancelEdit}
+            onConfirmEdit={onConfirmEdit}
+            onPickMedia={onPickMedia}
+          />
+        )}
       </div>
     );
 };

@@ -20,6 +20,9 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # RBAC role: 'user' | 'moderator' | 'admin' | 'owner' (see core.permissions).
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="user", server_default="user")
+    # Legacy boolean, kept in sync with role (True for admin/owner) for backward compat.
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 

@@ -104,7 +104,7 @@ function ChatPage() {
           deleteChat,
   } = useChatAction();
   const { fetchMyProfile, fetchUserProfile, updateMyProfile } = useProfile();
-  const { isAdmin } = useIsAdmin();
+  const { canViewDashboard } = useIsAdmin();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
   const { orb, settleInChat, randomInChat } = useEnergy();
@@ -649,9 +649,9 @@ function ChatPage() {
   const handleSelectChat = async (selectedChat) => {
     setChatListBlurred(false);
     randomInChat();
-    if (selectedChat.chat_type === "group") {
+    if (selectedChat.chat_type === "group" || selectedChat.chat_type === "channel") {
       setActiveChat(selectedChat);
-      setChatName(selectedChat.name || "Группа");
+      setChatName(selectedChat.name || (selectedChat.chat_type === "channel" ? "WSNox" : "Группа"));
       setMobileView('chat');
       setReplyTo(null);
       setEditingMessage(null);
@@ -820,7 +820,7 @@ function ChatPage() {
             }`}>
             <SidebarHeader
               myProfile={myProfile}
-              isAdmin={isAdmin}
+              isAdmin={canViewDashboard}
               onOpenOwnProfile={handleOpenOwnProfile}
               onOpenEditProfile={async (tab = "profile") => {
                 await handleOpenOwnProfile();

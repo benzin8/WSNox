@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.ws.presence import PRESENCE_KEY_PREFIX
+from messenger.backend.models.chat import Chat
 from messenger.backend.models.message import Message
 from messenger.backend.models.user import User
 
@@ -194,3 +195,141 @@ async def live_msgs_per_min(session: AsyncSession, now: datetime | None = None) 
     stmt = select(func.count()).where(Message.created_at >= minute_ago)
     result = await session.execute(stmt)
     return result.scalar() or 0
+
+
+async def retention(session: AsyncSession, now: datetime | None = None) -> dict:
+    """Rolling activity retention (честный прокси без event-логов).
+
+    Для каждого окна N: из юзеров, зарегистрированных РАНЬШЕ чем N дней назад,
+    какая доля была активна (last_seen) за последние N дней. Не строгая
+    cohort-аналитика, но реальный показатель «возвращаемости» из имеющихся
+    колонок created_at + last_seen.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+    out: dict[str, float] = {}
+    for n in (1, 7, 30):
+        cutoff = now - timedelta(days=n)
+        cohort = (
+            await session.execute(
+                select(func.count()).where(User.created_at < cutoff)
+            )
+        ).scalar() or 0
+        if not cohort:
+            out[f"d{n}"] = 0.0
+            continue
+        retained = (
+            await session.execute(
+                select(func.count()).where(
+                    User.created_at < cutoff, User.last_seen >= cutoff
+                )
+            )
+        ).scalar() or 0
+        out[f"d{n}"] = round(retained / cohort * 100, 1)
+    return out
+
+
+async def funnel(session: AsyncSession, now: datetime | None = None) -> list[dict]:
+    """Воронка: регистрация → написал сообщение → активен за 7 дней."""
+    if now is None:
+        now = datetime.now(timezone.utc)
+    total = await _total(session, User)
+    senders = (
+        await session.execute(select(func.count(func.distinct(Message.sender_id))))
+    ).scalar() or 0
+    week_ago = now - timedelta(days=7)
+    active = (
+        await session.execute(select(func.count()).where(User.last_seen >= week_ago))
+    ).scalar() or 0
+
+    def pct(x: int) -> float:
+        return round(x / total * 100, 1) if total else 0.0
+
+    return [
+        {"stage": "Регистрация", "count": total, "pct": 100.0 if total else 0.0},
+        {"stage": "Написал сообщение", "count": senders, "pct": pct(senders)},
+        {"stage": "Активен (7д)", "count": active, "pct": pct(active)},
+    ]
+
+
+async def recent_signups(session: AsyncSession, limit: int = 12) -> list[dict]:
+    """Лента последних регистраций (username + время) для админ-фида.
+
+    Приватность: только админ-видимая идентичность (как в списке юзеров) и
+    время; НИКАКОГО содержимого сообщений.
+    """
+    stmt = (
+        select(User.username, User.name, User.created_at)
+        .order_by(User.created_at.desc())
+        .limit(limit)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        {
+            "type": "signup",
+            "username": r[0],
+            "name": r[1],
+            "at": r[2].isoformat() if r[2] is not None else None,
+        }
+        for r in rows
+    ]
+
+
+async def breakdowns(session: AsyncSession) -> dict:
+    """Агрегатные разбивки: типы сообщений, типы чатов, доля медиа/реплаев."""
+    mt_rows = (
+        await session.execute(
+            select(Message.msg_type, func.count()).group_by(Message.msg_type)
+        )
+    ).all()
+    msg_types = {(row[0] or "text"): row[1] for row in mt_rows}
+    total_msgs = sum(msg_types.values())
+
+    ct_rows = (
+        await session.execute(
+            select(Chat.chat_type, func.count()).group_by(Chat.chat_type)
+        )
+    ).all()
+    chat_types = {(row[0] or "private"): row[1] for row in ct_rows}
+
+    media = (
+        await session.execute(
+            select(func.count()).where(Message.attachment_key.isnot(None))
+        )
+    ).scalar() or 0
+    replies = (
+        await session.execute(
+            select(func.count()).where(Message.reply_to_id.isnot(None))
+        )
+    ).scalar() or 0
+
+    return {
+        "msg_types": msg_types,
+        "chat_types": chat_types,
+        "media_pct": round(media / total_msgs * 100, 1) if total_msgs else 0.0,
+        "reply_pct": round(replies / total_msgs * 100, 1) if total_msgs else 0.0,
+    }
+
+
+async def health(session: AsyncSession, redis: Redis) -> dict:
+    """Состояние системы: доступность БД/Redis, флаг кэша, тоталы."""
+    from messenger.backend.core.config import settings
+
+    db_ok = True
+    try:
+        await session.execute(select(1))
+    except Exception:  # noqa: BLE001
+        db_ok = False
+    redis_ok = True
+    try:
+        await redis.ping()
+    except Exception:  # noqa: BLE001
+        redis_ok = False
+    return {
+        "db_ok": db_ok,
+        "redis_ok": redis_ok,
+        "cache_enabled": bool(settings.cache_data_enabled),
+        "users": await _total(session, User),
+        "messages": await _total(session, Message),
+        "chats": await _total(session, Chat),
+    }

@@ -1,137 +1,91 @@
-"""Smoke-тесты эндпойнтов /api/admin/*: shape, auth-gate."""
+"""Smoke-тесты эндпойнтов /api/admin/*: RBAC-гейты, роли, shape."""
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-from messenger.backend.app.api_v1.auth.dependencies import (
-    get_current_admin,
-    get_current_user,
-)
+from messenger.backend.app.api_v1.auth.dependencies import get_current_user
 from messenger.backend.app.main import app
+from messenger.backend.core.identity import CachedUser
+from messenger.backend.core.permissions import is_admin_role
 from messenger.backend.db import get_db_session
 from messenger.backend.models.user import User
 
 
-def _make_user(is_admin: bool = False, user_id: int = 1, email: str = "a@example.com") -> User:
-    u = User(id=user_id, name="A", username=f"u{user_id}", email=email, hashed_password="x")
-    u.is_admin = is_admin
+def _cached(role: str = "user", user_id: int = 1, email: str = "a@example.com") -> CachedUser:
+    """Снимок текущего юзера (то, что реально возвращает get_current_user)."""
+    return CachedUser(
+        id=user_id,
+        is_admin=is_admin_role(role),
+        username=f"u{user_id}",
+        name="A",
+        email=email,
+        phone_number=None,
+        created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        last_seen=None,
+        role=role,
+    )
+
+
+def _target(role: str = "user", user_id: int = 2, email: str = "bob@example.com") -> User:
+    u = User(id=user_id, name="Bob", username=f"u{user_id}", email=email, hashed_password="x")
+    u.role = role
+    u.is_admin = is_admin_role(role)
     u.created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
     u.last_seen = None
     return u
 
 
-def test_admin_me_returns_is_admin_true_for_admin():
-    app.dependency_overrides[get_current_user] = lambda: _make_user(is_admin=True)
-    try:
-        with TestClient(app) as c:
-            r = c.get("/api/admin/me", headers={"Authorization": "Bearer x"})
-            assert r.status_code == 200
-            assert r.json() == {"is_admin": True}
-    finally:
-        app.dependency_overrides.clear()
-
-
-def test_admin_me_returns_is_admin_false_for_user():
-    app.dependency_overrides[get_current_user] = lambda: _make_user(is_admin=False)
-    try:
-        with TestClient(app) as c:
-            r = c.get("/api/admin/me", headers={"Authorization": "Bearer x"})
-            assert r.status_code == 200
-            assert r.json() == {"is_admin": False}
-    finally:
-        app.dependency_overrides.clear()
-
-
-def test_admin_stats_forbidden_for_non_admin():
-    app.dependency_overrides[get_current_user] = lambda: _make_user(is_admin=False)
-    try:
-        with TestClient(app) as c:
-            r = c.get("/api/admin/stats", headers={"Authorization": "Bearer x"})
-            assert r.status_code == 403
-    finally:
-        app.dependency_overrides.clear()
-
-
-def test_admin_set_role_requires_matching_confirm_email():
-    """Even an admin gets 400 if confirm_email doesn't match target.email."""
-    target = _make_user(is_admin=False, user_id=2, email="bob@example.com")
-
-    # mock session: target lookup returns bob
+def _session_returning(target):
     session = MagicMock()
     result = MagicMock()
     result.scalar_one_or_none = MagicMock(return_value=target)
     session.execute = AsyncMock(return_value=result)
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
+    return session
 
-    app.dependency_overrides[get_current_admin] = lambda: _make_user(is_admin=True, user_id=1, email="admin@example.com")
-    app.dependency_overrides[get_db_session] = lambda: session
 
+def test_admin_me_returns_role_and_permissions_for_admin():
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="admin")
     try:
         with TestClient(app) as c:
-            r = c.patch(
-                "/api/admin/users/2/admin",
-                json={"is_admin": True, "confirm_email": "WRONG@example.com"},
-                headers={"Authorization": "Bearer x"},
-            )
-            assert r.status_code == 400
-            assert "не совпадает" in r.json()["detail"].lower()
-            # БД не должна была коммитить
-            session.commit.assert_not_called()
+            r = c.get("/api/admin/me", headers={"Authorization": "Bearer x"})
+            assert r.status_code == 200
+            body = r.json()
+            assert body["is_admin"] is True
+            assert body["role"] == "admin"
+            assert "view_dashboard" in body["permissions"]
+            assert "manage_roles" in body["permissions"]
     finally:
         app.dependency_overrides.clear()
 
 
-def test_admin_set_role_grants_when_confirm_matches():
-    target = _make_user(is_admin=False, user_id=2, email="bob@example.com")
-    session = MagicMock()
-    result = MagicMock()
-    result.scalar_one_or_none = MagicMock(return_value=target)
-    session.execute = AsyncMock(return_value=result)
-    session.commit = AsyncMock()
-    session.refresh = AsyncMock()
-
-    app.dependency_overrides[get_current_admin] = lambda: _make_user(is_admin=True, user_id=1, email="admin@example.com")
-    app.dependency_overrides[get_db_session] = lambda: session
-
+def test_admin_me_for_plain_user():
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="user")
     try:
         with TestClient(app) as c:
-            r = c.patch(
-                "/api/admin/users/2/admin",
-                json={"is_admin": True, "confirm_email": "bob@example.com"},
-                headers={"Authorization": "Bearer x"},
-            )
-            assert r.status_code == 200, r.text
-            assert r.json()["is_admin"] is True
-            assert target.is_admin is True
-            session.commit.assert_called_once()
+            r = c.get("/api/admin/me", headers={"Authorization": "Bearer x"})
+            assert r.status_code == 200
+            body = r.json()
+            assert body["is_admin"] is False
+            assert body["role"] == "user"
+            assert body["permissions"] == []
     finally:
         app.dependency_overrides.clear()
 
 
-def test_admin_cannot_revoke_own_admin():
-    """Защита от lock-out: нельзя снять админку с самого себя."""
-    me = _make_user(is_admin=True, user_id=1, email="admin@example.com")
-    app.dependency_overrides[get_current_admin] = lambda: me
+def test_stats_forbidden_for_user_allowed_for_moderator():
+    # plain user -> 403
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="user")
     try:
         with TestClient(app) as c:
-            r = c.patch(
-                "/api/admin/users/1/admin",
-                json={"is_admin": False, "confirm_email": "admin@example.com"},
-                headers={"Authorization": "Bearer x"},
-            )
-            assert r.status_code == 400
-            assert "себя" in r.json()["detail"].lower()
+            assert c.get("/api/admin/stats", headers={"Authorization": "Bearer x"}).status_code == 403
     finally:
         app.dependency_overrides.clear()
 
-
-def test_admin_stats_returns_full_shape_for_admin():
-    """Admin → 200, shape с реальными + placeholder полями."""
-    app.dependency_overrides[get_current_user] = lambda: _make_user(is_admin=True)
-    app.dependency_overrides[get_current_admin] = lambda: _make_user(is_admin=True)
-
+    # moderator has view_dashboard -> not 403 (stats build is mocked elsewhere; here just gate)
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="moderator")
     with patch("messenger.backend.app.api_v1.routers.admin_router.analytics") as m:
         m.reg_series = AsyncMock(return_value=[0] * 90)
         m.msg_series = AsyncMock(return_value=[0] * 90)
@@ -142,24 +96,233 @@ def test_admin_stats_returns_full_shape_for_admin():
         m.kpi_dau = AsyncMock(return_value={"value": 0, "mau": 0, "stickiness": 0.0, "deltas": {"7": 0.0, "30": 0.0, "90": 0.0}})
         m.live_online = AsyncMock(return_value=0)
         m.live_msgs_per_min = AsyncMock(return_value=0)
+        m.funnel = AsyncMock(return_value=[])
+        m.recent_signups = AsyncMock(return_value=[])
+        m.retention = AsyncMock(return_value={})
+        m.breakdowns = AsyncMock(return_value={})
+        m.health = AsyncMock(return_value={})
+        try:
+            with TestClient(app) as c:
+                assert c.get("/api/admin/stats", headers={"Authorization": "Bearer x"}).status_code == 200
+        finally:
+            app.dependency_overrides.clear()
 
+
+def test_users_list_forbidden_for_moderator():
+    """Moderator can view dashboard but NOT manage users."""
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="moderator")
+    try:
+        with TestClient(app) as c:
+            assert c.get("/api/admin/users", headers={"Authorization": "Bearer x"}).status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_set_role_requires_matching_confirm_email():
+    target = _target(role="user")
+    session = _session_returning(target)
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="owner", user_id=1, email="owner@example.com")
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        with TestClient(app) as c:
+            r = c.patch(
+                "/api/admin/users/2/admin",
+                json={"role": "admin", "confirm_email": "WRONG@example.com"},
+                headers={"Authorization": "Bearer x"},
+            )
+            assert r.status_code == 400
+            assert "не совпадает" in r.json()["detail"].lower()
+            session.commit.assert_not_called()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_owner_grants_admin_role():
+    target = _target(role="user")
+    session = _session_returning(target)
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="owner", user_id=1, email="owner@example.com")
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        with TestClient(app) as c:
+            r = c.patch(
+                "/api/admin/users/2/admin",
+                json={"role": "admin", "confirm_email": "bob@example.com"},
+                headers={"Authorization": "Bearer x"},
+            )
+            assert r.status_code == 200, r.text
+            assert r.json()["role"] == "admin"
+            assert r.json()["is_admin"] is True
+            assert target.role == "admin"
+            assert target.is_admin is True
+            session.commit.assert_called_once()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_legacy_is_admin_body_still_works():
+    """Old frontend sending {is_admin: true} maps to role=admin."""
+    target = _target(role="user")
+    session = _session_returning(target)
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="owner", user_id=1, email="owner@example.com")
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        with TestClient(app) as c:
+            r = c.patch(
+                "/api/admin/users/2/admin",
+                json={"is_admin": True, "confirm_email": "bob@example.com"},
+                headers={"Authorization": "Bearer x"},
+            )
+            assert r.status_code == 200, r.text
+            assert target.role == "admin"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_cannot_assign_admin_role():
+    """Hierarchy: an admin may not grant the admin role (only owner can)."""
+    target = _target(role="user")
+    session = _session_returning(target)
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="admin", user_id=1, email="admin@example.com")
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        with TestClient(app) as c:
+            r = c.patch(
+                "/api/admin/users/2/admin",
+                json={"role": "admin", "confirm_email": "bob@example.com"},
+                headers={"Authorization": "Bearer x"},
+            )
+            assert r.status_code == 403
+            session.commit.assert_not_called()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_can_assign_moderator_role():
+    target = _target(role="user")
+    session = _session_returning(target)
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="admin", user_id=1, email="admin@example.com")
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        with TestClient(app) as c:
+            r = c.patch(
+                "/api/admin/users/2/admin",
+                json={"role": "moderator", "confirm_email": "bob@example.com"},
+                headers={"Authorization": "Bearer x"},
+            )
+            assert r.status_code == 200, r.text
+            assert target.role == "moderator"
+            assert target.is_admin is False
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_cannot_change_own_role():
+    me = _cached(role="owner", user_id=1, email="owner@example.com")
+    app.dependency_overrides[get_current_user] = lambda: me
+    try:
+        with TestClient(app) as c:
+            r = c.patch(
+                "/api/admin/users/1/admin",
+                json={"role": "user", "confirm_email": "owner@example.com"},
+                headers={"Authorization": "Bearer x"},
+            )
+            assert r.status_code == 400
+            assert "роль" in r.json()["detail"].lower()
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_admin_stats_returns_full_shape():
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="admin")
+    with patch("messenger.backend.app.api_v1.routers.admin_router.analytics") as m:
+        m.reg_series = AsyncMock(return_value=[0] * 90)
+        m.msg_series = AsyncMock(return_value=[0] * 90)
+        m.dau_series = AsyncMock(return_value=[0] * 90)
+        m.labels_series = MagicMock(return_value=["3.3"] * 90)
+        m.kpi_users = AsyncMock(return_value={"total": 0, "deltas": {"7": 0.0, "30": 0.0, "90": 0.0}})
+        m.kpi_msgs = AsyncMock(return_value={"total": 0, "deltas": {"7": 0.0, "30": 0.0, "90": 0.0}})
+        m.kpi_dau = AsyncMock(return_value={"value": 0, "mau": 0, "stickiness": 0.0, "deltas": {"7": 0.0, "30": 0.0, "90": 0.0}})
+        m.live_online = AsyncMock(return_value=0)
+        m.live_msgs_per_min = AsyncMock(return_value=0)
+        m.funnel = AsyncMock(return_value=[])
+        m.recent_signups = AsyncMock(return_value=[])
+        m.retention = AsyncMock(return_value={})
+        m.breakdowns = AsyncMock(return_value={})
+        m.health = AsyncMock(return_value={})
         try:
             with TestClient(app) as c:
                 r = c.get("/api/admin/stats", headers={"Authorization": "Bearer x"})
                 assert r.status_code == 200, r.text
                 data = r.json()
-                # реальные поля
                 assert len(data["regs"]) == 90
-                assert len(data["msgs"]) == 90
-                assert len(data["dau"]) == 90
                 assert len(data["labels"]) == 90
                 assert data["kpis"]["users"]["total"] == 0
                 assert data["live"]["online"] == 0
-                # placeholder поля = null
                 assert data["kpis"]["problems"] is None
-                assert data["live"]["ws_connections"] is None
-                assert data["funnel"] is None
-                assert data["geo"] is None
-                assert data["retention"] is None
         finally:
             app.dependency_overrides.clear()
+
+
+def test_role_change_records_audit_entry():
+    from messenger.backend.models.role_audit import RoleAuditLog
+    target = _target(role="user")
+    session = _session_returning(target)
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="owner", user_id=1, email="owner@example.com")
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        with TestClient(app) as c:
+            r = c.patch(
+                "/api/admin/users/2/admin",
+                json={"role": "admin", "confirm_email": "bob@example.com"},
+                headers={"Authorization": "Bearer x"},
+            )
+            assert r.status_code == 200, r.text
+            added = [a.args[0] for a in session.add.call_args_list]
+            audits = [x for x in added if isinstance(x, RoleAuditLog)]
+            assert len(audits) == 1
+            assert audits[0].old_role == "user" and audits[0].new_role == "admin"
+            assert audits[0].actor_email == "owner@example.com"
+            assert audits[0].target_email == "bob@example.com"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_audit_endpoint_forbidden_for_user():
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="user")
+    try:
+        with TestClient(app) as c:
+            assert c.get("/api/admin/audit", headers={"Authorization": "Bearer x"}).status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_audit_endpoint_returns_entries_for_admin():
+    from datetime import datetime, timezone
+    from messenger.backend.models.role_audit import RoleAuditLog
+    entry = RoleAuditLog(
+        actor_id=1, actor_email="owner@example.com",
+        target_id=2, target_email="bob@example.com",
+        old_role="user", new_role="moderator",
+    )
+    entry.id = 5
+    entry.created_at = datetime(2026, 6, 20, tzinfo=timezone.utc)
+
+    session = MagicMock()
+    result = MagicMock()
+    scalars = MagicMock()
+    scalars.all = MagicMock(return_value=[entry])
+    result.scalars = MagicMock(return_value=scalars)
+    session.execute = AsyncMock(return_value=result)
+
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="admin")
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        with TestClient(app) as c:
+            r = c.get("/api/admin/audit", headers={"Authorization": "Bearer x"})
+            assert r.status_code == 200, r.text
+            body = r.json()
+            assert len(body) == 1
+            assert body[0]["new_role"] == "moderator"
+            assert body[0]["actor_email"] == "owner@example.com"
+    finally:
+        app.dependency_overrides.clear()

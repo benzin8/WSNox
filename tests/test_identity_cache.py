@@ -18,6 +18,7 @@ def _orm_user(user_id: int = 7, is_admin: bool = False) -> User:
         phone_number="+79991234567",
         hashed_password="secret-hash",
     )
+    u.role = "admin" if is_admin else "user"
     u.is_admin = is_admin
     u.created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
     u.last_seen = None
@@ -184,7 +185,7 @@ async def test_admin_set_role_busts_identity_cache(fake_redis, monkeypatch):
     """admin_set_role: после commit DEL cache:user:auth:{target_id}."""
     from httpx import ASGITransport, AsyncClient
 
-    from messenger.backend.app.api_v1.auth.dependencies import get_current_admin
+    from messenger.backend.app.api_v1.auth.dependencies import get_current_user
     from messenger.backend.app.main import app
     from messenger.backend.core import redis as redis_module
     from messenger.backend.db import get_db_session
@@ -201,9 +202,13 @@ async def test_admin_set_role_busts_identity_cache(fake_redis, monkeypatch):
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
 
-    admin = CachedUser.from_orm(_orm_user(user_id=1, is_admin=True))
+    # Actor must be owner to grant the admin role (hierarchy).
+    owner = CachedUser(
+        id=1, is_admin=True, username="owner", name="O", email="owner@example.com",
+        phone_number=None, created_at=None, last_seen=None, role="owner",
+    )
 
-    app.dependency_overrides[get_current_admin] = lambda: admin
+    app.dependency_overrides[get_current_user] = lambda: owner
     app.dependency_overrides[get_db_session] = lambda: session
     try:
         transport = ASGITransport(app=app)

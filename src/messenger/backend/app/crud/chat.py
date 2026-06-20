@@ -304,7 +304,7 @@ class ChatCRUD:
                 MessageRead,
                 (MessageRead.message_id == Message.id) & (MessageRead.user_id == current_user_id),
             )
-            .where(Chat.chat_type == "group")
+            .where(Chat.chat_type.in_(("group", "channel")))
             .where(Message.sender_id != current_user_id)
             .where(MessageRead.message_id.is_(None))
             .group_by(Message.chat_id)
@@ -379,7 +379,7 @@ class ChatCRUD:
                 (MessageRead.message_id == Message.id)
                 & (MessageRead.user_id == current_user_id),
             )
-            .where(Chat.chat_type == "group")
+            .where(Chat.chat_type.in_(("group", "channel")))
             .where(Message.sender_id != current_user_id)
             .where(MessageRead.message_id.is_(None))
         )

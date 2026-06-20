@@ -18,6 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.core.cache import USER_AUTH_TTL, user_auth
 from messenger.backend.core.config import settings
+from messenger.backend.core.permissions import (
+    has_permission,
+    is_admin_role,
+    normalize_role,
+)
 from messenger.backend.models.user import User
 
 
@@ -31,26 +36,35 @@ class CachedUser:
     phone_number: Optional[str]
     created_at: Optional[datetime]
     last_seen: Optional[datetime]
+    role: str = "user"
 
     @classmethod
     def from_orm(cls, user: User) -> "CachedUser":
         """Построить снимок из ORM-строки User."""
+        role = normalize_role(getattr(user, "role", None))
         return cls(
             id=user.id,
-            is_admin=bool(user.is_admin),
+            # is_admin is derived from role (role is the source of truth).
+            is_admin=is_admin_role(role),
             username=user.username,
             name=user.name,
             email=user.email,
             phone_number=user.phone_number,
             created_at=user.created_at,
             last_seen=user.last_seen,
+            role=role,
         )
+
+    def has(self, permission: str) -> bool:
+        """True if this user's role grants `permission`."""
+        return has_permission(self.role, permission)
 
     def to_dict(self) -> dict:
         """JSON-safe dict (datetime -> ISO-строка) для json.dumps."""
         return {
             "id": self.id,
             "is_admin": self.is_admin,
+            "role": self.role,
             "username": self.username,
             "name": self.name,
             "email": self.email,
@@ -64,15 +78,17 @@ class CachedUser:
         """Восстановить снимок из dict (после json.loads)."""
         created_at = data.get("created_at")
         last_seen = data.get("last_seen")
+        role = normalize_role(data.get("role"))
         return cls(
             id=data["id"],
-            is_admin=data["is_admin"],
+            is_admin=data.get("is_admin", is_admin_role(role)),
             username=data["username"],
             name=data["name"],
             email=data["email"],
             phone_number=data.get("phone_number"),
             created_at=datetime.fromisoformat(created_at) if created_at is not None else None,
             last_seen=datetime.fromisoformat(last_seen) if last_seen is not None else None,
+            role=role,
         )
 
 

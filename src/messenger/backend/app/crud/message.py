@@ -182,7 +182,7 @@ class MessageCRUD:
                 (MessageRead.message_id == Message.id) & (MessageRead.user_id == user_id),
             )
             .where(Message.chat_id == chat_id)
-            .where(Chat.chat_type == "group")
+            .where(Chat.chat_type.in_(("group", "channel")))
             .where(Message.sender_id != user_id)
             .where(MessageRead.message_id.is_(None))
         )

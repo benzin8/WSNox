@@ -27,6 +27,10 @@ class UserCRUD:
 
             await ProfileCRUD.create_default_profile(session, user.id, user_data.name)
 
+            # Auto-join the official WSNox announcements channel.
+            from messenger.backend.services.announcements import join_channel
+            await join_channel(session, user.id)
+
             await session.commit()
             await session.refresh(user)
             return user
