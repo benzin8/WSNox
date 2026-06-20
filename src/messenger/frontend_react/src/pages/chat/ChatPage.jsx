@@ -209,6 +209,7 @@ function ChatPage() {
         let previewText = lastReceivedMessage.text;
         if (!previewText && lastReceivedMessage.msg_type === "image") previewText = "📷 Фото";
         else if (!previewText && lastReceivedMessage.msg_type === "video") previewText = "🎥 Видео";
+        else if (!previewText && lastReceivedMessage.msg_type === "voice") previewText = "🎤 Голосовое сообщение";
         const updatedChat = {
           ...prevChats[idx],
           last_message: previewText,
@@ -225,9 +226,11 @@ function ChatPage() {
     } else if (lastReceivedMessage.chat_info) {
       setChats(prevChats => {
         if (prevChats.some(c => c.id === lastReceivedMessage.chat_info.id)) return prevChats;
+        const t = lastReceivedMessage.msg_type;
         const newChat = {
           ...lastReceivedMessage.chat_info,
-          last_message: lastReceivedMessage.text,
+          last_message: lastReceivedMessage.text
+            || (t === "image" ? "📷 Фото" : t === "video" ? "🎥 Видео" : t === "voice" ? "🎤 Голосовое сообщение" : ""),
           last_message_time: new Date().toISOString(),
           unread_count: 1,
         };
