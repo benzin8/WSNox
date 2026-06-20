@@ -261,3 +261,68 @@ def test_admin_stats_returns_full_shape():
                 assert data["kpis"]["problems"] is None
         finally:
             app.dependency_overrides.clear()
+
+
+def test_role_change_records_audit_entry():
+    from messenger.backend.models.role_audit import RoleAuditLog
+    target = _target(role="user")
+    session = _session_returning(target)
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="owner", user_id=1, email="owner@example.com")
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        with TestClient(app) as c:
+            r = c.patch(
+                "/api/admin/users/2/admin",
+                json={"role": "admin", "confirm_email": "bob@example.com"},
+                headers={"Authorization": "Bearer x"},
+            )
+            assert r.status_code == 200, r.text
+            added = [a.args[0] for a in session.add.call_args_list]
+            audits = [x for x in added if isinstance(x, RoleAuditLog)]
+            assert len(audits) == 1
+            assert audits[0].old_role == "user" and audits[0].new_role == "admin"
+            assert audits[0].actor_email == "owner@example.com"
+            assert audits[0].target_email == "bob@example.com"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_audit_endpoint_forbidden_for_user():
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="user")
+    try:
+        with TestClient(app) as c:
+            assert c.get("/api/admin/audit", headers={"Authorization": "Bearer x"}).status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_audit_endpoint_returns_entries_for_admin():
+    from datetime import datetime, timezone
+    from messenger.backend.models.role_audit import RoleAuditLog
+    entry = RoleAuditLog(
+        actor_id=1, actor_email="owner@example.com",
+        target_id=2, target_email="bob@example.com",
+        old_role="user", new_role="moderator",
+    )
+    entry.id = 5
+    entry.created_at = datetime(2026, 6, 20, tzinfo=timezone.utc)
+
+    session = MagicMock()
+    result = MagicMock()
+    scalars = MagicMock()
+    scalars.all = MagicMock(return_value=[entry])
+    result.scalars = MagicMock(return_value=scalars)
+    session.execute = AsyncMock(return_value=result)
+
+    app.dependency_overrides[get_current_user] = lambda: _cached(role="admin")
+    app.dependency_overrides[get_db_session] = lambda: session
+    try:
+        with TestClient(app) as c:
+            r = c.get("/api/admin/audit", headers={"Authorization": "Bearer x"})
+            assert r.status_code == 200, r.text
+            body = r.json()
+            assert len(body) == 1
+            assert body[0]["new_role"] == "moderator"
+            assert body[0]["actor_email"] == "owner@example.com"
+    finally:
+        app.dependency_overrides.clear()

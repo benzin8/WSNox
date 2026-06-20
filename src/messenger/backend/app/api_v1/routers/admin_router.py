@@ -19,6 +19,7 @@ from messenger.backend.app.api_v1.schemas.admin import (
     DashboardStats,
     KpisBlock,
     LiveBlock,
+    RoleAuditEntry,
 )
 from messenger.backend.core.cache import invalidate, user_auth
 from messenger.backend.core.permissions import (
@@ -34,6 +35,7 @@ from messenger.backend.core.permissions import (
 )
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db import get_db_session
+from messenger.backend.models.role_audit import RoleAuditLog
 from messenger.backend.models.user import User
 from messenger.backend.services import analytics
 from messenger.backend.services.avatar_urls import resolve_avatar_urls
@@ -167,6 +169,19 @@ async def admin_live(
     return LiveBlock.model_validate(data)
 
 
+@admin_router.get("/audit", response_model=list[RoleAuditEntry])
+async def admin_role_audit(
+    _admin: User = Depends(require_permission(PERM_MANAGE_ROLES)),
+    session: AsyncSession = Depends(get_db_session),
+) -> list[RoleAuditEntry]:
+    """Журнал изменений ролей (последние 100). Только метаданные RBAC-действий —
+    никакого приватного контента пользователей."""
+    rows = await session.execute(
+        select(RoleAuditLog).order_by(RoleAuditLog.created_at.desc()).limit(100)
+    )
+    return [RoleAuditEntry.model_validate(r, from_attributes=True) for r in rows.scalars().all()]
+
+
 def _user_row(u: User, avatar_thumb_url: str | None = None) -> AdminUserRow:
     return AdminUserRow(
         id=u.id, name=u.name, email=u.email, username=u.username,
@@ -251,6 +266,14 @@ async def admin_set_role(
 
     target.role = new_role
     target.is_admin = is_admin_role(new_role)
+    session.add(RoleAuditLog(
+        actor_id=current_admin.id,
+        actor_email=current_admin.email,
+        target_id=target.id,
+        target_email=target.email,
+        old_role=target_role,
+        new_role=new_role,
+    ))
     await session.commit()
     await session.refresh(target)
     await invalidate(get_redis(), user_auth(target.id))

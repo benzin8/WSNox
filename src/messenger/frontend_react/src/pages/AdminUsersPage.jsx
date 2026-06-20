@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import AmbientGlow from '../components/dashboard/AmbientGlow';
 import RoleConfirmModal from '../components/dashboard/RoleConfirmModal';
+import RoleAuditPanel from '../components/dashboard/RoleAuditPanel';
 import { Avatar } from '../components/profile/Avatar';
 import { useAdminUsers } from '../hooks/useAdminUsers';
 import { useIsAdmin } from '../hooks/useIsAdmin';
@@ -25,6 +26,7 @@ export default function AdminUsersPage() {
   const { role: actorRole, canManageRoles } = useIsAdmin();
   const [query, setQuery] = useState('');
   const [pendingTarget, setPendingTarget] = useState(null);
+  const [showAudit, setShowAudit] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -138,6 +140,18 @@ export default function AdminUsersPage() {
               <div className="text-center text-zinc-500 py-8 text-sm">Никого не нашлось</div>
             )}
           </div>
+
+          {canManageRoles && (
+            <div className="mt-6">
+              <button
+                onClick={() => setShowAudit((v) => !v)}
+                className="text-sm text-zinc-400 hover:text-lime-400 transition-colors"
+              >
+                {showAudit ? 'Скрыть журнал ролей' : 'Показать журнал изменений ролей'}
+              </button>
+              {showAudit && <RoleAuditPanel />}
+            </div>
+          )}
         </main>
       </div>
 

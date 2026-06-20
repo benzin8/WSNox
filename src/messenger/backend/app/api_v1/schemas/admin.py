@@ -31,6 +31,17 @@ class AdminSetRoleRequest(BaseModel):
     is_admin: bool | None = None
 
 
+class RoleAuditEntry(BaseModel):
+    id: int
+    actor_id: int
+    actor_email: str
+    target_id: int
+    target_email: str
+    old_role: str
+    new_role: str
+    created_at: datetime
+
+
 class AnnouncementRequest(BaseModel):
     text: str
 

@@ -4,6 +4,7 @@ from .message import Message
 from .message_read import MessageRead
 from .profile import Profile
 from .push_subscription import PushSubscription
+from .role_audit import RoleAuditLog
 from .user import User
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "User",
     "Profile",
     "PushSubscription",
+    "RoleAuditLog",
 ]
