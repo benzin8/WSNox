@@ -81,7 +81,7 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
     }, [replyTo]);
 
     return (
-        <div className="relative p-6 bg-zinc-950/50 border-t border-zinc-800/80">
+        <div className="relative p-3 sm:p-6 bg-zinc-950/50 border-t border-zinc-800/80">
           {/* Edit preview bar */}
           {editingMessage && (
             <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-zinc-800/80 border border-lime-400/30 rounded-xl animate-fadeIn">
@@ -156,7 +156,10 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
               ref={inputRef}
               type="text"
               placeholder={editingMessage ? "Редактирование..." : "Type your message..."}
-              className="flex-grow bg-transparent border-none focus:outline-none text-base md:text-sm py-2"
+              // min-w-0 is critical: a flex <input> otherwise keeps its ~180px
+              // intrinsic width and pushes the trailing send/voice buttons off
+              // the bar (and off-screen) on narrow phones.
+              className="flex-grow min-w-0 bg-transparent border-none focus:outline-none text-base md:text-sm py-2"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
             />
