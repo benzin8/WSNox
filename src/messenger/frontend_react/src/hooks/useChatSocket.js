@@ -166,6 +166,8 @@ export const useChatSocket = (token, activeChatIdRef) => {
                                     aura: data.aura || 0,
                                     my_emoji: mine ? (data.actor_emoji ?? null) : (prevR.my_emoji ?? null),
                                     my_aura: mine ? !!data.actor_aura : (prevR.my_aura ?? false),
+                                    emoji_reactors: data.emoji_reactors || {},
+                                    aura_reactors: data.aura_reactors || [],
                                 },
                             };
                         }));

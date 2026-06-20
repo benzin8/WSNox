@@ -50,12 +50,22 @@ def test_aggregate_counts_and_viewer_state():
     assert summary[1]["aura"] == 2
     assert summary[1]["my_emoji"] == "👍"  # viewer 10 reacted 👍
     assert summary[1]["my_aura"] is True   # viewer 10 boosted aura
+    # Reactor ids are collected (in row order) for avatar enrichment.
+    assert summary[1]["emoji_users"] == {"👍": [10, 11], "🔥": [12]}
+    assert summary[1]["aura_users"] == [10, 13]
 
     assert summary[2]["emoji"] == {"😂": 1}
     assert summary[2]["my_emoji"] is None  # viewer 10 didn't react here
     assert summary[2]["my_aura"] is False
 
-    assert summary[3] == {"emoji": {}, "aura": 0, "my_emoji": None, "my_aura": False}
+    assert summary[3] == {
+        "emoji": {},
+        "aura": 0,
+        "my_emoji": None,
+        "my_aura": False,
+        "emoji_users": {},
+        "aura_users": [],
+    }
 
 
 def test_aggregate_empty():

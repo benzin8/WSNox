@@ -478,6 +478,8 @@ async def get_messages_by_chat_id(
     reaction_summary = await ReactionCRUD.summary_for_messages(
         db, [m.id for m in messages], current_user.id
     )
+    # Turn low-count reactions into reactor avatars (Telegram-style faces).
+    await ReactionCRUD.attach_reactors(db, reaction_summary, storage, get_redis())
 
     # Per-user read receipts in groups are a separate iteration — for MVP we
     # hide read_at in groups entirely. Private chats follow the reciprocity

@@ -825,13 +825,21 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     if await ReactionCRUD.chat_id_for_message(db, react_message_id) != react_chat_id:
                         continue
                     await ReactionCRUD.toggle(db, react_message_id, user_id, react_type, react_emoji)
-                    summary = await ReactionCRUD.summary_for_message(db, react_message_id, user_id)
+                    summaries = await ReactionCRUD.summary_for_messages(
+                        db, [react_message_id], user_id
+                    )
+                    await ReactionCRUD.attach_reactors(
+                        db, summaries, getattr(websocket.app.state, "storage", None), redis
+                    )
+                    summary = summaries[react_message_id]
                 react_payload = json.dumps({
                     "type": "reaction_update",
                     "chat_id": react_chat_id,
                     "message_id": react_message_id,
                     "emoji": summary["emoji"],
                     "aura": summary["aura"],
+                    "emoji_reactors": summary.get("emoji_reactors", {}),
+                    "aura_reactors": summary.get("aura_reactors", []),
                     "actor_id": user_id,
                     "actor_emoji": summary["my_emoji"],
                     "actor_aura": summary["my_aura"],

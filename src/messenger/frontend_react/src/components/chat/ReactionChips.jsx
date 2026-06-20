@@ -1,5 +1,27 @@
 import { useState } from "react";
 import { Zap } from "lucide-react";
+import { Avatar } from "../profile/Avatar";
+
+// Below this many reactors we show their faces (Telegram-style); at/above it we
+// collapse to a plain count. Mirrors the backend AVATAR_THRESHOLD.
+const FACE_THRESHOLD = 3;
+
+// Up-to-2 overlapping reactor faces, shown instead of a count for low reactions.
+function ReactorFaces({ reactors, ringClass }) {
+  return (
+    <span className="flex items-center -space-x-1.5">
+      {reactors.map((r, i) => (
+        <Avatar
+          key={i}
+          url={r?.url}
+          initials={(r?.name || "?").slice(0, 1).toUpperCase()}
+          size={18}
+          className={ringClass}
+        />
+      ))}
+    </span>
+  );
+}
 
 /**
  * Reaction chips under a message bubble: emoji counts + the aura (⚡) tally.
@@ -36,6 +58,18 @@ export function ReactionChips({ reactions, isOut, onReact }) {
             : "bg-zinc-700/60 text-zinc-200 hover:bg-zinc-700"
         }`;
 
+  // Ring around faces so overlapping circles read as separate cut-outs against
+  // the chip background.
+  const ringClass = isOut ? "ring-2 ring-zinc-900" : "ring-2 ring-zinc-700";
+
+  // Faces for <3 reactors, otherwise the count.
+  const tail = (count, reactors) =>
+    count < FACE_THRESHOLD && reactors && reactors.length > 0 ? (
+      <ReactorFaces reactors={reactors} ringClass={ringClass} />
+    ) : (
+      <span className="text-[13px] tabular-nums">{count}</span>
+    );
+
   return (
     <div className="flex flex-wrap items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
       {emojiEntries.map(([emoji, count]) => (
@@ -47,7 +81,7 @@ export function ReactionChips({ reactions, isOut, onReact }) {
           className={chip(reactions.my_emoji === emoji) + popClass(emoji)}
         >
           <span className="text-[17px] leading-none">{emoji}</span>
-          <span className="text-[13px] tabular-nums">{count}</span>
+          {tail(count, reactions.emoji_reactors?.[emoji])}
         </button>
       ))}
       {aura > 0 && (
@@ -63,7 +97,7 @@ export function ReactionChips({ reactions, isOut, onReact }) {
             className={reactions.my_aura ? "text-lime-300" : "text-lime-400"}
             fill={reactions.my_aura ? "currentColor" : "none"}
           />
-          <span className="text-[13px] tabular-nums">{aura}</span>
+          {tail(aura, reactions.aura_reactors)}
         </button>
       )}
     </div>

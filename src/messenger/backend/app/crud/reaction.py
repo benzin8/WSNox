@@ -71,11 +71,21 @@ class ReactionCRUD:
     def _aggregate(rows, message_ids: list[int], viewer_id: int) -> dict[int, dict]:
         """Pure reduction of reaction rows → per-message summary.
 
-        Each summary: {emoji: {emoji: count}, aura: count, my_emoji, my_aura}.
-        `my_*` is the *viewer's* own reaction so the UI can highlight it.
+        Each summary: {emoji: {emoji: count}, aura: count, my_emoji, my_aura}
+        plus `emoji_users`/`aura_users` (reactor ids, ordered) which
+        `attach_reactors` turns into avatars for low-count reactions. `my_*` is
+        the *viewer's* own reaction so the UI can highlight it. Rows must be
+        ordered by id so the first reactors are stable.
         """
         out: dict[int, dict] = {
-            mid: {"emoji": {}, "aura": 0, "my_emoji": None, "my_aura": False}
+            mid: {
+                "emoji": {},
+                "aura": 0,
+                "my_emoji": None,
+                "my_aura": False,
+                "emoji_users": {},
+                "aura_users": [],
+            }
             for mid in message_ids
         }
         for r in rows:
@@ -84,10 +94,12 @@ class ReactionCRUD:
                 continue
             if r.reaction_type == "aura":
                 s["aura"] += 1
+                s["aura_users"].append(r.user_id)
                 if r.user_id == viewer_id:
                     s["my_aura"] = True
             else:
                 s["emoji"][r.emoji] = s["emoji"].get(r.emoji, 0) + 1
+                s["emoji_users"].setdefault(r.emoji, []).append(r.user_id)
                 if r.user_id == viewer_id:
                     s["my_emoji"] = r.emoji
         return out
@@ -100,10 +112,66 @@ class ReactionCRUD:
             return {}
         rows = (
             await db.execute(
-                select(MessageReaction).where(MessageReaction.message_id.in_(message_ids))
+                select(MessageReaction)
+                .where(MessageReaction.message_id.in_(message_ids))
+                .order_by(MessageReaction.id)
             )
         ).scalars().all()
         return ReactionCRUD._aggregate(rows, message_ids, viewer_id)
+
+    # How many reactors to show as avatars before collapsing to a count.
+    AVATAR_THRESHOLD = 3
+
+    @staticmethod
+    async def attach_reactors(db: AsyncSession, summaries: dict[int, dict], storage, redis) -> None:
+        """Enrich summaries in place with reactor avatars for low-count groups.
+
+        For each emoji/aura with fewer than AVATAR_THRESHOLD reactors we surface
+        up to 2 reactors as `{url, name}` (Telegram-style faces); at/above the
+        threshold we leave just the count. Raw reactor-id lists are dropped from
+        the output so we don't leak who reacted beyond the shown faces.
+        """
+        from messenger.backend.models.profile import Profile
+        from messenger.backend.services.avatar_urls import resolve_avatar_urls
+
+        cap = ReactionCRUD.AVATAR_THRESHOLD - 1  # faces to show (≤2)
+        needed: set[int] = set()
+        for s in summaries.values():
+            for emoji, cnt in s["emoji"].items():
+                if cnt < ReactionCRUD.AVATAR_THRESHOLD:
+                    needed.update(s["emoji_users"].get(emoji, [])[:cap])
+            if 0 < s["aura"] < ReactionCRUD.AVATAR_THRESHOLD:
+                needed.update(s["aura_users"][:cap])
+
+        info: dict[int, dict] = {}
+        if needed:
+            profiles = {
+                p.user_id: p
+                for p in (
+                    await db.execute(select(Profile).where(Profile.user_id.in_(needed)))
+                ).scalars().all()
+            }
+            for uid in needed:
+                p = profiles.get(uid)
+                url = None
+                if p and p.avatar:
+                    url = (await resolve_avatar_urls(storage, p.avatar, redis=redis)).thumb
+                info[uid] = {"url": url, "name": p.display_name if p else None}
+
+        def faces(uids):
+            return [info.get(u, {"url": None, "name": None}) for u in uids[:cap]]
+
+        for s in summaries.values():
+            s["emoji_reactors"] = {
+                emoji: faces(s["emoji_users"].get(emoji, []))
+                for emoji, cnt in s["emoji"].items()
+                if cnt < ReactionCRUD.AVATAR_THRESHOLD
+            }
+            s["aura_reactors"] = (
+                faces(s["aura_users"]) if 0 < s["aura"] < ReactionCRUD.AVATAR_THRESHOLD else []
+            )
+            s.pop("emoji_users", None)
+            s.pop("aura_users", None)
 
     @staticmethod
     async def summary_for_message(db: AsyncSession, message_id: int, viewer_id: int) -> dict:
