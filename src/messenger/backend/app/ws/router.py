@@ -857,10 +857,12 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 chat = await db.get(Chat, chat_id)
                 if chat is None:
                     continue
-                # The announcements channel is read-only over WS — posting goes
-                # exclusively through the permission-gated admin endpoint.
+                # Channels are read-only over WS EXCEPT for the owner (user
+                # channels). The official WSNox channel has no owner — its
+                # members are role="member" — so it stays posting-via-admin only.
                 if chat.chat_type == "channel":
-                    continue
+                    if await ChatCRUD.get_member_role(db, chat_id, user_id) != "owner":
+                        continue
                 if chat.chat_type == "private":
                     other = await ChatCRUD.get_other_user_by_chat_id(db, chat_id, user_id)
                     if not other:

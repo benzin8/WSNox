@@ -22,6 +22,11 @@ class ChatResponse(BaseModel):
     last_sender_id: Optional[int] = None
     last_sender_display_name: Optional[str] = None
     unread_count: int = 0
+    # Channels only: blurb, whether the viewer owns it (can post / sees the
+    # invite link), and the invite token (exposed to the owner only).
+    description: Optional[str] = None
+    is_owner: bool = False
+    invite_token: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -33,6 +38,12 @@ class ChatResponse(BaseModel):
 
 class UserSearchResponse(BaseModel):
     chats: List[UserResponse]
+    channels: List[ChatResponse] = []
+
+
+class ChannelCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
 
 
 class ChatCreateRequest(BaseModel):

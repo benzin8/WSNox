@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.api_v1.auth.dependencies import get_current_user
 from messenger.backend.app.api_v1.schemas.chat import (
+    ChannelCreateRequest,
     ChatCreateRequest,
     ChatMemberResponse,
     ChatResponse,
@@ -44,6 +45,19 @@ logger = logging.getLogger(__name__)
 
 chat_router = APIRouter(prefix="/chats", tags=["chats"])
 
+
+async def _channel_response(db, chat, user_id, *, expose_token: bool = False) -> ChatResponse:
+    """ChatResponse for a channel: subscriber count, ownership, and the invite
+    token (handed to the owner only, and only when explicitly requested)."""
+    role = await ChatCRUD.get_member_role(db, chat.id, user_id)
+    member_ids = await ChatCRUD.get_member_ids(db, chat.id)
+    resp = ChatResponse.model_validate(chat)
+    resp.member_count = len(member_ids)
+    resp.is_owner = role == "owner"
+    resp.invite_token = chat.invite_token if (resp.is_owner and expose_token) else None
+    return resp
+
+
 @chat_router.get("/search", response_model=UserSearchResponse)
 async def search_users(
     query: str,
@@ -51,7 +65,7 @@ async def search_users(
     storage: S3Storage | None = Depends(get_storage_optional),
     user=Depends(get_current_user),
 ):
-    chats = await ChatCRUD.search_chats(db, query, user.id)
+    chats = await ChatCRUD.search_chats(db, query, user.id) or []
     enriched = []
     for u in chats:
         resp = UserResponse.model_validate(u)
@@ -59,7 +73,11 @@ async def search_users(
         urls = await resolve_avatar_urls(storage, avatar, redis=get_redis())
         resp.avatar_thumb_url = urls.thumb
         enriched.append(resp)
-    return UserSearchResponse(chats=enriched)
+    channels = [
+        await _channel_response(db, ch, user.id)
+        for ch in await ChatCRUD.search_channels(db, query)
+    ]
+    return UserSearchResponse(chats=enriched, channels=channels)
 
 @chat_router.post("/get-or-create", response_model=ChatResponse)
 async def get_or_create_chat(request: ChatCreateRequest, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
@@ -209,6 +227,59 @@ async def create_group_chat(
     except Exception:  # noqa: BLE001
         logger.exception("publish_chat_event(group_created) failed")
     return resp
+
+
+@chat_router.post("/channels", response_model=ChatResponse, status_code=status.HTTP_201_CREATED)
+async def create_channel(
+    request: ChannelCreateRequest,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    """Create a public channel. The creator becomes its owner (the only poster)."""
+    if not request.name or not request.name.strip():
+        raise HTTPException(status_code=400, detail="Название канала обязательно")
+    chat = await ChatCRUD.create_channel(
+        db, request.name, request.description, current_user.id, redis=get_redis()
+    )
+    return await _channel_response(db, chat, current_user.id, expose_token=True)
+
+
+@chat_router.post("/channels/{chat_id}/subscribe", response_model=ChatResponse)
+async def subscribe_to_channel(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    chat = await ChatCRUD.get_chat(db, chat_id)
+    if not chat or chat.chat_type != "channel":
+        raise HTTPException(status_code=404, detail="Канал не найден")
+    await ChatCRUD.subscribe_to_channel(db, chat_id, current_user.id, redis=get_redis())
+    return await _channel_response(db, chat, current_user.id, expose_token=True)
+
+
+@chat_router.post("/channels/join/{token}", response_model=ChatResponse)
+async def join_channel_by_token(
+    token: str,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    chat = await ChatCRUD.get_channel_by_token(db, token)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Канал не найден")
+    await ChatCRUD.subscribe_to_channel(db, chat.id, current_user.id, redis=get_redis())
+    return await _channel_response(db, chat, current_user.id, expose_token=True)
+
+
+@chat_router.post("/channels/{chat_id}/unsubscribe", status_code=status.HTTP_204_NO_CONTENT)
+async def unsubscribe_from_channel(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    role = await ChatCRUD.get_member_role(db, chat_id, current_user.id)
+    if role == "owner":
+        raise HTTPException(status_code=400, detail="Владелец не может отписаться — удалите канал")
+    await ChatCRUD.unsubscribe_from_channel(db, chat_id, current_user.id, redis=get_redis())
 
 
 @chat_router.get("/{chat_id}/members", response_model=GroupChatMembersResponse)

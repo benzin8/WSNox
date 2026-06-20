@@ -1,5 +1,7 @@
+import secrets
+
 from redis.asyncio import Redis
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 
@@ -99,6 +101,82 @@ class ChatCRUD:
             await session.rollback()
             raise
         return chat
+
+    # --- channels ------------------------------------------------------------
+    @staticmethod
+    async def create_channel(
+        session: AsyncSession, name: str, description: str | None, creator_id: int,
+        *, redis: Redis | None = None,
+    ) -> Chat:
+        """Create a public channel. Creator is the owner (the only poster);
+        a unique invite_token is generated for join-by-link."""
+        chat = Chat(
+            chat_type="channel",
+            name=name.strip()[:100] or "Канал",
+            description=((description or "").strip()[:300] or None),
+            invite_token=secrets.token_urlsafe(12),
+        )
+        session.add(chat)
+        await session.flush()
+        session.add(ChatMember(chat_id=chat.id, user_id=creator_id, role="owner"))
+        await session.commit()
+        await session.refresh(chat)
+        if redis is not None:
+            await invalidate(redis, chats_of(creator_id), members(chat.id))
+        return chat
+
+    @staticmethod
+    async def search_channels(session: AsyncSession, search_query: str) -> list[Chat]:
+        rows = await session.execute(
+            select(Chat)
+            .where(Chat.chat_type == "channel")
+            .where(Chat.name.ilike(f"%{search_query}%"))
+            .order_by(Chat.created_at.desc())
+            .limit(20)
+        )
+        return rows.scalars().all()
+
+    @staticmethod
+    async def get_channel_by_token(session: AsyncSession, token: str) -> Chat | None:
+        rows = await session.execute(
+            select(Chat).where(Chat.invite_token == token, Chat.chat_type == "channel")
+        )
+        return rows.scalar_one_or_none()
+
+    @staticmethod
+    async def get_member_role(session: AsyncSession, chat_id: int, user_id: int) -> str | None:
+        rows = await session.execute(
+            select(ChatMember.role).where(
+                ChatMember.chat_id == chat_id, ChatMember.user_id == user_id
+            )
+        )
+        return rows.scalar_one_or_none()
+
+    @staticmethod
+    async def subscribe_to_channel(
+        session: AsyncSession, chat_id: int, user_id: int, *, redis: Redis | None = None
+    ) -> bool:
+        """Add the user as a subscriber if not already a member. True if newly added."""
+        if await ChatCRUD.get_member_role(session, chat_id, user_id) is not None:
+            return False
+        session.add(ChatMember(chat_id=chat_id, user_id=user_id, role="subscriber"))
+        await session.commit()
+        if redis is not None:
+            await invalidate(redis, members(chat_id), chats_of(user_id))
+        return True
+
+    @staticmethod
+    async def unsubscribe_from_channel(
+        session: AsyncSession, chat_id: int, user_id: int, *, redis: Redis | None = None
+    ) -> None:
+        await session.execute(
+            delete(ChatMember).where(
+                ChatMember.chat_id == chat_id, ChatMember.user_id == user_id
+            )
+        )
+        await session.commit()
+        if redis is not None:
+            await invalidate(redis, members(chat_id), chats_of(user_id))
 
     @staticmethod
     async def get_chat_by_user_id(session: AsyncSession, current_user_id: int, other_user_id: int) -> Chat:
