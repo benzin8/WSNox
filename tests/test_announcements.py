@@ -40,7 +40,7 @@ def test_announcement_forbidden_for_user_and_moderator():
         app.dependency_overrides[get_current_user] = lambda r=role: _cached(role=r)
         try:
             with TestClient(app) as c:
-                r = c.post("/api/admin/announcements", json={"text": "hi"},
+                r = c.post("/api/admin/announcements", data={"text": "hi"},
                            headers={"Authorization": "Bearer x"})
                 assert r.status_code == 403
         finally:
@@ -52,7 +52,7 @@ def test_announcement_empty_text_rejected():
     _override_db()
     try:
         with TestClient(app) as c:
-            r = c.post("/api/admin/announcements", json={"text": "   "},
+            r = c.post("/api/admin/announcements", data={"text": "   "},
                        headers={"Authorization": "Bearer x"})
             assert r.status_code == 400
     finally:
@@ -70,7 +70,7 @@ def test_announcement_admin_posts_ok():
              patch("messenger.backend.app.ws.router.manager.send_personal_message",
                    new=AsyncMock(return_value=42)):
             with TestClient(app) as c:
-                r = c.post("/api/admin/announcements", json={"text": "Новая фича!"},
+                r = c.post("/api/admin/announcements", data={"text": "Новая фича!"},
                            headers={"Authorization": "Bearer x"})
                 assert r.status_code == 200
                 body = r.json()

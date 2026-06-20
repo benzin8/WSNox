@@ -1,7 +1,7 @@
 """Founder dashboard endpoints. Gated by `users.is_admin`."""
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -14,13 +14,13 @@ from messenger.backend.app.api_v1.schemas.admin import (
     AdminMeResponse,
     AdminSetRoleRequest,
     AdminUserRow,
-    AnnouncementRequest,
     AnnouncementResponse,
     DashboardStats,
     KpisBlock,
     LiveBlock,
     RoleAuditEntry,
 )
+from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.core.cache import invalidate, user_auth
 from messenger.backend.core.permissions import (
     ALL_ROLES,
@@ -38,6 +38,7 @@ from messenger.backend.db import get_db_session
 from messenger.backend.models.role_audit import RoleAuditLog
 from messenger.backend.models.user import User
 from messenger.backend.services import analytics
+from messenger.backend.services import media as media_service
 from messenger.backend.services.avatar_urls import resolve_avatar_urls
 from messenger.backend.services.deps import get_storage_optional
 from messenger.backend.services.storage import S3Storage
@@ -109,35 +110,82 @@ async def admin_stats(
 
 @admin_router.post("/announcements", response_model=AnnouncementResponse)
 async def admin_post_announcement(
-    payload: AnnouncementRequest,
+    text: str = Form(""),
+    image: UploadFile | None = File(None),
     current_admin: User = Depends(require_permission(PERM_POST_ANNOUNCEMENTS)),
     session: AsyncSession = Depends(get_db_session),
     storage: S3Storage | None = Depends(get_storage_optional),
 ) -> AnnouncementResponse:
     """Опубликовать сообщение в официальный канал WSNox (читают все юзеры).
 
-    Канал — singleton (chat_type="channel"). Постить может только обладатель
-    права post_announcements; для остальных канал read-only.
+    multipart/form-data: `text` (caption, опционально если есть фото) и
+    необязательное `image`. Канал — singleton (chat_type="channel"). Постить
+    может только обладатель права post_announcements; для остальных read-only.
     """
-    text = payload.text.strip()
-    if not text:
+    text = (text or "").strip()
+    if not text and image is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Пустое сообщение")
 
-    from messenger.backend.app.ws.router import manager
+    from messenger.backend.app.ws.router import manager, publish_media_message
     from messenger.backend.services.announcements import get_or_create_channel
 
     chat = await get_or_create_channel(session)
     await session.commit()
 
-    message_id = await manager.send_personal_message(
-        chat_id=chat.id,
-        text=text,
-        recipient_id=None,
-        sender_id=current_admin.id,
-        db=session,
-        chat_type="channel",
-        storage=storage,
-    )
+    if image is not None:
+        content_type = (image.content_type or "").split(";")[0].strip()
+        if content_type not in media_service.ALLOWED_IMAGE_MIME:
+            raise HTTPException(status_code=415, detail="Поддерживаются только изображения")
+        if storage is None:
+            raise HTTPException(status_code=503, detail="Хранилище недоступно")
+        try:
+            payload = await media_service.process_image(storage, current_admin.id, image)
+        except media_service.FileTooLarge as e:
+            raise HTTPException(status_code=413, detail="Файл слишком большой") from e
+        except (media_service.InvalidImage, media_service.UnsupportedFormat,
+                media_service.EmptyFile) as e:
+            raise HTTPException(status_code=400, detail="Некорректное изображение") from e
+        message = await MessageCRUD.create_media_message(
+            session,
+            chat_id=chat.id,
+            sender_id=current_admin.id,
+            recipient_id=None,
+            msg_type=payload.msg_type,
+            attachment_key=payload.attachment_key,
+            attachment_thumb_key=payload.attachment_thumb_key,
+            attachment_meta=payload.attachment_meta,
+            caption=text,
+            redis=get_redis(),
+        )
+        full_url, thumb_url = await media_service.resolve_attachment_urls(
+            storage, message.attachment_key, message.attachment_thumb_key
+        )
+        try:
+            await publish_media_message(
+                db=session,
+                chat_id=chat.id,
+                sender_id=current_admin.id,
+                recipient_id=None,
+                message=message,
+                caption=text,
+                attachment_url=full_url,
+                attachment_thumb_url=thumb_url,
+                chat_type="channel",
+                storage=storage,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("publish_media_message (announcement) failed")
+        message_id = message.id
+    else:
+        message_id = await manager.send_personal_message(
+            chat_id=chat.id,
+            text=text,
+            recipient_id=None,
+            sender_id=current_admin.id,
+            db=session,
+            chat_type="channel",
+            storage=storage,
+        )
     logger.warning(
         "announcement posted by=%s(%s) chat=%s msg=%s",
         current_admin.id, current_admin.email, chat.id, message_id,
