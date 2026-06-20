@@ -75,7 +75,7 @@ function ChatPage() {
     return () => mql.removeEventListener?.('change', onChange);
   }, []);
 
-  const { messages, setMessages, sendMessage, editMessage, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastChatEvent, socketRef } = useChatSocket(token, activeChatIdRef);
+  const { messages, setMessages, sendMessage, signalLocalSend, editMessage, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastChatEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { settings: notificationSettings } = useNotificationSettings();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
@@ -556,6 +556,14 @@ function ChatPage() {
       _retry_meta: meta,
     }]);
 
+    // Mirror the text path: surface this send to the chat list immediately so
+    // the sidebar preview + ordering update for the sender. Media/voice never
+    // round-trip back to the sender (excluded from the WS fan-out, only a bare
+    // message_ack comes back), so without this their own send stays invisible
+    // in the chat list. The preview label ("🎤 Голосовое сообщение" etc.) is
+    // derived from msgType by the lastReceivedMessage effect.
+    signalLocalSend({ chatId: activeChat.id, text: caption || '', msgType });
+
     try {
       const res = await uploadMediaToChat(activeChat.id, tempId, file, caption, meta);
       const server = res.data;
@@ -611,7 +619,7 @@ function ChatPage() {
         });
       }, 3000);
     }
-  }, [activeChat?.id, setMessages, uploadMediaToChat, getMessagesByChatId, currentUser?.id]);
+  }, [activeChat?.id, setMessages, uploadMediaToChat, getMessagesByChatId, currentUser?.id, signalLocalSend]);
 
   const handleRetryMedia = useCallback((msg) => {
     if (!msg?._retry_file) return;

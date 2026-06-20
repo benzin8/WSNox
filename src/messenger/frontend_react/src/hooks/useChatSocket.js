@@ -222,10 +222,27 @@ export const useChatSocket = (token, activeChatIdRef) => {
         }
     };
 
+    // Optimistically surface a message the local user just sent, so the chat
+    // list preview + reorder updates immediately. `sendMessage` does this inline
+    // for text; media/voice go out over HTTP (handleSendMedia) and never round-
+    // trip back to the sender, so they call this to get the same sender-side
+    // chat-list update. Only sets state — the bubble itself is inserted by the
+    // caller's optimistic setMessages. The preview label is derived from msgType.
+    const signalLocalSend = ({ chatId, text = '', msgType = 'text' }) => {
+        setLastReceivedMessage({
+            chat_id: chatId,
+            text,
+            msg_type: msgType,
+            sender_id: currentUserRef.current,
+            created_at: new Date().toISOString(),
+        });
+    };
+
     return {
         messages,
         setMessages,
         sendMessage,
+        signalLocalSend,
         editMessage,
         isConnected,
         isConnecting,
