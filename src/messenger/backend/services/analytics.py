@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from messenger.backend.app.ws.presence import PRESENCE_KEY_PREFIX
 from messenger.backend.models.chat import Chat
 from messenger.backend.models.message import Message
+from messenger.backend.models.push_subscription import PushSubscription
 from messenger.backend.models.user import User
 
 DAYS_HISTORY = 90
@@ -325,11 +326,22 @@ async def health(session: AsyncSession, redis: Redis) -> dict:
         await redis.ping()
     except Exception:  # noqa: BLE001
         redis_ok = False
+    total_users = await _total(session, User)
+    # Users who enabled push notifications = distinct users with at least one
+    # subscription (a user can register several devices/browsers).
+    notif_users = (
+        await session.execute(
+            select(func.count(func.distinct(PushSubscription.user_id)))
+        )
+    ).scalar() or 0
+    notif_pct = round(notif_users / total_users * 100, 1) if total_users else 0.0
     return {
         "db_ok": db_ok,
         "redis_ok": redis_ok,
         "cache_enabled": bool(settings.cache_data_enabled),
-        "users": await _total(session, User),
+        "users": total_users,
         "messages": await _total(session, Message),
         "chats": await _total(session, Chat),
+        "notif_users": notif_users,
+        "notif_pct": notif_pct,
     }

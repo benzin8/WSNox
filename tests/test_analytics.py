@@ -294,10 +294,11 @@ async def test_recent_signups_projection():
 
 @pytest.mark.asyncio
 async def test_health_ok(fake_redis):
-    # execute: select(1) [ok], then _total x3 (users/messages/chats)
+    # execute order: select(1) [ok], users, notif (distinct), messages, chats
     session = _session_seq([
         MagicMock(),               # select(1)
         _res_scalar(42),           # users
+        _res_scalar(21),           # notif_users (distinct push subscribers)
         _res_scalar(1000),         # messages
         _res_scalar(13),           # chats
     ])
@@ -305,4 +306,5 @@ async def test_health_ok(fake_redis):
     assert out["db_ok"] is True
     assert out["redis_ok"] is True
     assert out["users"] == 42 and out["messages"] == 1000 and out["chats"] == 13
+    assert out["notif_users"] == 21 and out["notif_pct"] == 50.0
     assert "cache_enabled" in out

@@ -35,6 +35,22 @@ export default function HealthPanel({ health }) {
         <Total label="Сообщений" value={h.messages} />
         <Total label="Чатов" value={h.chats} />
       </div>
+      {h.notif_pct != null && (
+        <div
+          className="mt-2.5 p-3 rounded-xl flex items-center justify-between"
+          style={{ background: 'color-mix(in oklab, var(--color-zinc-800) 35%, transparent)', border: '1px solid color-mix(in oklab, var(--color-zinc-800) 50%, transparent)' }}
+        >
+          <div>
+            <div className="text-sm text-zinc-300">Уведомления включены</div>
+            <div className="text-[11px] text-zinc-500 mt-0.5">
+              {Number(h.notif_users || 0).toLocaleString('ru-RU')} из {Number(h.users || 0).toLocaleString('ru-RU')}
+            </div>
+          </div>
+          <div className="text-2xl font-bold" style={{ fontFamily: 'ui-monospace,monospace', color: 'var(--color-lime-400)' }}>
+            {h.notif_pct}%
+          </div>
+        </div>
+      )}
     </div>
   );
 }
