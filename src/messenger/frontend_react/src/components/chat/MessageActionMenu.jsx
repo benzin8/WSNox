@@ -1,8 +1,11 @@
 import React, { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Reply, Trash2, Copy, Pencil } from "lucide-react";
+import { Reply, Trash2, Copy, Pencil, Zap } from "lucide-react";
 
-export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, onEdit, onClose }) => {
+// Fixed reaction set (mirrors backend ALLOWED_REACTION_EMOJI).
+const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+
+export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, onEdit, onReact, onClose }) => {
   const overlayRef = useRef(null);
   const msgRef = useRef(null);
 
@@ -44,6 +47,32 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
     >
       {/* The message bubble — centered */}
       <div className="flex flex-col items-center gap-4 animate-popIn">
+        {/* Reaction picker: 6 emoji + the ⚡ aura boost */}
+        <div className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-zinc-800/80 border border-zinc-700/60 backdrop-blur-sm">
+          {REACTION_EMOJIS.map((e) => (
+            <button
+              key={e}
+              onClick={() => { onReact?.(message, "emoji", e); onClose(); }}
+              className={`w-9 h-9 grid place-items-center rounded-full text-lg leading-none transition-transform hover:scale-125 active:scale-110 ${
+                message.reactions?.my_emoji === e ? "bg-lime-400/20 ring-1 ring-lime-400/50" : ""
+              }`}
+            >
+              {e}
+            </button>
+          ))}
+          <span className="w-px h-6 bg-zinc-700 mx-1" />
+          <button
+            onClick={() => { onReact?.(message, "aura"); onClose(); }}
+            title="Усилить ауру"
+            aria-label="Усилить ауру"
+            className={`w-9 h-9 grid place-items-center rounded-full transition-transform hover:scale-125 active:scale-110 ${
+              message.reactions?.my_aura ? "bg-lime-400/25 ring-1 ring-lime-400/60" : ""
+            }`}
+          >
+            <Zap size={18} className="text-lime-400" fill={message.reactions?.my_aura ? "#a3e635" : "none"} />
+          </button>
+        </div>
+
         <div
           ref={msgRef}
           className={`max-w-[75vw] md:max-w-md px-3.5 py-2 text-sm leading-relaxed shadow-lg ${

@@ -75,7 +75,7 @@ function ChatPage() {
     return () => mql.removeEventListener?.('change', onChange);
   }, []);
 
-  const { messages, setMessages, sendMessage, signalLocalSend, editMessage, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastChatEvent, socketRef } = useChatSocket(token, activeChatIdRef);
+  const { messages, setMessages, sendMessage, signalLocalSend, editMessage, react, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastChatEvent, socketRef } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const { settings: notificationSettings } = useNotificationSettings();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
@@ -660,6 +660,14 @@ function ChatPage() {
     setEditingMessage(null);
   }, [activeChat?.id, editMessage, setMessages]);
 
+  const handleReact = useCallback((message, reactType, emoji) => {
+    if (!activeChat?.id || !message?.id) return;
+    react(message.id, activeChat.id, reactType, emoji);
+    // The aura boost is WSNox's "energy" reaction — give the background orb a
+    // little kick so the act visibly energizes the chat.
+    if (reactType === "aura") randomInChat();
+  }, [activeChat?.id, react, randomInChat]);
+
   const handleDeleteMessage = useCallback((msg) => {
     // Only outgoing messages with a server-assigned id can be deleted
     if (!msg.id || !activeChat?.id) return;
@@ -957,6 +965,7 @@ function ChatPage() {
              onBack={() => setMobileView('list')}
              replyTo={replyTo}
              onReply={handleReply}
+             onReact={handleReact}
              onCancelReply={handleCancelReply}
              onDeleteMessage={handleDeleteMessage}
              editingMessage={editingMessage}

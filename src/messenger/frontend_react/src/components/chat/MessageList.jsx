@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef, useCallback } from "react";
 import { Image as ImageIcon, MessageSquare, Mic as MicIcon, Reply, Video as VideoIcon } from "lucide-react";
 import { MessageActionMenu } from "./MessageActionMenu";
+import { ReactionChips } from "./ReactionChips";
 import { MediaMessage } from "./MediaMessage";
 import { VoiceMessage } from "./VoiceMessage";
 import { MessageStatus } from "./MessageStatus";
@@ -161,6 +162,7 @@ const MessageBubble = ({
     isOut,
     onReply,
     onActionMenu,
+    onReact,
     onRetry,
     gap = 0,
     showSenderName = false,
@@ -170,6 +172,13 @@ const MessageBubble = ({
     const time = formatTime(msg.created_at);
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
+
+    // Aura "boost": a lime glow on the bubble whose size/brightness grow with
+    // the number of people who boosted, saturating around ~20 (see spec).
+    const auraCount = msg.reactions?.aura || 0;
+    const auraGlow = auraCount > 0
+        ? `0 0 ${Math.min(10 + auraCount * 2.2, 50)}px ${Math.min(1 + auraCount * 0.6, 14)}px rgba(163,230,53,${Math.min(0.18 + auraCount * 0.025, 0.6)})`
+        : undefined;
 
     const isMedia = msg.msg_type === "image" || msg.msg_type === "video";
     const isVoice = msg.msg_type === "voice";
@@ -299,9 +308,10 @@ const MessageBubble = ({
                     }`}
                     style={{
                         transform: swipeX > 0 ? `translateX(${swipeX}px)` : undefined,
-                        transition: swipeX > 0 ? "none" : "transform 200ms ease-out",
+                        transition: swipeX > 0 ? "none" : "transform 200ms ease-out, box-shadow 300ms ease-out",
                         scrollMarginTop: "88px",
                         scrollMarginBottom: "88px",
+                        boxShadow: auraGlow,
                     }}
                 >
                     {/* Group: show sender display name above the first
@@ -410,13 +420,19 @@ const MessageBubble = ({
                             </span>
                         </div>
                     )}
+
+                    <ReactionChips
+                        reactions={msg.reactions}
+                        isOut={isOut}
+                        onReact={(t, e) => onReact?.(msg, t, e)}
+                    />
                 </div>
             </div>
         </div>
     );
 };
 
-export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage, onEditMessage, onRetryMedia, isGroup = false }) => {
+export const MessageList = ({ messages, messagesEndRef, onReply, onReact, onDeleteMessage, onEditMessage, onRetryMedia, isGroup = false }) => {
     const [actionMsg, setActionMsg] = useState(null);
 
     const itemsWithSeparators = useMemo(
@@ -506,6 +522,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
                     isOut={isOut}
                     onReply={handleReply}
                     onActionMenu={handleActionMenu}
+                    onReact={onReact}
                     onRetry={onRetryMedia}
                     gap={gap}
                     showSenderName={showSenderName}
@@ -536,6 +553,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onDeleteMessage
               onDelete={handleDelete}
               onCopy={handleCopy}
               onEdit={handleEdit}
+              onReact={onReact}
               onClose={() => setActionMsg(null)}
             />
           )}

@@ -147,6 +147,29 @@ export const useChatSocket = (token, activeChatIdRef) => {
                     return;
                 }
 
+                if (data.type === "reaction_update") {
+                    if (data.chat_id === activeChatIdRef?.current) {
+                        setMessages((prev) => prev.map((m) => {
+                            if (m.id !== data.message_id) return m;
+                            // Counts apply to everyone; "my" state only changes
+                            // for the actor (keeps it correct across the actor's
+                            // own tabs and untouched for everyone else).
+                            const mine = data.actor_id === currentUserRef.current;
+                            const prevR = m.reactions || {};
+                            return {
+                                ...m,
+                                reactions: {
+                                    emoji: data.emoji || {},
+                                    aura: data.aura || 0,
+                                    my_emoji: mine ? (data.actor_emoji ?? null) : (prevR.my_emoji ?? null),
+                                    my_aura: mine ? !!data.actor_aura : (prevR.my_aura ?? false),
+                                },
+                            };
+                        }));
+                    }
+                    return;
+                }
+
                 if (data.chat_id === activeChatIdRef?.current) {
                     setMessages((prev) => [...prev, {
                         ...data,
@@ -222,6 +245,20 @@ export const useChatSocket = (token, activeChatIdRef) => {
         }
     };
 
+    // Toggle a reaction. reactType "emoji" needs an emoji; "aura" ignores it.
+    // The server is authoritative — it broadcasts reaction_update back.
+    const react = (messageId, chatId, reactType, emoji = null) => {
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({
+                type: "react",
+                message_id: messageId,
+                chat_id: chatId,
+                react_type: reactType,
+                emoji,
+            }));
+        }
+    };
+
     // Optimistically surface a message the local user just sent, so the chat
     // list preview + reorder updates immediately. `sendMessage` does this inline
     // for text; media/voice go out over HTTP (handleSendMedia) and never round-
@@ -244,6 +281,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
         sendMessage,
         signalLocalSend,
         editMessage,
+        react,
         isConnected,
         isConnecting,
         lastReceivedMessage,

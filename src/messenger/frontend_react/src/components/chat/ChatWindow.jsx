@@ -11,7 +11,7 @@ export const ChatWindow = ({
     isConnected, isConnecting, messagesEndRef, inputText, setInputText,
     chatName, onOpenProfile, onBack,
     isPartnerOnline, partnerPresencePreference,
-    replyTo, onReply, onCancelReply, onDeleteMessage,
+    replyTo, onReply, onReact, onCancelReply, onDeleteMessage,
     editingMessage, onEditMessage, onCancelEdit, onConfirmEdit,
     onPickMedia, onSendVoice, onRetryMedia, onLeaveGroup, onDeleteGroup,
 }) => {
@@ -151,6 +151,7 @@ export const ChatWindow = ({
           setMessages={setMessages}
           messagesEndRef={messagesEndRef}
           onReply={isChannel ? undefined : onReply}
+          onReact={onReact}
           onDeleteMessage={isChannel ? undefined : onDeleteMessage}
           onEditMessage={isChannel ? undefined : onEditMessage}
           onRetryMedia={onRetryMedia}
