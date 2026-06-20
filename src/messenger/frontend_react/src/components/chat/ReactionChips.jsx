@@ -20,7 +20,7 @@ export function ReactionChips({ reactions, isOut, onReact }) {
   const clearPop = (key) => setPopKey((k) => (k === key ? null : k));
 
   const chip = (active) =>
-    `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs leading-none cursor-pointer transition-colors select-none ${
+    `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full leading-none cursor-pointer transition-colors select-none ${
       active
         ? "bg-lime-400/25 text-lime-300 ring-1 ring-lime-400/50"
         : isOut
@@ -38,8 +38,8 @@ export function ReactionChips({ reactions, isOut, onReact }) {
           onAnimationEnd={() => clearPop(emoji)}
           className={chip(reactions.my_emoji === emoji) + popClass(emoji)}
         >
-          <span>{emoji}</span>
-          <span className="tabular-nums">{count}</span>
+          <span className="text-[17px] leading-none">{emoji}</span>
+          <span className="text-[13px] tabular-nums">{count}</span>
         </button>
       ))}
       {aura > 0 && (
@@ -51,11 +51,11 @@ export function ReactionChips({ reactions, isOut, onReact }) {
           className={chip(reactions.my_aura) + popClass("aura")}
         >
           <Zap
-            size={12}
+            size={16}
             className={reactions.my_aura ? "text-lime-300" : "text-lime-400"}
             fill={reactions.my_aura ? "currentColor" : "none"}
           />
-          <span className="tabular-nums">{aura}</span>
+          <span className="text-[13px] tabular-nums">{aura}</span>
         </button>
       )}
     </div>

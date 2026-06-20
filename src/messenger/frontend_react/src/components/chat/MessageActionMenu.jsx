@@ -48,28 +48,28 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
       {/* The message bubble — centered */}
       <div className="flex flex-col items-center gap-4 animate-popIn">
         {/* Reaction picker: 6 emoji + the ⚡ aura boost */}
-        <div className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-zinc-800/80 border border-zinc-700/60 backdrop-blur-sm">
+        <div className="flex items-center gap-1 px-2.5 py-2 rounded-full bg-zinc-800/80 border border-zinc-700/60 backdrop-blur-sm">
           {REACTION_EMOJIS.map((e) => (
             <button
               key={e}
               onClick={() => { onReact?.(message, "emoji", e); onClose(); }}
-              className={`w-9 h-9 grid place-items-center rounded-full text-lg leading-none transition-transform hover:scale-125 active:scale-110 ${
+              className={`w-11 h-11 grid place-items-center rounded-full text-2xl leading-none transition-transform hover:scale-125 active:scale-110 ${
                 message.reactions?.my_emoji === e ? "bg-lime-400/20 ring-1 ring-lime-400/50" : ""
               }`}
             >
               {e}
             </button>
           ))}
-          <span className="w-px h-6 bg-zinc-700 mx-1" />
+          <span className="w-px h-7 bg-zinc-700 mx-1" />
           <button
             onClick={() => { onReact?.(message, "aura"); onClose(); }}
             title="Усилить ауру"
             aria-label="Усилить ауру"
-            className={`w-9 h-9 grid place-items-center rounded-full transition-transform hover:scale-125 active:scale-110 ${
+            className={`w-11 h-11 grid place-items-center rounded-full transition-transform hover:scale-125 active:scale-110 ${
               message.reactions?.my_aura ? "bg-lime-400/25 ring-1 ring-lime-400/60" : ""
             }`}
           >
-            <Zap size={18} className="text-lime-400" fill={message.reactions?.my_aura ? "#a3e635" : "none"} />
+            <Zap size={22} className="text-lime-400" fill={message.reactions?.my_aura ? "#a3e635" : "none"} />
           </button>
         </div>
 
