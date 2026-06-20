@@ -19,14 +19,22 @@ export function ReactionChips({ reactions, isOut, onReact }) {
   const popClass = (key) => (popKey === key ? " animate-reaction-pop" : "");
   const clearPop = (key) => setPopKey((k) => (k === key ? null : k));
 
+  const base =
+    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full leading-none cursor-pointer transition-colors select-none";
+  // On the lime outgoing bubble a translucent chip melted into the bubble, so
+  // use solid dark chips there; incoming (dark) bubbles keep the lighter chip.
   const chip = (active) =>
-    `inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full leading-none cursor-pointer transition-colors select-none ${
-      active
-        ? "bg-lime-400/25 text-lime-300 ring-1 ring-lime-400/50"
-        : isOut
-        ? "bg-black/15 text-zinc-800 hover:bg-black/25"
-        : "bg-zinc-700/60 text-zinc-200 hover:bg-zinc-700"
-    }`;
+    isOut
+      ? `${base} ${
+          active
+            ? "bg-zinc-900 text-lime-300 ring-1 ring-lime-300/50"
+            : "bg-zinc-900/60 text-zinc-100 hover:bg-zinc-900/80"
+        }`
+      : `${base} ${
+          active
+            ? "bg-lime-400/25 text-lime-300 ring-1 ring-lime-400/50"
+            : "bg-zinc-700/60 text-zinc-200 hover:bg-zinc-700"
+        }`;
 
   return (
     <div className="flex flex-wrap items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>

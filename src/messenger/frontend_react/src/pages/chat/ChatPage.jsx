@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { User, Search, Megaphone } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
@@ -915,6 +916,27 @@ function ChatPage() {
       }}
     >
       <PushPromptModal />
+
+      {/* Solid chrome over the notch / home-indicator safe areas. The root's
+          safe-area padding is transparent, so the ambient energy orb was
+          bleeding green through those top/bottom strips. Portaled to <body>
+          so it's viewport-anchored (the root has a transform) and sits above
+          the orb but below menus/modals. */}
+      {createPortal(
+        <>
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-x-0 top-0 z-[40]"
+            style={{ height: 'env(safe-area-inset-top)', background: 'var(--color-zinc-950)' }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none fixed inset-x-0 bottom-0 z-[40]"
+            style={{ height: 'calc(env(safe-area-inset-bottom) / 2)', background: 'var(--color-zinc-950)' }}
+          />
+        </>,
+        document.body,
+      )}
 
       {/* Desktop: normal flex layout.  Mobile: sliding 200vw container */}
       <div className="relative flex-1 overflow-hidden md:flex">
