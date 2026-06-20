@@ -1,9 +1,23 @@
+import re
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_serializer
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_serializer,
+    field_validator,
+)
 
 from messenger.backend.app.api_v1.schemas.message import _utc_iso
+
+# Allowed username characters: Latin letters, digits, underscore. No "@",
+# spaces or other special characters (a handle like "@foo" rendered as "@@foo"
+# in the UI). Validated only on creation so existing non-conforming usernames
+# still deserialize for reads.
+_USERNAME_RE = re.compile(r"[A-Za-z0-9_]+")
 
 PresencePreference = Literal["dnd", "invisible"]
 
@@ -63,6 +77,16 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
+
+    @field_validator("username")
+    @classmethod
+    def _username_allowed_chars(cls, v: str) -> str:
+        if not _USERNAME_RE.fullmatch(v):
+            raise ValueError(
+                "Имя пользователя может содержать только латинские буквы, "
+                "цифры и подчёркивание (без @, пробелов и спецсимволов)"
+            )
+        return v
 
 class UserLogin(BaseModel):
     email: EmailStr
