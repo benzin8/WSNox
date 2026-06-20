@@ -283,12 +283,12 @@ export function AccountMenu({
   if (isMobile) {
     return (
       <div
-        className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fadeIn"
+        className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 animate-fadeIn"
         onClick={onClose}
       >
         <div
           ref={popoverRef}
-          className="relative w-full max-h-[88vh] overflow-hidden bg-zinc-900/95 border-t border-zinc-800/80 shadow-2xl animate-sheetUp flex flex-col"
+          className="relative w-full max-h-[88vh] overflow-hidden bg-zinc-900 border-t border-zinc-800/80 shadow-2xl animate-sheetUp flex flex-col"
           style={{ borderTopLeftRadius: 28, borderTopRightRadius: 28 }}
           onClick={(e) => e.stopPropagation()}
           role="dialog"
@@ -320,9 +320,7 @@ export function AccountMenu({
       ref={popoverRef}
       className="absolute z-40 left-3 right-3 top-full mt-2 rounded-2xl border border-zinc-800/80 overflow-hidden flex flex-col animate-popIn"
       style={{
-        background: "color-mix(in oklab, var(--color-zinc-900) 97%, transparent)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        background: "var(--color-zinc-900)",
         boxShadow: "0 24px 60px -12px rgba(0,0,0,0.7)",
         maxHeight: "min(70vh, 520px)",
       }}
