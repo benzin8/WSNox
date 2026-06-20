@@ -56,4 +56,12 @@ jobs:
             git pull origin main
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
-            docker compose -f docker-compose.prod.yml exec -T nginx nginx -s reload || true
+            # Restart (not just `-s reload`) so nginx reliably re-reads the
+            # bind-mounted config after `git pull` — a failed reload used to be
+            # swallowed by `|| true`, leaving stale cache headers in memory.
+            docker compose -f docker-compose.prod.yml restart nginx
+            # Reclaim disk: each deploy pulls a new :latest image and the old one
+            # becomes dangling. Unpruned, they fill the disk until nginx can no
+            # longer spool large proxied responses and truncates the JS bundle
+            # (blank app / endless splash). Prune unused images every deploy.
+            docker image prune -af
