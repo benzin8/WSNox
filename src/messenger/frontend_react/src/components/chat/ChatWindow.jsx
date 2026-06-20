@@ -1,5 +1,5 @@
 import React from "react";
-import { Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle, LogOut, Trash2, Megaphone, BadgeCheck } from 'lucide-react';
+import { Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle, LogOut, Trash2, Megaphone, BadgeCheck, Link2 } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 import { ChatMuteToggle } from "../../features/notifications";
@@ -19,6 +19,19 @@ export const ChatWindow = ({
     React.useEffect(() => { setMenuOpen(false); }, [activeChat?.id]);
     const isChannel = activeChat?.chat_type === "channel";
     const isGroup = activeChat?.chat_type === "group";
+    const isOwner = !!activeChat?.is_owner;
+    const isOfficial = !!activeChat?.is_official;
+    const [linkCopied, setLinkCopied] = React.useState(false);
+    React.useEffect(() => { setLinkCopied(false); }, [activeChat?.id]);
+    const handleCopyInvite = React.useCallback(() => {
+        const token = activeChat?.invite_token;
+        if (!token) return;
+        const url = `${window.location.origin}/join/${token}`;
+        navigator.clipboard?.writeText(url);
+        setLinkCopied(true);
+        setMenuOpen(false);
+        window.setTimeout(() => setLinkCopied(false), 2500);
+    }, [activeChat?.invite_token]);
     if (!activeChat) {
         return (
             <div className="flex-grow flex items-center justify-center relative overflow-hidden">
@@ -77,11 +90,15 @@ export const ChatWindow = ({
               <div className="text-left min-w-0">
                 <h3 className={`font-bold leading-tight truncate flex items-center gap-1 ${isGroup || isChannel ? "text-zinc-100" : "group-hover:text-lime-400 transition-colors"}`}>
                   <span className="truncate">{isChannel ? (activeChat?.name || "WSNox") : isGroup ? (activeChat?.name || chatName) : chatName}</span>
-                  {isChannel && <BadgeCheck size={16} className="shrink-0" style={{ color: 'var(--color-lime-400)' }} />}
+                  {isChannel && isOfficial && <BadgeCheck size={16} className="shrink-0" style={{ color: 'var(--color-lime-400)' }} />}
                 </h3>
                 <div className="flex items-center gap-1.5">
                   {isChannel ? (
-                    <p className="text-xs font-medium text-zinc-500">Официальный канал</p>
+                    <p className="text-xs font-medium text-zinc-500">
+                      {isOfficial
+                        ? "Официальный канал"
+                        : `${activeChat?.member_count || 0} подписчиков${isOwner ? " · вы владелец" : ""}`}
+                    </p>
                   ) : isGroup ? (
                     <p className="text-xs font-medium text-zinc-500">
                       {activeChat?.member_count ? `${activeChat.member_count} участников` : "группа"}
@@ -113,6 +130,17 @@ export const ChatWindow = ({
             >
               <MoreVertical size={20} />
             </button>
+            {menuOpen && isChannel && isOwner && (
+              <div className="absolute right-0 top-full mt-2 w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl py-1 z-30">
+                <button
+                  type="button"
+                  onClick={handleCopyInvite}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 transition-colors"
+                >
+                  <Link2 size={16} /> {linkCopied ? "Ссылка скопирована!" : "Скопировать ссылку-приглашение"}
+                </button>
+              </div>
+            )}
             {menuOpen && isGroup && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl py-1 z-30">
                 <button
@@ -156,11 +184,12 @@ export const ChatWindow = ({
           onEditMessage={isChannel ? undefined : onEditMessage}
           onRetryMedia={onRetryMedia}
           isGroup={isGroup}
+          isChannel={isChannel}
         />
-        {isChannel ? (
+        {isChannel && !isOwner ? (
           <div className="flex-shrink-0 flex items-center justify-center gap-2 px-6 py-4 border-t border-zinc-800/80 bg-zinc-950/90 text-zinc-500 text-sm">
             <Megaphone size={16} style={{ color: 'var(--color-lime-400)' }} />
-            <span>Только команда WSNox может писать в этот канал</span>
+            <span>{isOfficial ? "Только команда WSNox может писать в этот канал" : "Только владелец может публиковать в этом канале"}</span>
           </div>
         ) : (
           <InputArea

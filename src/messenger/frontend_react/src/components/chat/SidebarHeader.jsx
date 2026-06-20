@@ -10,6 +10,7 @@ export function SidebarHeader({
   onOpenOwnProfile,
   onOpenEditProfile,
   onOpenCreateGroup,
+  onOpenCreateChannel,
   onOpenDashboard,
   onAddAccount,
   onLogout,
@@ -32,6 +33,9 @@ export function SidebarHeader({
         break;
       case "group":
         onOpenCreateGroup?.();
+        break;
+      case "channel":
+        onOpenCreateChannel?.();
         break;
       case "dashboard":
         onOpenDashboard?.();

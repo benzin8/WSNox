@@ -26,6 +26,7 @@ class ChatResponse(BaseModel):
     # invite link), and the invite token (exposed to the owner only).
     description: Optional[str] = None
     is_owner: bool = False
+    is_official: bool = False
     invite_token: Optional[str] = None
 
     class Config:

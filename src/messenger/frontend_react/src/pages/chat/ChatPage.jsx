@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Search } from 'lucide-react';
+import { User, Search, Megaphone } from 'lucide-react';
 import { useChatAction } from '../../hooks/useChatAction';
 import { useChatSocket } from '../../hooks/useChatSocket';
 import { usePresence } from '../../hooks/usePresence';
@@ -12,6 +12,7 @@ import { useEnergy } from '../../features/energy';
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
 import { CreateGroupModal } from '../../components/chat/CreateGroupModal';
+import { CreateChannelModal } from '../../components/chat/CreateChannelModal';
 import { GroupInfoModal } from '../../components/chat/GroupInfoModal';
 import { MediaPreviewModal } from '../../components/chat/MediaPreviewModal';
 import { ProfileModal } from '../../components/profile/ProfileModal';
@@ -88,6 +89,7 @@ function ChatPage() {
   });
   const { searchChats,
           searchResult,
+          searchChannelResult,
           isSearching,
           getOrCreateChats,
           activeChat,
@@ -98,6 +100,9 @@ function ChatPage() {
           getAllChats,
           markChatAsRead,
           createGroupChat,
+          createChannel,
+          subscribeChannel,
+          joinChannelByToken,
           getChatMembers,
           addGroupMembers,
           leaveGroupChat,
@@ -142,6 +147,22 @@ function ChatPage() {
           display_name: profile.display_name || profile.name,
           avatar_url: profile.avatar_thumb_url,
         });
+      }
+      // Redeem a channel invite link (/join/:token) once we're authenticated
+      // and the chat list is loaded — works for both already-logged-in users
+      // and those who had to authenticate first.
+      const pendingJoin = localStorage.getItem('pending_join_channel');
+      if (pendingJoin) {
+        localStorage.removeItem('pending_join_channel');
+        const joined = await joinChannelByToken(pendingJoin);
+        if (joined) {
+          const refreshed = await getAllChats();
+          setChats(refreshed);
+          const opened = refreshed.find((c) => c.id === joined.id) || joined;
+          setActiveChat(opened);
+          setChatName(opened.name || 'Канал');
+          setMobileView('chat');
+        }
       }
     };
 
@@ -378,6 +399,8 @@ function ChatPage() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupCandidates, setGroupCandidates] = useState([]);
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [creatingChannel, setCreatingChannel] = useState(false);
 
   const handleOpenCreateGroup = useCallback(() => {
     // Candidates = current private chats' counterparts. The backend rejects
@@ -411,6 +434,43 @@ function ChatPage() {
     setEditingMessage(null);
     setMessages([]);
   }, [createGroupChat, getAllChats, setActiveChat, setMessages]);
+
+  const handleOpenCreateChannel = useCallback(() => {
+    setShowCreateChannel(true);
+  }, []);
+
+  const handleCreateChannel = useCallback(async (name, description) => {
+    setCreatingChannel(true);
+    const channel = await createChannel(name, description);
+    setCreatingChannel(false);
+    if (!channel) return;
+    setShowCreateChannel(false);
+    const updated = await getAllChats();
+    setChats(updated);
+    const created = updated.find((c) => c.id === channel.id) || channel;
+    setActiveChat(created);
+    setChatName(created.name || "Канал");
+    setMobileView('chat');
+    setReplyTo(null);
+    setEditingMessage(null);
+    setMessages([]);
+  }, [createChannel, getAllChats, setActiveChat, setMessages]);
+
+  // Subscribe to a channel found in search, then open it.
+  const handleSubscribeChannel = useCallback(async (channel) => {
+    const res = await subscribeChannel(channel.id);
+    const joined = res || channel;
+    const updated = await getAllChats();
+    setChats(updated);
+    const opened = updated.find((c) => c.id === joined.id) || joined;
+    setActiveChat(opened);
+    setChatName(opened.name || "Канал");
+    setSearchQuery('');
+    setMobileView('chat');
+    setReplyTo(null);
+    setEditingMessage(null);
+    setMessages([]);
+  }, [subscribeChannel, getAllChats, setActiveChat, setMessages]);
 
   const handleLeaveGroup = useCallback(async () => {
     if (!activeChat || activeChat.chat_type !== "group") return;
@@ -878,6 +938,7 @@ function ChatPage() {
                 setShowEditModal(true);
               }}
               onOpenCreateGroup={handleOpenCreateGroup}
+              onOpenCreateChannel={handleOpenCreateChannel}
               onOpenDashboard={() => navigate('/dashboard')}
               onAddAccount={() => { beginAddAccount(); navigate('/auth/send-code'); }}
               onLogout={handleLogout}
@@ -908,26 +969,49 @@ function ChatPage() {
             <div className="flex-grow min-h-0 overflow-y-auto">
               {searchQuery?.length > 0 ? (
                 <div className="p-2 space-y-1">
-                  {searchResult?.length > 0 ? (
-                    searchResult.map((user) => (
-                      <div key={user.id} onClick={() => handleSelectChat(user)}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
-                        <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
-                          <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
+                  {searchResult?.map((user) => (
+                    <div key={user.id} onClick={() => handleSelectChat(user)}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-lime-400/5 border border-lime-400/20 cursor-pointer hover:bg-lime-400/10 transition-all group">
+                      <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-lime-400/50">
+                        <User size={24} className="text-zinc-400 group-hover:text-lime-400" />
+                      </div>
+                      <div className="flex-grow">
+                        <div className="flex justify-between items-baseline">
+                          <h4 className="font-semibold text-zinc-100">{user.name}</h4>
                         </div>
-                        <div className="flex-grow">
-                          <div className="flex justify-between items-baseline">
-                            <h4 className="font-semibold text-zinc-100">{user.name}</h4>
+                      </div>
+                    </div>
+                  ))}
+
+                  {searchChannelResult?.length > 0 && (
+                    <>
+                      <div className="px-2 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-600">
+                        Каналы
+                      </div>
+                      {searchChannelResult.map((ch) => (
+                        <div key={ch.id} onClick={() => handleSubscribeChannel(ch)}
+                          className="flex items-center gap-3 p-3 rounded-xl bg-violet-400/5 border border-violet-400/20 cursor-pointer hover:bg-violet-400/10 transition-all group">
+                          <div className="w-12 h-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center group-hover:border-violet-400/50 shrink-0">
+                            <Megaphone size={22} className="text-zinc-400 group-hover:text-violet-300" />
                           </div>
+                          <div className="flex-grow min-w-0">
+                            <h4 className="font-semibold text-zinc-100 truncate">{ch.name}</h4>
+                            <p className="text-xs text-zinc-500 truncate">
+                              {ch.description || `${ch.member_count || 0} подписчиков`}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-xs font-semibold text-violet-300">
+                            {ch.is_owner ? "Открыть" : "Подписаться"}
+                          </span>
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    !isSearching && (
-                      <div className="p-4 text-center text-zinc-500 text-sm">
-                        Пользователь "{searchQuery}" не найден
-                      </div>
-                    )
+                      ))}
+                    </>
+                  )}
+
+                  {!isSearching && !searchResult?.length && !searchChannelResult?.length && (
+                    <div className="p-4 text-center text-zinc-500 text-sm">
+                      Ничего не найдено по запросу "{searchQuery}"
+                    </div>
                   )}
                 </div>
               ) : (
@@ -1018,6 +1102,15 @@ function ChatPage() {
             isSubmitting={creatingGroup}
             onCancel={() => setShowCreateGroup(false)}
             onCreate={handleCreateGroup}
+          />
+        )}
+
+        {/* Channel creation modal */}
+        {showCreateChannel && (
+          <CreateChannelModal
+            isSubmitting={creatingChannel}
+            onCancel={() => setShowCreateChannel(false)}
+            onCreate={handleCreateChannel}
           />
         )}
 

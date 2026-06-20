@@ -54,6 +54,7 @@ async def _channel_response(db, chat, user_id, *, expose_token: bool = False) ->
     resp = ChatResponse.model_validate(chat)
     resp.member_count = len(member_ids)
     resp.is_owner = role == "owner"
+    resp.is_official = chat.invite_token is None
     resp.invite_token = chat.invite_token if (resp.is_owner and expose_token) else None
     return resp
 
@@ -157,6 +158,15 @@ async def get_chats(
             member_count,
         ) = row
         chat_resp = ChatResponse.model_validate(chat)
+        if chat.chat_type == "channel":
+            # The official broadcast channel is the singleton with no invite
+            # token; user-created channels always carry one. Only the owner may
+            # see/share the token, and sees the composer instead of read-only.
+            chat_resp.is_official = chat.invite_token is None
+            role = await ChatCRUD.get_member_role(db, chat.id, current_user.id)
+            chat_resp.is_owner = role == "owner"
+            if not chat_resp.is_owner:
+                chat_resp.invite_token = None
         if other_user is not None:
             chat_resp.recipient = UserResponse.model_validate(other_user)
             chat_resp.recipient.display_name = rcpt_display_name
@@ -547,6 +557,11 @@ async def upload_chat_media(
     chat = await ChatCRUD.get_chat(db, chat_id)
     if not chat:
         raise HTTPException(status_code=404, detail="Chat not found")
+    # Channels are read-only over this path too (mirrors the WS text rule):
+    # only the owner may post. The official channel has no owner, so its
+    # members can't post media here — it stays admin-only via the dashboard.
+    if chat.chat_type == "channel" and await ChatCRUD.get_member_role(db, chat_id, current_user.id) != "owner":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Только владелец может публиковать в канале")
     # For private chats we still persist recipient_id (back-compat with old
     # clients reading the column). For group chats recipient_id is NULL and
     # fan-out happens via chat_members.

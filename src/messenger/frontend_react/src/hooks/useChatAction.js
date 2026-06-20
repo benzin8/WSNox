@@ -10,6 +10,7 @@ const getAuthConfig = () => {
 
 export const useChatAction = () => {
     const [searchResult, setSearchResult] = useState([]);
+    const [searchChannelResult, setSearchChannelResult] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [activeChat, setActiveChat] = useState(null);
     const [error, setError] = useState(null);
@@ -20,6 +21,7 @@ export const useChatAction = () => {
 
         if (query.length < 3) {
             setSearchResult([]);
+            setSearchChannelResult([]);
             return;
         }
         try {
@@ -28,6 +30,7 @@ export const useChatAction = () => {
                 getAuthConfig()
             )
             setSearchResult(res.data.chats || []);
+            setSearchChannelResult(res.data.channels || []);
         } catch (err) {
             setError(err.response?.data?.detail || "Search failed");
         } finally {
@@ -179,7 +182,56 @@ export const useChatAction = () => {
         }
     }
 
+    const createChannel = async (name, description) => {
+        try {
+            setError(null);
+            const res = await axios.post(
+                `${API_BASE}/chats/channels`,
+                { name, description: description || null },
+                getAuthConfig()
+            );
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to create channel");
+            return null;
+        }
+    }
+
+    const subscribeChannel = async (chatId) => {
+        try {
+            setError(null);
+            const res = await axios.post(
+                `${API_BASE}/chats/channels/${chatId}/subscribe`,
+                null,
+                getAuthConfig()
+            );
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to subscribe");
+            return null;
+        }
+    }
+
+    const joinChannelByToken = async (token) => {
+        try {
+            setError(null);
+            const res = await axios.post(
+                `${API_BASE}/chats/channels/join/${token}`,
+                null,
+                getAuthConfig()
+            );
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to join channel");
+            return null;
+        }
+    }
+
     return {searchChats,
+            createChannel,
+            subscribeChannel,
+            joinChannelByToken,
+            searchChannelResult,
             getUserDataByChatId,
             getOrCreateChats,
             getMyData,

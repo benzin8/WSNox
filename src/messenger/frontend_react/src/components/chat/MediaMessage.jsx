@@ -21,6 +21,7 @@ export function MediaMessage({
   isUploading,
   onClick,
   onDoubleTap,    // called on second tap within DOUBLE_TAP_MS → reply
+  width = "min(260px, 60vw)", // display width of the media block
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const lastTapRef = useRef(0);
@@ -65,7 +66,7 @@ export function MediaMessage({
     <div className="relative">
       <div
         className="overflow-hidden rounded-xl bg-zinc-800/60"
-        style={{ width: "min(260px, 60vw)", aspectRatio: aspect, maxWidth: "100%" }}
+        style={{ width, aspectRatio: aspect, maxWidth: "100%" }}
       >
         {type === "image" && url && (
           <img

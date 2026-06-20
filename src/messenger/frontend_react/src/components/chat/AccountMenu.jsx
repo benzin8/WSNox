@@ -5,6 +5,7 @@ import {
   BellOff,
   Sparkles,
   UsersRound,
+  Megaphone,
   LayoutGrid,
   LogOut,
   Plus,
@@ -161,6 +162,14 @@ function MenuBody({
         icon={<UsersRound size={17} />}
         label="Создать группу"
         onClick={() => { onAction("group"); onClose(); }}
+      />
+
+      <MenuItem
+        m={m}
+        icon={<Megaphone size={17} />}
+        label="Создать канал"
+        hint="Публичный, постишь только ты"
+        onClick={() => { onAction("channel"); onClose(); }}
       />
 
       {isAdmin && (

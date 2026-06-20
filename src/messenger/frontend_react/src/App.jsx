@@ -16,6 +16,7 @@ import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import ChatPage from './pages/chat/ChatPage';
+import JoinChannelPage from './pages/chat/JoinChannelPage';
 import DashboardPage from './pages/DashboardPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminRoute from './components/AdminRoute';
@@ -79,6 +80,9 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Channel invite link — stashes the token then routes on */}
+          <Route path="/join/:token" element={<JoinChannelPage />} />
 
           {/* Admin-only Dashboard */}
           <Route

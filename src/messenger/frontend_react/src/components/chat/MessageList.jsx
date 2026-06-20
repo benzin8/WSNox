@@ -168,8 +168,19 @@ const MessageBubble = ({
     showSenderName = false,
     showSenderAvatar = false,
     reserveAvatarSlot = false,
+    isChannel = false,
 }) => {
     const time = formatTime(msg.created_at);
+    // In a channel every post is a broadcast: render them all as wide,
+    // left-aligned "channel posts" (Telegram-style) regardless of who is
+    // viewing, instead of the narrow mine/theirs split used in chats.
+    const isOutVisual = isChannel ? false : isOut;
+    const bubbleMaxWidth = isChannel ? "92%" : "75%";
+    // Media display width. The bubble is sized to this so a long caption wraps
+    // under the image at the image's width instead of stretching the bubble
+    // wider than the photo (which left empty space on the side). Channels show
+    // wide, magazine-style posts; chats keep the compact size.
+    const mediaWidth = isChannel ? "min(560px, 92vw)" : "min(260px, 60vw)";
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
 
@@ -258,13 +269,13 @@ const MessageBubble = ({
 
     return (
         <div
-            className={`flex w-full ${isOut ? "justify-end" : "justify-start"} animate-fadeIn`}
+            className={`flex w-full ${isOutVisual ? "justify-end" : "justify-start"} animate-fadeIn`}
             style={gap > 0 ? { marginTop: `${gap}px` } : undefined}
         >
             {/* Avatar slot for incoming group bubbles. Rendered only on the
                 last bubble in a run; mid-run bubbles get a transparent
                 spacer of the same width so the run stays left-aligned. */}
-            {!isOut && reserveAvatarSlot && (
+            {!isOutVisual && reserveAvatarSlot && (
                 <div
                     className="shrink-0 self-end"
                     style={{
@@ -282,7 +293,7 @@ const MessageBubble = ({
                     )}
                 </div>
             )}
-            <div className="relative flex items-center gap-2 min-w-0" style={{ maxWidth: "75%" }}>
+            <div className="relative flex items-center gap-2 min-w-0" style={{ maxWidth: bubbleMaxWidth }}>
                 {/* Reply indicator (appears on swipe) */}
                 <div
                     className="absolute -left-8 flex items-center justify-center transition-opacity"
@@ -302,7 +313,7 @@ const MessageBubble = ({
                             ? "p-1"
                             : "px-3.5 py-2"
                     } ${
-                        isOut
+                        isOutVisual
                             ? "bg-lime-400 text-zinc-900 font-medium rounded-2xl rounded-br-sm"
                             : "bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-sm border border-zinc-700/60"
                     }`}
@@ -312,6 +323,7 @@ const MessageBubble = ({
                         scrollMarginTop: "88px",
                         scrollMarginBottom: "88px",
                         boxShadow: auraGlow,
+                        ...(isMedia ? { width: mediaWidth, maxWidth: "100%" } : {}),
                     }}
                 >
                     {/* Group: show sender display name above the first
@@ -328,7 +340,7 @@ const MessageBubble = ({
                             type="button"
                             onClick={(e) => { e.stopPropagation(); scrollToMessage(msg.reply_to_id); }}
                             className={`block w-full text-left mb-1.5 ${isMedia ? "mx-1" : ""} px-2 py-1 rounded-lg text-xs border-l-2 transition-colors ${
-                                isOut
+                                isOutVisual
                                     ? "bg-lime-500/30 border-zinc-700 text-zinc-800 hover:bg-lime-500/50"
                                     : "bg-zinc-700/50 border-lime-400 text-zinc-400 hover:bg-zinc-700/80"
                             }`}
@@ -352,6 +364,7 @@ const MessageBubble = ({
                                 meta={msg.attachment_meta}
                                 isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
                                 onDoubleTap={() => onReply(msg)}
+                                width={mediaWidth}
                             />
                             {/* Caption-less media: float the time stamp + status as a pill
                                 pinned to the bottom-right of the photo (Telegram-style). */}
@@ -362,7 +375,7 @@ const MessageBubble = ({
                                 >
                                     {msg.edited_at && <span className="opacity-80">ред.</span>}
                                     {time && <span>{time}</span>}
-                                    {isOut && (
+                                    {isOutVisual && (
                                         <MessageStatus
                                             status={msg.client_status}
                                             readAt={msg.read_at}
@@ -396,19 +409,19 @@ const MessageBubble = ({
                             <span className="flex items-center gap-1 shrink-0 self-end mb-0.5 ml-auto">
                                 {msg.edited_at && (
                                     <span className={`text-[10px] leading-none select-none ${
-                                        isOut ? "text-zinc-700/60" : "text-zinc-500/70"
+                                        isOutVisual ? "text-zinc-700/60" : "text-zinc-500/70"
                                     }`}>
                                         ред.
                                     </span>
                                 )}
                                 {time && (
                                     <span className={`text-[10px] leading-none select-none ${
-                                        isOut ? "text-zinc-700/70" : "text-zinc-500"
+                                        isOutVisual ? "text-zinc-700/70" : "text-zinc-500"
                                     }`}>
                                         {time}
                                     </span>
                                 )}
-                                {isOut && (
+                                {isOutVisual && (
                                     <MessageStatus
                                         status={msg.client_status}
                                         readAt={msg.read_at}
@@ -423,7 +436,7 @@ const MessageBubble = ({
 
                     <ReactionChips
                         reactions={msg.reactions}
-                        isOut={isOut}
+                        isOut={isOutVisual}
                         onReact={(t, e) => onReact?.(msg, t, e)}
                     />
                 </div>
@@ -432,7 +445,7 @@ const MessageBubble = ({
     );
 };
 
-export const MessageList = ({ messages, messagesEndRef, onReply, onReact, onDeleteMessage, onEditMessage, onRetryMedia, isGroup = false }) => {
+export const MessageList = ({ messages, messagesEndRef, onReply, onReact, onDeleteMessage, onEditMessage, onRetryMedia, isGroup = false, isChannel = false }) => {
     const [actionMsg, setActionMsg] = useState(null);
 
     const itemsWithSeparators = useMemo(
@@ -528,6 +541,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onReact, onDele
                     showSenderName={showSenderName}
                     showSenderAvatar={showSenderAvatar}
                     reserveAvatarSlot={reserveAvatarSlot}
+                    isChannel={isChannel}
                   />
                 </React.Fragment>
               );
