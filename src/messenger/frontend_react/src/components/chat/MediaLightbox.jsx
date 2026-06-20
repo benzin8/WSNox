@@ -90,7 +90,11 @@ export function MediaLightbox({ open, type, url, onClose }) {
         <img
           src={url}
           alt=""
-          onClick={(e) => e.stopPropagation()}
+          // Tapping the photo closes the viewer (expected mobile UX — there's no
+          // Esc key and the image covers most of the screen, so otherwise it was
+          // impossible to close on a phone). stopPropagation prevents the click
+          // from also reaching the message bubble underneath.
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
           draggable={false}
           style={{
             maxWidth: "100vw",
