@@ -112,6 +112,10 @@ function ChatPage() {
   const { canViewDashboard } = useIsAdmin();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
+  // Tracks what we last auto-scrolled for, so in-place updates (reactions,
+  // edits, read receipts) that rebuild the messages array don't yank the
+  // view to the bottom.
+  const scrollAnchorRef = useRef({ chatId: null, len: 0 });
   const { orb, settleInChat, randomInChat } = useEnergy();
   const inTransit = orb.phase === 'transit';
 
@@ -121,13 +125,21 @@ function ChatPage() {
   }, [settleInChat]);
 
 
-  // Auto-scroll. Skip when the chat panel is offscreen on mobile —
+  // Auto-scroll only when the chat opens or a new message is appended — NOT
+  // on in-place updates (a reaction/edit/read rebuilds the array but must not
+  // jump the view). Skip when the chat panel is offscreen on mobile —
   // scrollIntoView on a transform-translated, hidden element can drag
   // the layout viewport sideways on iOS Safari and break the slider.
   useEffect(() => {
     if (isMobile && mobileView !== 'chat') return;
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [messages, mobileView, isMobile]);
+    const prev = scrollAnchorRef.current;
+    const chatChanged = activeChat?.id !== prev.chatId;
+    const appended = activeChat?.id === prev.chatId && messages.length > prev.len;
+    scrollAnchorRef.current = { chatId: activeChat?.id, len: messages.length };
+    if (chatChanged || appended) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [messages, mobileView, isMobile, activeChat?.id]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
