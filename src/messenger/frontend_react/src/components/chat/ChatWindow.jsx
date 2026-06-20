@@ -13,7 +13,7 @@ export const ChatWindow = ({
     isPartnerOnline, partnerPresencePreference,
     replyTo, onReply, onCancelReply, onDeleteMessage,
     editingMessage, onEditMessage, onCancelEdit, onConfirmEdit,
-    onPickMedia, onRetryMedia, onLeaveGroup, onDeleteGroup,
+    onPickMedia, onSendVoice, onRetryMedia, onLeaveGroup, onDeleteGroup,
 }) => {
     const [menuOpen, setMenuOpen] = React.useState(false);
     React.useEffect(() => { setMenuOpen(false); }, [activeChat?.id]);
@@ -173,6 +173,7 @@ export const ChatWindow = ({
             onCancelEdit={onCancelEdit}
             onConfirmEdit={onConfirmEdit}
             onPickMedia={onPickMedia}
+            onSendVoice={onSendVoice}
           />
         )}
       </div>

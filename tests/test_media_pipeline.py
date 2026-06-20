@@ -8,13 +8,16 @@ from fastapi import UploadFile
 from PIL import Image
 from starlette.datastructures import Headers
 
+import messenger.backend.services.media as media_module
 from messenger.backend.services.media import (
     EmptyFile,
     FileTooLarge,
     InvalidImage,
     InvalidMeta,
     UnsupportedFormat,
+    _strip_av_metadata,
     _validate_video_meta,
+    process_audio,
     process_image,
     process_video,
     resolve_attachment_urls,
@@ -171,6 +174,52 @@ def test_validate_video_meta_empty_string_is_ok():
 def test_validate_video_meta_invalid_json():
     with pytest.raises(InvalidMeta):
         _validate_video_meta("{not json")
+
+
+# ── voice / audio ──────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_process_audio_uploads_voice(mock_storage, monkeypatch):
+    # No ffmpeg → strip is a no-op passthrough, so storage gets the raw bytes.
+    monkeypatch.setattr(media_module, "FFMPEG_BIN", None)
+    raw = b"OggS" + b"\x00" * 2048
+    upload = _upload(raw, "note.webm", "audio/webm;codecs=opus")
+    result = await process_audio(mock_storage, user_id=9, file=upload, client_meta_raw='{"duration_ms": 4200}')
+
+    assert result.msg_type == "voice"
+    assert result.attachment_thumb_key is None
+    call = mock_storage.put_object.await_args
+    assert call.args[0].startswith("media/9/")
+    assert call.args[0].endswith(".webm")
+    # codecs param normalised away before storing
+    assert call.args[2] == "audio/webm"
+    assert result.attachment_meta["content_type"] == "audio/webm"
+    assert result.attachment_meta["duration_ms"] == 4200
+
+
+@pytest.mark.asyncio
+async def test_process_audio_rejects_unknown_mime(mock_storage):
+    upload = _upload(b"\x00" * 64, "x.flac", "audio/flac")
+    with pytest.raises(UnsupportedFormat):
+        await process_audio(mock_storage, 1, upload, "{}")
+    mock_storage.put_object.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_process_audio_rejects_oversize(mock_storage):
+    big = b"\x00" * (21 * 1024 * 1024)
+    upload = _upload(big, "huge.webm", "audio/webm")
+    with pytest.raises(FileTooLarge):
+        await process_audio(mock_storage, 1, upload, "{}")
+    mock_storage.put_object.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_strip_av_metadata_noop_without_ffmpeg(monkeypatch):
+    monkeypatch.setattr(media_module, "FFMPEG_BIN", None)
+    raw = b"\x00\x01\x02 some media bytes"
+    out = await _strip_av_metadata(raw, "mp4")
+    assert out == raw  # fail-open: original bytes preserved
 
 
 # ── url resolver ───────────────────────────────────────────────────────

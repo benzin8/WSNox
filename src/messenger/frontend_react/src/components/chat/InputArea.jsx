@@ -2,12 +2,13 @@ import React from "react";
 import { useState } from "react";
 import { Send, X, Reply, Pencil, Check, Smile } from "lucide-react";
 import { AttachmentPicker } from "./AttachmentPicker";
+import { VoiceRecorder } from "./VoiceRecorder";
 import { useTheme } from "../../features/theme";
 
 // Full emoji picker — lazy so it stays out of the main bundle until opened.
 const EmojiPicker = React.lazy(() => import("emoji-picker-react"));
 
-export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit, onPickMedia }) => {
+export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit, onPickMedia, onSendVoice }) => {
     const [inputText, setInputText] = useState("");
     const [showEmoji, setShowEmoji] = useState(false);
     const inputRef = React.useRef(null);
@@ -170,13 +171,19 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
             >
               <Smile size={20} />
             </button>
-            <button
-              type="submit"
-              disabled={!inputText.trim() || !isConnected}
-              className="p-3 rounded-xl transition-all duration-300 active:scale-[0.97] disabled:grayscale disabled:opacity-50 bg-lime-400 text-zinc-900 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.25)]"
-            >
-              {editingMessage ? <Check size={18} /> : <Send size={18} />}
-            </button>
+            {/* Mic when there's nothing to send (and not editing); otherwise the
+                send/confirm button. The voice recorder uploads via onSendVoice. */}
+            {!editingMessage && onSendVoice && !inputText.trim() ? (
+              <VoiceRecorder onRecorded={onSendVoice} disabled={!isConnected} />
+            ) : (
+              <button
+                type="submit"
+                disabled={!inputText.trim() || !isConnected}
+                className="p-3 rounded-xl transition-all duration-300 active:scale-[0.97] disabled:grayscale disabled:opacity-50 bg-lime-400 text-zinc-900 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(var(--accent-rgb),0.25)]"
+              >
+                {editingMessage ? <Check size={18} /> : <Send size={18} />}
+              </button>
+            )}
           </form>
         </div>
     );
