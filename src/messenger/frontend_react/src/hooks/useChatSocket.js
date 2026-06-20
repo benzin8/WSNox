@@ -31,7 +31,10 @@ export const useChatSocket = (token, activeChatIdRef) => {
             if (cancelled) return;
             try {
                 const decoded = jwtDecode(token);
-                currentUserRef.current = decoded.sub || decoded.user_id;
+                // The JWT `sub` is a string ("42"); coerce to a number so the
+                // strict-equality checks below against numeric ids (actor_id /
+                // sender_id from the server) actually match.
+                currentUserRef.current = Number(decoded.sub ?? decoded.user_id);
             } catch (err) {
                 console.error('JWT decode failed', err);
                 return;
@@ -154,7 +157,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
                             // Counts apply to everyone; "my" state only changes
                             // for the actor (keeps it correct across the actor's
                             // own tabs and untouched for everyone else).
-                            const mine = data.actor_id === currentUserRef.current;
+                            const mine = Number(data.actor_id) === currentUserRef.current;
                             const prevR = m.reactions || {};
                             return {
                                 ...m,
@@ -174,7 +177,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
                     setMessages((prev) => [...prev, {
                         ...data,
                         text: data.text,
-                        type: data.sender_id === currentUserRef.current ? "outgoing" : "incoming",
+                        type: Number(data.sender_id) === currentUserRef.current ? "outgoing" : "incoming",
                         id: data.message_id || Date.now(),
                         reply_to_id: data.reply_to_id || null,
                         reply_to_text: data.reply_to_text || null,

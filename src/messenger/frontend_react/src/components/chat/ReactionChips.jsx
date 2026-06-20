@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Zap } from "lucide-react";
 
 /**
@@ -8,10 +9,15 @@ import { Zap } from "lucide-react";
  * `onReact(type, emoji?)` — type "emoji" | "aura".
  */
 export function ReactionChips({ reactions, isOut, onReact }) {
+  // Key of the chip currently playing its tap "pop" ("aura" or the emoji).
+  const [popKey, setPopKey] = useState(null);
   if (!reactions) return null;
   const emojiEntries = Object.entries(reactions.emoji || {}).filter(([, c]) => c > 0);
   const aura = reactions.aura || 0;
   if (emojiEntries.length === 0 && aura === 0) return null;
+
+  const popClass = (key) => (popKey === key ? " animate-reaction-pop" : "");
+  const clearPop = (key) => setPopKey((k) => (k === key ? null : k));
 
   const chip = (active) =>
     `inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs leading-none cursor-pointer transition-colors select-none ${
@@ -28,8 +34,9 @@ export function ReactionChips({ reactions, isOut, onReact }) {
         <button
           key={emoji}
           type="button"
-          onClick={() => onReact?.("emoji", emoji)}
-          className={chip(reactions.my_emoji === emoji)}
+          onClick={() => { setPopKey(emoji); onReact?.("emoji", emoji); }}
+          onAnimationEnd={() => clearPop(emoji)}
+          className={chip(reactions.my_emoji === emoji) + popClass(emoji)}
         >
           <span>{emoji}</span>
           <span className="tabular-nums">{count}</span>
@@ -38,9 +45,10 @@ export function ReactionChips({ reactions, isOut, onReact }) {
       {aura > 0 && (
         <button
           type="button"
-          onClick={() => onReact?.("aura")}
+          onClick={() => { setPopKey("aura"); onReact?.("aura"); }}
+          onAnimationEnd={() => clearPop("aura")}
           title="Усиление ауры"
-          className={chip(reactions.my_aura)}
+          className={chip(reactions.my_aura) + popClass("aura")}
         >
           <Zap
             size={12}
