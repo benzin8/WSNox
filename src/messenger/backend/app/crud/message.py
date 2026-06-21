@@ -131,6 +131,103 @@ class MessageCRUD:
         return messages[::-1]
 
     @staticmethod
+    async def get_media_messages(
+        db: AsyncSession, chat_id: int, *, before_id: int | None = None, limit: int = 30
+    ) -> list[Message]:
+        """Photos/videos in a chat, newest-first, id-cursor paginated.
+
+        Captions are decrypted onto `.text` so the gallery can show them.
+        """
+        query = select(Message).where(
+            Message.chat_id == chat_id,
+            Message.msg_type.in_(("image", "video")),
+        )
+        if before_id is not None:
+            query = query.where(Message.id < before_id)
+        query = query.order_by(Message.id.desc()).limit(limit)
+        rows = (await db.execute(query)).scalars().all()
+        for m in rows:
+            m.text = decrypt_message(m.encrypted_data)
+        return list(rows)
+
+    # Bounds for on-the-fly word search (approach A): scan messages in pages,
+    # decrypting as we go, stopping at `limit` hits or once we've looked at
+    # SCAN_CAP messages (so a huge channel can't make one query run forever).
+    _SEARCH_PAGE = 200
+    _SEARCH_SCAN_CAP = 2000
+
+    @staticmethod
+    async def search_messages(
+        db: AsyncSession,
+        chat_id: int,
+        *,
+        q: str | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+        before_id: int | None = None,
+        limit: int = 30,
+    ) -> tuple[list[Message], int | None]:
+        """Search one chat by words and/or date. Returns (messages, next_before_id).
+
+        Date-only filters are pure SQL on the indexed `created_at`. Word search
+        decrypts each candidate and keeps case-insensitive substring matches —
+        message bodies are encrypted at rest, so this can't be a DB query.
+        """
+        def _scoped(stmt):
+            stmt = stmt.where(Message.chat_id == chat_id)
+            if date_from is not None:
+                stmt = stmt.where(Message.created_at >= date_from)
+            if date_to is not None:
+                stmt = stmt.where(Message.created_at <= date_to)
+            return stmt
+
+        if not q:
+            stmt = _scoped(select(Message))
+            if before_id is not None:
+                stmt = stmt.where(Message.id < before_id)
+            stmt = stmt.order_by(Message.id.desc()).limit(limit)
+            rows = list((await db.execute(stmt)).scalars().all())
+            for m in rows:
+                m.text = decrypt_message(m.encrypted_data)
+            next_before = rows[-1].id if len(rows) == limit else None
+            return rows, next_before
+
+        needle = q.casefold()
+        hits: list[Message] = []
+        cursor = before_id
+        scanned = 0
+        last_scanned: int | None = None
+        ended = False
+        while len(hits) < limit and scanned < MessageCRUD._SEARCH_SCAN_CAP:
+            stmt = _scoped(select(Message))
+            if cursor is not None:
+                stmt = stmt.where(Message.id < cursor)
+            stmt = stmt.order_by(Message.id.desc()).limit(MessageCRUD._SEARCH_PAGE)
+            batch = list((await db.execute(stmt)).scalars().all())
+            if not batch:
+                ended = True
+                break
+            reached = False
+            for m in batch:
+                scanned += 1
+                last_scanned = m.id
+                text = decrypt_message(m.encrypted_data)
+                if needle in text.casefold():
+                    m.text = text
+                    hits.append(m)
+                    if len(hits) >= limit:
+                        reached = True
+                        break
+            cursor = batch[-1].id
+            if reached:
+                break
+            if len(batch) < MessageCRUD._SEARCH_PAGE:
+                ended = True
+                break
+        next_before = None if ended else last_scanned
+        return hits, next_before
+
+    @staticmethod
     async def delete_message(db: AsyncSession, message_id: int, user_id: int, *, redis: Redis | None = None) -> bool:
         """Delete a message if the user is the sender. Returns True if deleted."""
         result = await db.execute(

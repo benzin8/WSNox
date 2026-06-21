@@ -227,10 +227,50 @@ export const useChatAction = () => {
         }
     }
 
+    // Media gallery for a chat — { items, next_before_id }. before_id is the
+    // id-cursor for "load more" (older media).
+    const getChatMedia = async (chatId, beforeId = null) => {
+        try {
+            const params = new URLSearchParams();
+            if (beforeId) params.set("before_id", beforeId);
+            const qs = params.toString();
+            const res = await axios.get(
+                `${API_BASE}/chats/${chatId}/media${qs ? `?${qs}` : ""}`,
+                getAuthConfig()
+            );
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to load media");
+            return { items: [], next_before_id: null };
+        }
+    }
+
+    // In-chat message search by words and/or date range — { items, next_before_id }.
+    const searchChatMessages = async (chatId, { q, dateFrom, dateTo, beforeId } = {}) => {
+        try {
+            setError(null);
+            const params = new URLSearchParams();
+            if (q) params.set("q", q);
+            if (dateFrom) params.set("date_from", dateFrom);
+            if (dateTo) params.set("date_to", dateTo);
+            if (beforeId) params.set("before_id", beforeId);
+            const res = await axios.get(
+                `${API_BASE}/chats/${chatId}/search?${params.toString()}`,
+                getAuthConfig()
+            );
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Search failed");
+            return { items: [], next_before_id: null };
+        }
+    }
+
     return {searchChats,
             createChannel,
             subscribeChannel,
             joinChannelByToken,
+            getChatMedia,
+            searchChatMessages,
             searchChannelResult,
             getUserDataByChatId,
             getOrCreateChats,

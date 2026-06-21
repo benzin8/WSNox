@@ -60,3 +60,9 @@ class MessageResponse(MessageBase):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class MessagePage(BaseModel):
+    """A page of messages with an opaque cursor for "load more" (id-based)."""
+    items: list[MessageResponse]
+    next_before_id: Optional[int] = None

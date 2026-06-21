@@ -9,7 +9,7 @@ import { GroupAvatar } from "./GroupAvatar";
 export const ChatWindow = ({
     messages, setMessages, activeChat, sendMessage,
     isConnected, isConnecting, messagesEndRef, inputText, setInputText,
-    chatName, onOpenProfile, onBack,
+    chatName, onOpenProfile, onOpenChatInfo, onBack,
     isPartnerOnline, partnerPresencePreference,
     replyTo, onReply, onReact, onCancelReply, onDeleteMessage,
     editingMessage, onEditMessage, onCancelEdit, onConfirmEdit,
@@ -60,9 +60,9 @@ export const ChatWindow = ({
             </button>
             <button
               type="button"
-              onClick={onOpenProfile}
+              onClick={onOpenChatInfo || onOpenProfile}
               className="group flex items-center gap-3 -mx-2 px-2 py-1 rounded-xl active:scale-[0.98] transition-all min-w-0 hover:bg-zinc-800/50"
-              title={isChannel ? "Официальный канал WSNox" : isGroup ? "Участники группы" : "Открыть профиль"}
+              title="Медиа и поиск"
             >
               {isChannel ? (
                 <div

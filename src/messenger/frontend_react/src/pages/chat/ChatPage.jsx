@@ -14,6 +14,7 @@ import { ChatWindow } from '../../components/chat/ChatWindow';
 import { ChatList } from '../../components/chat/ChatList';
 import { CreateGroupModal } from '../../components/chat/CreateGroupModal';
 import { CreateChannelModal } from '../../components/chat/CreateChannelModal';
+import { ChatInfoModal } from '../../components/chat/ChatInfoModal';
 import { GroupInfoModal } from '../../components/chat/GroupInfoModal';
 import { MediaPreviewModal } from '../../components/chat/MediaPreviewModal';
 import { ProfileModal } from '../../components/profile/ProfileModal';
@@ -104,6 +105,7 @@ function ChatPage() {
           createChannel,
           subscribeChannel,
           joinChannelByToken,
+          getChatMedia,
           getChatMembers,
           addGroupMembers,
           leaveGroupChat,
@@ -414,6 +416,7 @@ function ChatPage() {
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [creatingChannel, setCreatingChannel] = useState(false);
+  const [chatInfoOpen, setChatInfoOpen] = useState(false);
 
   const handleOpenCreateGroup = useCallback(() => {
     // Candidates = current private chats' counterparts. The backend rejects
@@ -1080,6 +1083,7 @@ function ChatPage() {
                  handleOpenUserProfile(activeChat.recipient_id);
                }
              }}
+             onOpenChatInfo={() => setChatInfoOpen(true)}
              onBack={() => setMobileView('list')}
              replyTo={replyTo}
              onReply={handleReply}
@@ -1145,6 +1149,25 @@ function ChatPage() {
             isSubmitting={creatingChannel}
             onCancel={() => setShowCreateChannel(false)}
             onCreate={handleCreateChannel}
+          />
+        )}
+
+        {/* Chat media gallery (+ search, later) — opens on header tap */}
+        {chatInfoOpen && activeChat && (
+          <ChatInfoModal
+            chat={activeChat}
+            chatName={chatName}
+            isGroup={activeChat.chat_type === "group"}
+            isChannel={activeChat.chat_type === "channel"}
+            getChatMedia={getChatMedia}
+            onClose={() => setChatInfoOpen(false)}
+            onOpenInfo={
+              activeChat.chat_type === "group"
+                ? () => { setChatInfoOpen(false); handleOpenGroupInfo(); }
+                : activeChat.recipient_id
+                ? () => { setChatInfoOpen(false); handleOpenUserProfile(activeChat.recipient_id); }
+                : undefined
+            }
           />
         )}
 

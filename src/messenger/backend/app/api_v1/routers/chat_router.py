@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +15,7 @@ from messenger.backend.app.api_v1.schemas.chat import (
     GroupChatMembersResponse,
     UserSearchResponse,
 )
-from messenger.backend.app.api_v1.schemas.message import MessageResponse
+from messenger.backend.app.api_v1.schemas.message import MessagePage, MessageResponse
 from messenger.backend.app.api_v1.schemas.user import UserResponse
 from messenger.backend.app.crud.chat import (
     ChatCRUD,
@@ -534,6 +535,69 @@ async def get_messages_by_chat_id(
         resp.reactions = reaction_summary.get(message.id)
         result.append(resp)
     return result
+
+
+async def _media_resp(m, storage) -> MessageResponse:
+    """MessageResponse for a media/search hit, with presigned attachment URLs."""
+    resp = MessageResponse.model_validate(m)
+    if m.attachment_key or m.attachment_thumb_key:
+        full_url, thumb_url = await media_service.resolve_attachment_urls(
+            storage, m.attachment_key, m.attachment_thumb_key
+        )
+        resp.attachment_url = full_url
+        resp.attachment_thumb_url = thumb_url
+    return resp
+
+
+@chat_router.get("/{chat_id}/media", response_model=MessagePage)
+async def get_chat_media(
+    chat_id: int,
+    before_id: int | None = None,
+    limit: int = 30,
+    db: AsyncSession = Depends(get_db_session),
+    storage: S3Storage = Depends(get_storage),
+    current_user=Depends(get_current_user),
+):
+    """All photos/videos in a chat (newest first), id-cursor paginated."""
+    if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
+    limit = max(1, min(limit, 60))
+    msgs = await MessageCRUD.get_media_messages(db, chat_id, before_id=before_id, limit=limit)
+    items = [await _media_resp(m, storage) for m in msgs]
+    next_before = msgs[-1].id if len(msgs) == limit else None
+    return MessagePage(items=items, next_before_id=next_before)
+
+
+@chat_router.get("/{chat_id}/search", response_model=MessagePage)
+async def search_chat_messages(
+    chat_id: int,
+    q: str | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    before_id: int | None = None,
+    limit: int = 30,
+    db: AsyncSession = Depends(get_db_session),
+    storage: S3Storage = Depends(get_storage),
+    current_user=Depends(get_current_user),
+):
+    """Search one chat by words (decrypt on the fly) and/or a date range."""
+    if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
+    has_q = bool(q and q.strip())
+    if not has_q and date_from is None and date_to is None:
+        raise HTTPException(status_code=400, detail="Нужен запрос или дата")
+    limit = max(1, min(limit, 50))
+    msgs, next_before = await MessageCRUD.search_messages(
+        db,
+        chat_id,
+        q=q.strip() if has_q else None,
+        date_from=date_from,
+        date_to=date_to,
+        before_id=before_id,
+        limit=limit,
+    )
+    items = [await _media_resp(m, storage) for m in msgs]
+    return MessagePage(items=items, next_before_id=next_before)
 
 
 @chat_router.post("/{chat_id}/media", response_model=MessageResponse)
