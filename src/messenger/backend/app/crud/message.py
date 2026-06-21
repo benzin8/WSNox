@@ -69,6 +69,7 @@ class MessageCRUD:
         attachment_meta: dict[str, Any] | None,
         caption: str = "",
         reply_to_id: int | None = None,
+        album_id: str | None = None,
         redis: Redis | None = None,
     ) -> Message:
         """Persist a media message. Caption is encrypted just like text bodies
@@ -85,6 +86,7 @@ class MessageCRUD:
             attachment_key=attachment_key,
             attachment_thumb_key=attachment_thumb_key,
             attachment_meta=attachment_meta,
+            album_id=album_id,
         )
         db.add(message)
         await db.execute(

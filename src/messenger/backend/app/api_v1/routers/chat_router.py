@@ -34,6 +34,7 @@ from messenger.backend.app.ws.router import (
     publish_read_receipt,
     send_media_ack_to_sender,
 )
+from messenger.backend.core.albums import is_valid_album_id, is_valid_album_index
 from messenger.backend.core.crypto import decrypt_message
 from messenger.backend.core.rate_limit import (
     rate_limit_chat_create,
@@ -716,6 +717,8 @@ async def upload_chat_media(
     reply_to_id: int | None = Form(None),
     client_meta: str = Form(""),
     client_msg_id: str | None = Form(None),
+    album_id: str | None = Form(None),
+    album_index: int | None = Form(None),
     db: AsyncSession = Depends(get_db_session),
     storage: S3Storage = Depends(get_storage),
     current_user=Depends(get_current_user),
@@ -736,6 +739,15 @@ async def upload_chat_media(
     # members can't post media here — it stays admin-only via the dashboard.
     if chat.chat_type == "channel" and await ChatCRUD.get_member_role(db, chat_id, current_user.id) != "owner":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Только владелец может публиковать в канале")
+    # Album fields are optional; when present they must be well-formed and the
+    # file must be a photo (albums are photo-only in v1). The cap (<= 10) is
+    # enforced via is_valid_album_index (0..9).
+    if album_id is not None or album_index is not None:
+        if not (is_valid_album_id(album_id) and is_valid_album_index(album_index)):
+            raise HTTPException(status_code=400, detail="Invalid album fields")
+        content_type_peek = (file.content_type or "").split(";")[0].strip()
+        if content_type_peek not in media_service.ALLOWED_IMAGE_MIME:
+            raise HTTPException(status_code=400, detail="Albums are photo-only")
     # For private chats we still persist recipient_id (back-compat with old
     # clients reading the column). For group chats recipient_id is NULL and
     # fan-out happens via chat_members.
@@ -769,6 +781,11 @@ async def upload_chat_media(
     except media_service.InvalidMeta as e:
         raise HTTPException(status_code=400, detail=str(e) or "Invalid meta") from e
 
+    # Fold the album position into the persisted meta (no extra column).
+    meta = payload.attachment_meta or {}
+    if album_index is not None:
+        meta = {**meta, "album_index": album_index}
+
     message = await MessageCRUD.create_media_message(
         db,
         chat_id=chat_id,
@@ -777,9 +794,10 @@ async def upload_chat_media(
         msg_type=payload.msg_type,
         attachment_key=payload.attachment_key,
         attachment_thumb_key=payload.attachment_thumb_key,
-        attachment_meta=payload.attachment_meta,
+        attachment_meta=meta,
         caption=caption,
         reply_to_id=reply_to_id,
+        album_id=album_id,
         redis=get_redis(),
     )
 
