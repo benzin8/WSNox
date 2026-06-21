@@ -268,8 +268,10 @@ async def test_delete_message_busts_actor_and_recipient(fake_redis):
     await fake_redis.set(unread_total(1), "1", ex=300)  # actor/sender
     await fake_redis.set(unread_total(2), "1", ex=300)  # recipient
     message = MagicMock()
+    message.id = 99
     message.sender_id = 1
     message.recipient_id = 2
+    message.album_id = None  # single message, not an album
     res = MagicMock()
     res.scalar_one_or_none.return_value = message
     session = MagicMock()
@@ -278,7 +280,7 @@ async def test_delete_message_busts_actor_and_recipient(fake_redis):
     session.commit = AsyncMock()
 
     ok = await MessageCRUD.delete_message(session, message_id=99, user_id=1, redis=fake_redis)
-    assert ok is True
+    assert ok == [99]
     assert await fake_redis.get(unread_total(1)) is None
     assert await fake_redis.get(unread_total(2)) is None
 
@@ -298,7 +300,7 @@ async def test_delete_message_not_owner_no_bust(fake_redis):
     session.commit = AsyncMock()
 
     ok = await MessageCRUD.delete_message(session, message_id=99, user_id=1, redis=fake_redis)
-    assert ok is False
+    assert ok == []
     assert session.commit.await_count == 0
     assert await fake_redis.get(unread_total(2)) == "1"  # untouched
 

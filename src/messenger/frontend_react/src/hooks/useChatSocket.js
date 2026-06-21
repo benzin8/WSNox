@@ -124,7 +124,10 @@ export const useChatSocket = (token, activeChatIdRef) => {
 
                 if (data.type === "message_deleted") {
                     if (data.chat_id === activeChatIdRef?.current) {
-                        setMessages((prev) => prev.filter(m => m.id !== data.message_id));
+                        // message_ids carries the whole album when one is deleted;
+                        // fall back to the single message_id for plain messages.
+                        const delIds = new Set(data.message_ids || [data.message_id]);
+                        setMessages((prev) => prev.filter(m => !delIds.has(m.id)));
                     }
                     return;
                 }

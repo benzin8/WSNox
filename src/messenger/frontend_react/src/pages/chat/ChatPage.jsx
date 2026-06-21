@@ -798,8 +798,10 @@ function ChatPage() {
         chat_id: activeChat.id,
       }));
     }
-    // Optimistic removal
-    setMessages(prev => prev.filter(m => m.id !== msg.id));
+    // Optimistic removal — for an album, drop every tile sharing album_id.
+    setMessages(prev => msg.album_id
+      ? prev.filter(m => m.album_id !== msg.album_id)
+      : prev.filter(m => m.id !== msg.id));
   }, [activeChat?.id, socketRef, setMessages]);
 
   const handleLogout = () => {

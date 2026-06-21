@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from messenger.backend.app.crud.chat import ChatCRUD
+from messenger.backend.core.albums import album_keys_to_delete
 from messenger.backend.core.cache import invalidate, unread_total
 from messenger.backend.core.crypto import decrypt_message, encrypt_message
 from messenger.backend.models import Chat, Message
@@ -249,35 +250,48 @@ class MessageCRUD:
     @staticmethod
     async def delete_message(
         db: AsyncSession, message_id: int, user_id: int, *, redis: Redis | None = None, storage=None
-    ) -> bool:
-        """Delete a message if the user is the sender. Returns True if deleted.
+    ) -> list[int]:
+        """Delete a message (or its whole album) if the user is the sender.
 
-        Also removes the message's S3 objects (best-effort) so deleted media
-        doesn't orphan in the bucket and rack up storage cost.
+        Returns the list of deleted message ids ([] if nothing was deleted —
+        the caller's ``if deleted:`` truthiness check still works). Also removes
+        the messages' S3 objects (best-effort) so deleted media doesn't orphan
+        in the bucket and rack up storage cost.
         """
         result = await db.execute(
             select(Message).where(Message.id == message_id)
         )
         message = result.scalar_one_or_none()
         if not message or message.sender_id != user_id:
-            return False
+            return []
         recipient_id = message.recipient_id
-        attachment_key = message.attachment_key
-        attachment_thumb_key = message.attachment_thumb_key
-        await db.delete(message)
+        if message.album_id:
+            # Delete the whole album: every row sharing this album_id owned by
+            # the same sender (ownership already checked on the clicked row).
+            rows = list((await db.execute(
+                select(Message).where(
+                    Message.album_id == message.album_id,
+                    Message.sender_id == user_id,
+                )
+            )).scalars().all())
+        else:
+            rows = [message]
+        deleted_ids = [m.id for m in rows]
+        keys = album_keys_to_delete(rows)
+        for row in rows:
+            await db.delete(row)
         await db.commit()
         if storage is not None:
-            for key in (attachment_key, attachment_thumb_key):
-                if key:
-                    try:
-                        await storage.delete_object(key)
-                    except Exception:  # noqa: BLE001 — best-effort cleanup
-                        pass
+            for key in keys:
+                try:
+                    await storage.delete_object(key)
+                except Exception:  # noqa: BLE001 — best-effort cleanup
+                    pass
         affected = {user_id}
         if recipient_id is not None:
             affected.add(recipient_id)
         await MessageCRUD._bust_unread(redis, list(affected))
-        return True
+        return deleted_ids
 
     @staticmethod
     async def edit_message(db: AsyncSession, message_id: int, user_id: int, new_text: str) -> Message | None:

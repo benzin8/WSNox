@@ -790,7 +790,10 @@ async def websocket_chat(websocket: WebSocket) -> None:
                                 del_payload = json.dumps({
                                     "type": "message_deleted",
                                     "chat_id": del_chat_id,
+                                    # message_id kept for back-compat; message_ids
+                                    # carries the whole album when one is deleted.
                                     "message_id": del_message_id,
+                                    "message_ids": deleted,
                                 })
                                 await redis.publish(REDIS_CHAT_CHANNEL + ":deletions", del_payload)
                 continue
