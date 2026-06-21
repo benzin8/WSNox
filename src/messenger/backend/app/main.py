@@ -71,13 +71,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan,
-    swagger_ui_parameters={"syntaxHighlight": False}
+    # API docs are an endpoint map for attackers — only expose them in debug.
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+    openapi_url="/openapi.json" if settings.debug else None,
+    swagger_ui_parameters={"syntaxHighlight": False},
 )
 
+# Same-origin app, so CORS isn't hit in normal use; restrict it to our own
+# frontend so a random site can't script authenticated cross-origin calls.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[settings.frontend_base_url],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

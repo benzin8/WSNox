@@ -31,17 +31,24 @@ from messenger.backend.models.user import User
 class ChatCRUD:
     @staticmethod
     async def search_chats(session: AsyncSession, search_query: str, user_id: str) -> list[User]:
+        q = (search_query or "").strip()
+        if len(q) < 2:
+            return []
+        # Escape LIKE wildcards so "%" / "_" can't match-all (enumeration) and
+        # cap results so search can't dump the whole user base.
+        pattern = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         query = (
             select(User)
             .options(selectinload(User.profile))
-            .where(User.username.ilike(f"%{search_query}%"))
+            .where(User.username.ilike(pattern, escape="\\"))
             .where(User.id != user_id)
+            .limit(20)
         )
         try:
             result = await session.execute(query)
             return result.scalars().all()
         except Exception:
-            return None
+            return []
 
     @staticmethod
     async def create_private_chat(session: AsyncSession, chat_data: ChatCreateRequest, members: list[int], current_user: User) -> Chat:
@@ -129,10 +136,14 @@ class ChatCRUD:
 
     @staticmethod
     async def search_channels(session: AsyncSession, search_query: str) -> list[Chat]:
+        q = (search_query or "").strip()
+        if len(q) < 2:
+            return []
+        pattern = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         rows = await session.execute(
             select(Chat)
             .where(Chat.chat_type == "channel")
-            .where(Chat.name.ilike(f"%{search_query}%"))
+            .where(Chat.name.ilike(pattern, escape="\\"))
             .order_by(Chat.created_at.desc())
             .limit(20)
         )
