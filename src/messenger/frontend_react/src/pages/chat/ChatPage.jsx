@@ -17,6 +17,7 @@ import { CreateChannelModal } from '../../components/chat/CreateChannelModal';
 import { ChatInfoModal } from '../../components/chat/ChatInfoModal';
 import { GroupInfoModal } from '../../components/chat/GroupInfoModal';
 import { MediaPreviewModal } from '../../components/chat/MediaPreviewModal';
+import { MediaAlbumComposer } from '../../components/chat/MediaAlbumComposer';
 import { ProfileModal } from '../../components/profile/ProfileModal';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import { SidebarHeader } from '../../components/chat/SidebarHeader';
@@ -623,12 +624,17 @@ function ChatPage() {
 
   // ── media flow ─────────────────────────────────────────────────────
   const [pendingMediaFile, setPendingMediaFile] = useState(null);
+  const [albumFiles, setAlbumFiles] = useState(null);
 
   const handlePickMedia = useCallback((file) => {
     setPendingMediaFile(file);
   }, []);
 
-  const uploadMediaToChat = useCallback(async (chatId, tempId, file, caption, meta) => {
+  const handlePickMany = useCallback((files) => {
+    setAlbumFiles(files);
+  }, []);
+
+  const uploadMediaToChat = useCallback(async (chatId, tempId, file, caption, meta, albumId, albumIndex) => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('caption', caption || '');
@@ -636,6 +642,10 @@ function ChatPage() {
     // upload still flips to "sent" even if the HTTP response is lost.
     fd.append('client_msg_id', String(tempId));
     if (meta) fd.append('client_meta', JSON.stringify(meta));
+    if (albumId) {
+      fd.append('album_id', albumId);
+      fd.append('album_index', String(albumIndex));
+    }
     return axios.post(`${API_BASE_URL}/chats/${chatId}/media`, fd, {
       headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
       onUploadProgress: (e) => {
@@ -746,6 +756,69 @@ function ChatPage() {
     setMessages((prev) => prev.filter((m) => m.id !== msg.id));
     handleSendMedia(msg._retry_file, msg._retry_caption || '', msg._retry_meta || null);
   }, [handleSendMedia, setMessages]);
+
+  // Send several photos as one album. Each photo is a normal media upload that
+  // shares a client-generated album_id; the per-photo album_index drives order.
+  // One optimistic Message per photo (sharing album_id) so MessageList renders
+  // the collage immediately; tiles flip to the real URL as each upload returns.
+  const handleSendAlbum = useCallback(async (orderedFiles, caption) => {
+    if (!activeChat?.id || !orderedFiles?.length) return;
+    // Single photo from the composer → just use the normal media path.
+    if (orderedFiles.length === 1) { handleSendMedia(orderedFiles[0], caption || '', null); return; }
+
+    const albumId = `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.slice(0, 32);
+    const items = orderedFiles.slice(0, 10).map((file, idx) => ({
+      file, idx,
+      tempId: `tmp-${albumId}-${idx}`,
+      localUrl: URL.createObjectURL(file),
+    }));
+
+    setMessages((prev) => [...prev, ...items.map(({ tempId, idx, localUrl }) => ({
+      id: tempId,
+      type: 'outgoing',
+      text: idx === 0 ? (caption || '') : '',
+      created_at: new Date().toISOString(),
+      msg_type: 'image',
+      album_id: albumId,
+      attachment_url: localUrl,
+      attachment_thumb_url: localUrl,
+      attachment_meta: { album_index: idx },
+      client_status: 'uploading',
+      upload_progress: 0,
+    }))]);
+
+    // Surface the album to the chat list immediately (sender side).
+    signalLocalSend({ chatId: activeChat.id, text: caption || `Альбом · ${items.length} фото`, msgType: 'image' });
+
+    // Upload with bounded concurrency (3 workers) sharing the album_id.
+    const queue = items.slice();
+    const worker = async () => {
+      while (queue.length) {
+        const it = queue.shift();
+        try {
+          const res = await uploadMediaToChat(
+            activeChat.id, it.tempId, it.file, it.idx === 0 ? caption : '', { album_index: it.idx }, albumId, it.idx,
+          );
+          const server = res.data;
+          setMessages((prev) => prev.map((m) => m.id === it.tempId ? {
+            ...m,
+            id: server.id,
+            attachment_url: server.attachment_url,
+            attachment_thumb_url: server.attachment_thumb_url || server.attachment_url,
+            attachment_meta: server.attachment_meta || m.attachment_meta,
+            album_id: server.album_id || albumId,
+            client_status: 'sent',
+            upload_progress: undefined,
+          } : m));
+          try { URL.revokeObjectURL(it.localUrl); } catch { /* noop */ }
+        } catch (e) {
+          console.error('album photo upload failed', e);
+          setMessages((prev) => prev.map((m) => m.id === it.tempId ? { ...m, client_status: 'failed' } : m));
+        }
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+  }, [activeChat?.id, setMessages, uploadMediaToChat, signalLocalSend, handleSendMedia]);
 
   // Voice notes reuse the media upload path — they're just an audio file with
   // a {duration_ms} meta and no caption. The backend tags them msg_type=voice.
@@ -1146,6 +1219,7 @@ function ChatPage() {
              onCancelEdit={handleCancelEdit}
              onConfirmEdit={handleConfirmEdit}
              onPickMedia={handlePickMedia}
+             onPickMany={handlePickMany}
              onSendVoice={handleSendVoice}
              onRetryMedia={handleRetryMedia}
              onLeaveGroup={handleLeaveGroup}
@@ -1181,6 +1255,14 @@ function ChatPage() {
             file={pendingMediaFile}
             onCancel={() => setPendingMediaFile(null)}
             onSend={handleSendMedia}
+          />
+        )}
+
+        {albumFiles && (
+          <MediaAlbumComposer
+            files={albumFiles}
+            onClose={() => setAlbumFiles(null)}
+            onSend={(ordered, cap) => { setAlbumFiles(null); handleSendAlbum(ordered, cap); }}
           />
         )}
 

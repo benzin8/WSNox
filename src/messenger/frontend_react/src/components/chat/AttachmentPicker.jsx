@@ -10,26 +10,40 @@ const ACCEPT = "image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/
  * instant rejection instead of a multi-second upload that 413s. The server
  * re-validates everything — this is purely a UX nicety.
  */
-export function AttachmentPicker({ onPick, disabled }) {
+export function AttachmentPicker({ onPick, onPickMany, disabled }) {
   const inputRef = useRef(null);
 
-  const handleChange = (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";  // allow re-picking the same file
-    if (!file) return;
-
+  const validate = (file) => {
     const isImage = file.type.startsWith("image/");
     const isVideo = file.type.startsWith("video/");
     if (!isImage && !isVideo) {
       alert("Поддерживаются только фото и видео");
-      return;
+      return false;
     }
     const max = isVideo ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
     if (file.size > max) {
       alert(`Файл больше ${isVideo ? "50" : "10"} МБ — нельзя`);
+      return false;
+    }
+    return true;
+  };
+
+  const handleChange = (e) => {
+    const picked = Array.from(e.target.files || []);
+    e.target.value = "";  // allow re-picking the same file(s)
+    if (!picked.length) return;
+
+    // Album = 2+ images. Videos aren't album-able in v1, so a multi-pick of
+    // images opens the album composer; anything else sends the first file singly.
+    const images = picked.filter((f) => f.type.startsWith("image/"));
+    if (images.length >= 2 && onPickMany) {
+      const valid = images.filter(validate).slice(0, 10);
+      if (valid.length >= 2) { onPickMany(valid); return; }
+      if (valid.length === 1) { onPick(valid[0]); return; }
       return;
     }
-    onPick(file);
+    const file = picked[0];
+    if (validate(file)) onPick(file);
   };
 
   return (
@@ -48,6 +62,7 @@ export function AttachmentPicker({ onPick, disabled }) {
         ref={inputRef}
         type="file"
         accept={ACCEPT}
+        multiple
         onChange={handleChange}
         className="hidden"
       />

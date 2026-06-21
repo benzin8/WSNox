@@ -8,7 +8,7 @@ import { useTheme } from "../../features/theme";
 // Full emoji picker — lazy so it stays out of the main bundle until opened.
 const EmojiPicker = React.lazy(() => import("emoji-picker-react"));
 
-export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit, onPickMedia, onSendVoice }) => {
+export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit, onPickMedia, onPickMany, onSendVoice }) => {
     const [inputText, setInputText] = useState("");
     const [showEmoji, setShowEmoji] = useState(false);
     const inputRef = React.useRef(null);
@@ -150,7 +150,7 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
             }`}
           >
             {!editingMessage && onPickMedia && (
-              <AttachmentPicker onPick={onPickMedia} disabled={!isConnected} />
+              <AttachmentPicker onPick={onPickMedia} onPickMany={onPickMany} disabled={!isConnected} />
             )}
             <input
               ref={inputRef}
