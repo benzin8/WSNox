@@ -54,7 +54,7 @@ export default function SendCodePage() {
                 {/* Card */}
                 <div className="p-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/50">
                     <div className="mb-8 text-center">
-                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.08] text-zinc-100">WSNox</h1>
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight leading-[1.08] text-zinc-100" style={{ fontFamily: 'var(--font-brand)' }}>WSNox</h1>
                         <p className="mt-3 text-zinc-400 leading-relaxed">Введите ваш email для получения кода подтверждения</p>
                     </div>
 

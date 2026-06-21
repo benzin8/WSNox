@@ -9,7 +9,7 @@ import { Footer } from '../components/landing/Footer';
 export default function LandingPage() {
   return (
     <div
-      className="relative w-full h-full overflow-y-auto overflow-x-hidden scrollbar-hide"
+      className="landing-brand relative w-full h-full overflow-y-auto overflow-x-hidden scrollbar-hide"
       style={{ background: '#09090b', color: '#f4f4f5' }}
     >
       <Nav />

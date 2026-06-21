@@ -10,7 +10,7 @@ export function Footer() {
       <div ref={ref} className="reveal-up max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2.5">
           <WSNoxLogo size={22} className="text-lime-400" />
-          <span className="text-sm font-semibold text-zinc-300">WSNox</span>
+          <span className="text-sm font-semibold text-zinc-300" style={{ fontFamily: 'var(--font-brand)' }}>WSNox</span>
           <span className="text-xs text-zinc-600 ml-2">© {year}</span>
         </div>
         <div className="flex items-center gap-6 text-xs text-zinc-500">

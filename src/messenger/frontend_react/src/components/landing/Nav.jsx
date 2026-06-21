@@ -17,7 +17,7 @@ export function Nav() {
           size={32}
           className="text-lime-400 transition-transform duration-300 group-hover:rotate-12"
         />
-        <span className="text-lg font-semibold tracking-tight text-zinc-100">WSNox</span>
+        <span className="text-lg font-semibold tracking-tight text-zinc-100" style={{ fontFamily: 'var(--font-brand)' }}>WSNox</span>
       </Link>
       <div className="hidden md:flex items-center gap-7 text-sm text-zinc-400">
         <a href="#features" className="hover:text-zinc-200 transition-colors">Возможности</a>

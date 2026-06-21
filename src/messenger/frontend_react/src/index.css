@@ -2,6 +2,15 @@
 
 @theme {
   --font-sans: "Golos Text", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Unbounded — bold display brand font for the landing + the WSNox wordmark. */
+  --font-brand: "Unbounded", "Golos Text", sans-serif;
+}
+
+/* Landing headings use the Unbounded brand font (body stays Golos Text). */
+.landing-brand h1,
+.landing-brand h2,
+.landing-brand h3 {
+  font-family: var(--font-brand);
 }
 
 /*
