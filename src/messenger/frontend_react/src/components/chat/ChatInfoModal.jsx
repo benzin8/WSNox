@@ -265,7 +265,7 @@ export function ChatInfoModal({
                       src={m.attachment_thumb_url || m.attachment_url}
                       alt=""
                       loading="lazy"
-                      className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:opacity-90 transition-opacity"
                     />
                     {m.msg_type === "video" && (
                       <span className="absolute inset-0 flex items-center justify-center bg-black/20">

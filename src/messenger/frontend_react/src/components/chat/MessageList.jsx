@@ -182,7 +182,7 @@ const MessageBubble = ({
     // under the image at the image's width instead of stretching the bubble
     // wider than the photo (which left empty space on the side). Channels show
     // wide, magazine-style media; chats keep the compact size.
-    const mediaWidth = isChannel ? "min(680px, 94vw)" : "min(260px, 60vw)";
+    const mediaWidth = isChannel ? "min(460px, 90vw)" : "min(260px, 60vw)";
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
 

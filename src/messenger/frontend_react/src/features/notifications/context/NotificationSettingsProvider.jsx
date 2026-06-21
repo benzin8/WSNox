@@ -134,15 +134,15 @@ export function NotificationSettingsProvider({ children }) {
 
   const toggleMute = useCallback((chatId) => {
     const id = Number(chatId);
-    let nextMuted;
-    setSettings((s) => {
-      const has = s.mutedChats.includes(id);
-      nextMuted = !has;
-      return {
-        ...s,
-        mutedChats: has ? s.mutedChats.filter((x) => x !== id) : [...s.mutedChats, id],
-      };
-    });
+    // Compute the target state up front — reading it from inside the setSettings
+    // updater left it undefined here (the updater runs later, during render), so
+    // the server got `{muted: undefined}` → 422 → rollback always re-muted, i.e.
+    // unmute snapped back.
+    const nextMuted = !settings.mutedChats.includes(id);
+    setSettings((s) => ({
+      ...s,
+      mutedChats: nextMuted ? [...s.mutedChats, id] : s.mutedChats.filter((x) => x !== id),
+    }));
     setChatMuteOnServer(id, nextMuted).catch((err) => {
       console.warn("[notifications] mute sync failed, rolling back:", err);
       setSettings((s) => ({
@@ -152,7 +152,7 @@ export function NotificationSettingsProvider({ children }) {
           : [...s.mutedChats, id],
       }));
     });
-  }, []);
+  }, [settings.mutedChats]);
 
   const setDnd = useCallback((enabled) => {
     const next = !!enabled;
