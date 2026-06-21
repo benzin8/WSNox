@@ -22,7 +22,10 @@ from messenger.backend.core.cookies import (
 from messenger.backend.core.rate_limit import (
     rate_limit_login,
     rate_limit_refresh,
+    rate_limit_register,
+    rate_limit_reset_password,
     rate_limit_send_code,
+    rate_limit_verify_code,
 )
 from messenger.backend.core.redis import get_redis
 from messenger.backend.core.security import (
@@ -49,7 +52,7 @@ async def send_code(data: EmailRequest):
     return {"message": True}
 
 
-@auth_router.post("/verify-code")
+@auth_router.post("/verify-code", dependencies=[Depends(rate_limit_verify_code)])
 async def verify_sms(data: EmailVerify, db: AsyncSession = Depends(get_db_session)):
     is_valid = await verify_code(data.email, data.code)
     if not is_valid:
@@ -71,7 +74,7 @@ async def verify_sms(data: EmailVerify, db: AsyncSession = Depends(get_db_sessio
         }
 
 
-@auth_router.post("/register", response_model=AuthResponse)
+@auth_router.post("/register", response_model=AuthResponse, dependencies=[Depends(rate_limit_register)])
 async def register(data: UserCreate, response: Response, db: AsyncSession = Depends(get_db_session)):
     redis = get_redis()
     verified = await redis.get(f"verified_for_reg:{data.email}")
@@ -109,7 +112,7 @@ async def forgot_password(
     return {"ok": True}
 
 
-@auth_router.post("/reset-password", response_model=AuthResponse)
+@auth_router.post("/reset-password", response_model=AuthResponse, dependencies=[Depends(rate_limit_reset_password)])
 async def reset_password(
     data: ResetPasswordRequest,
     response: Response,

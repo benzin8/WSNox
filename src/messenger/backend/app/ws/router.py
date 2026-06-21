@@ -712,6 +712,8 @@ async def websocket_chat(websocket: WebSocket) -> None:
     if transitioned:
         await publish_presence_event(redis, user_id, online=True)
 
+    from messenger.backend.core.rate_limit import WS_RATE_LIMITS, ws_rate_ok
+
     try:
         await websocket.send_json({"type": "auth_ok", "user_id": user_id})
 
@@ -723,6 +725,10 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 continue
 
             msg_type = msg_data.get("type")
+            # Per-user, per-type rate cap — drop floods (one bot can't spam a chat).
+            _ws_lim = WS_RATE_LIMITS.get(msg_type)
+            if _ws_lim is not None and not await ws_rate_ok(redis, user_id, msg_type, _ws_lim):
+                continue
             if msg_type == "ping":
                 transitioned = await set_presence(redis, user_id)
                 if transitioned:

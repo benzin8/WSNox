@@ -113,8 +113,14 @@ class MessageCRUD:
         reply_ids = {m.reply_to_id for m in messages if m.reply_to_id}
         reply_map: dict[int, tuple[str, str]] = {}
         if reply_ids:
+            # IDOR guard: only resolve reply previews for messages IN THIS chat.
+            # Without the chat_id filter, a crafted reply_to_id pointing at any
+            # message id would leak that message's decrypted text in the preview.
             reply_result = await db.execute(
-                select(Message).where(Message.id.in_(reply_ids))
+                select(Message).where(
+                    Message.id.in_(reply_ids),
+                    Message.chat_id == chat_id,
+                )
             )
             for rm in reply_result.scalars().all():
                 reply_map[rm.id] = (decrypt_message(rm.encrypted_data), rm.msg_type)

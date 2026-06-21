@@ -34,6 +34,11 @@ from messenger.backend.app.ws.router import (
     send_media_ack_to_sender,
 )
 from messenger.backend.core.crypto import decrypt_message
+from messenger.backend.core.rate_limit import (
+    rate_limit_chat_create,
+    rate_limit_media_upload,
+    rate_limit_search,
+)
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import get_db_session
 from messenger.backend.services import media as media_service
@@ -60,7 +65,7 @@ async def _channel_response(db, chat, user_id, *, expose_token: bool = False) ->
     return resp
 
 
-@chat_router.get("/search", response_model=UserSearchResponse)
+@chat_router.get("/search", response_model=UserSearchResponse, dependencies=[Depends(rate_limit_search)])
 async def search_users(
     query: str,
     db: AsyncSession = Depends(get_db_session),
@@ -81,7 +86,7 @@ async def search_users(
     ]
     return UserSearchResponse(chats=enriched, channels=channels)
 
-@chat_router.post("/get-or-create", response_model=ChatResponse)
+@chat_router.post("/get-or-create", response_model=ChatResponse, dependencies=[Depends(rate_limit_chat_create)])
 async def get_or_create_chat(request: ChatCreateRequest, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
     exising_chat = await ChatCRUD.get_chat_by_user_id(db, current_user.id, request.other_user_id)
     if exising_chat:
@@ -199,7 +204,7 @@ async def get_chats(
     return chats
 
 
-@chat_router.post("/group", response_model=ChatResponse, status_code=status.HTTP_201_CREATED)
+@chat_router.post("/group", response_model=ChatResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(rate_limit_chat_create)])
 async def create_group_chat(
     request: GroupChatCreateRequest,
     db: AsyncSession = Depends(get_db_session),
@@ -240,7 +245,7 @@ async def create_group_chat(
     return resp
 
 
-@chat_router.post("/channels", response_model=ChatResponse, status_code=status.HTTP_201_CREATED)
+@chat_router.post("/channels", response_model=ChatResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(rate_limit_chat_create)])
 async def create_channel(
     request: ChannelCreateRequest,
     db: AsyncSession = Depends(get_db_session),
@@ -549,7 +554,7 @@ async def _media_resp(m, storage) -> MessageResponse:
     return resp
 
 
-@chat_router.get("/{chat_id}/media", response_model=MessagePage)
+@chat_router.get("/{chat_id}/media", response_model=MessagePage, dependencies=[Depends(rate_limit_search)])
 async def get_chat_media(
     chat_id: int,
     before_id: int | None = None,
@@ -568,7 +573,7 @@ async def get_chat_media(
     return MessagePage(items=items, next_before_id=next_before)
 
 
-@chat_router.get("/{chat_id}/search", response_model=MessagePage)
+@chat_router.get("/{chat_id}/search", response_model=MessagePage, dependencies=[Depends(rate_limit_search)])
 async def search_chat_messages(
     chat_id: int,
     q: str | None = None,
@@ -600,7 +605,7 @@ async def search_chat_messages(
     return MessagePage(items=items, next_before_id=next_before)
 
 
-@chat_router.post("/{chat_id}/media", response_model=MessageResponse)
+@chat_router.post("/{chat_id}/media", response_model=MessageResponse, dependencies=[Depends(rate_limit_media_upload)])
 async def upload_chat_media(
     chat_id: int,
     file: UploadFile = File(...),
