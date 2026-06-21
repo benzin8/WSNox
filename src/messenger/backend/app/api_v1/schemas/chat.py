@@ -28,6 +28,9 @@ class ChatResponse(BaseModel):
     is_owner: bool = False
     is_official: bool = False
     invite_token: Optional[str] = None
+    # Private-chat consent request: pending until the recipient accepts.
+    is_request: bool = False
+    initiator_id: Optional[int] = None
 
     class Config:
         from_attributes = True

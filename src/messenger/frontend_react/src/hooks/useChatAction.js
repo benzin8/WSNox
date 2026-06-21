@@ -276,6 +276,20 @@ export const useChatAction = () => {
         }
     }
 
+    // Chat-request consent: recipient accepts / declines / reports a pending request.
+    const acceptChat = async (chatId) => {
+        try { await axios.post(`${API_BASE}/chats/${chatId}/accept`, null, getAuthConfig()); return true; }
+        catch (err) { setError(err.response?.data?.detail || "Failed"); return false; }
+    }
+    const declineChat = async (chatId) => {
+        try { await axios.post(`${API_BASE}/chats/${chatId}/decline`, null, getAuthConfig()); return true; }
+        catch (err) { setError(err.response?.data?.detail || "Failed"); return false; }
+    }
+    const reportSpam = async (chatId) => {
+        try { await axios.post(`${API_BASE}/chats/${chatId}/report-spam`, null, getAuthConfig()); return true; }
+        catch (err) { setError(err.response?.data?.detail || "Failed"); return false; }
+    }
+
     // In-chat message search by words and/or date range — { items, next_before_id }.
     const searchChatMessages = async (chatId, { q, dateFrom, dateTo, beforeId } = {}) => {
         try {
@@ -305,6 +319,9 @@ export const useChatAction = () => {
             blockUser,
             unblockUser,
             getBlockStatus,
+            acceptChat,
+            declineChat,
+            reportSpam,
             searchChannelResult,
             getUserDataByChatId,
             getOrCreateChats,

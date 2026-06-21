@@ -14,6 +14,7 @@ export const ChatWindow = ({
     replyTo, onReply, onReact, onCancelReply, onDeleteMessage,
     editingMessage, onEditMessage, onCancelEdit, onConfirmEdit,
     onPickMedia, onSendVoice, onRetryMedia, onLeaveGroup, onDeleteGroup,
+    currentUserId, onAcceptRequest, onDeclineRequest, onReportSpam,
 }) => {
     const [menuOpen, setMenuOpen] = React.useState(false);
     React.useEffect(() => { setMenuOpen(false); }, [activeChat?.id]);
@@ -21,6 +22,10 @@ export const ChatWindow = ({
     const isGroup = activeChat?.chat_type === "group";
     const isOwner = !!activeChat?.is_owner;
     const isOfficial = !!activeChat?.is_official;
+    // Private-chat consent request.
+    const isRequest = activeChat?.chat_type === "private" && !!activeChat?.is_request;
+    const iAmInitiator = activeChat?.initiator_id === currentUserId;
+    const iSentMessage = messages.some((m) => m.type === "outgoing");
     const [linkCopied, setLinkCopied] = React.useState(false);
     React.useEffect(() => { setLinkCopied(false); }, [activeChat?.id]);
     const handleCopyInvite = React.useCallback(() => {
@@ -190,6 +195,40 @@ export const ChatWindow = ({
           <div className="flex-shrink-0 flex items-center justify-center gap-2 px-6 py-4 border-t border-zinc-800/80 bg-zinc-950/90 text-zinc-500 text-sm">
             <Megaphone size={16} style={{ color: 'var(--color-lime-400)' }} />
             <span>{isOfficial ? "Только команда WSNox может писать в этот канал" : "Только владелец может публиковать в этом канале"}</span>
+          </div>
+        ) : isRequest && !iAmInitiator ? (
+          <div className="flex-shrink-0 border-t border-zinc-800/80 bg-zinc-950/90 px-4 py-4">
+            <p className="text-center text-sm text-zinc-400 mb-3">
+              <span className="text-zinc-200 font-medium">{chatName}</span> хочет начать с вами чат
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onAcceptRequest}
+                className="flex-1 py-2.5 rounded-xl bg-lime-400 text-zinc-900 font-semibold hover:bg-lime-300 transition-colors"
+              >
+                Принять
+              </button>
+              <button
+                type="button"
+                onClick={onDeclineRequest}
+                className="flex-1 py-2.5 rounded-xl bg-zinc-800/60 text-zinc-300 hover:bg-zinc-800 transition-colors"
+              >
+                Отклонить
+              </button>
+              <button
+                type="button"
+                onClick={onReportSpam}
+                className="py-2.5 px-3 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+                title="Пожаловаться на спам"
+              >
+                Спам
+              </button>
+            </div>
+          </div>
+        ) : isRequest && iAmInitiator && iSentMessage ? (
+          <div className="flex-shrink-0 flex items-center justify-center px-6 py-4 border-t border-zinc-800/80 bg-zinc-950/90 text-zinc-500 text-sm text-center">
+            Запрос отправлен — продолжить можно будет после того, как его примут
           </div>
         ) : (
           <InputArea

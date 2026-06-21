@@ -898,6 +898,15 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     # Blocked either way → silently drop (no delivery).
                     if await BlockCRUD.is_blocked_either(db, user_id, recipient_id):
                         continue
+                    # Consent: while a chat is a pending request the initiator may
+                    # send exactly ONE message; the recipient replying accepts it.
+                    if chat.is_request:
+                        if user_id == chat.initiator_id:
+                            if await MessageCRUD.count_in_chat_by_sender(db, chat_id, user_id) >= 1:
+                                continue  # locked until the recipient accepts
+                        else:
+                            chat.is_request = False
+                            await db.commit()
                 else:
                     recipient_id = None
                 message_id = await manager.send_personal_message(

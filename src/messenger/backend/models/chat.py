@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from messenger.backend.db import Base
@@ -18,6 +18,10 @@ class Chat(Base):
     # User channels only: optional blurb + a unique join token for invite links.
     description: Mapped[Optional[str]] = mapped_column(String(300), nullable=True, default=None)
     invite_token: Mapped[Optional[str]] = mapped_column(String(32), unique=True, nullable=True, default=None)
+    # Private-chat consent: a new DM starts as a "request". The initiator may
+    # send exactly one message while pending; the recipient accepts to open it.
+    is_request: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    initiator_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc),

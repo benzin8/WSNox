@@ -147,6 +147,71 @@ async def block_status(
     return {"blocked": await BlockCRUD.has_blocked(db, current_user.id, user_id)}
 
 
+async def _request_recipient_guard(db, chat_id: int, current_user):
+    """Validate the caller is a member of this private chat; return the chat."""
+    chat = await ChatCRUD.get_chat(db, chat_id)
+    if not chat or chat.chat_type != "private":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Чат не найден")
+    if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа")
+    return chat
+
+
+async def _dismiss_request(db, chat_id: int) -> None:
+    member_ids = await cached_member_ids(get_redis(), db, chat_id)
+    await ChatCRUD.delete_chat(db, chat_id)
+    await invalidate_membership(get_redis(), user_ids=member_ids, chat_id=chat_id, bust_notif=True)
+
+
+@chat_router.post("/{chat_id}/accept")
+async def accept_chat_request(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    """Recipient accepts a pending chat request → the chat opens."""
+    chat = await _request_recipient_guard(db, chat_id, current_user)
+    if not chat.is_request:
+        return {"ok": True}
+    if chat.initiator_id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Это ваш запрос")
+    chat.is_request = False
+    await db.commit()
+    return {"ok": True}
+
+
+@chat_router.post("/{chat_id}/decline")
+async def decline_chat_request(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    """Recipient declines a pending request → the chat is removed."""
+    chat = await _request_recipient_guard(db, chat_id, current_user)
+    if chat.initiator_id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Это ваш запрос")
+    await _dismiss_request(db, chat_id)
+    return {"ok": True}
+
+
+@chat_router.post("/{chat_id}/report-spam")
+async def report_chat_spam(
+    chat_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    """Recipient reports a request as spam → block the initiator + remove the chat."""
+    chat = await _request_recipient_guard(db, chat_id, current_user)
+    initiator = chat.initiator_id
+    if initiator and initiator != current_user.id:
+        await BlockCRUD.block(db, current_user.id, initiator)
+        logger.warning(
+            "SPAM REPORT: chat=%s reporter=%s initiator=%s", chat_id, current_user.id, initiator
+        )
+    await _dismiss_request(db, chat_id)
+    return {"ok": True}
+
+
 @chat_router.get("/{chat_id}/user", response_model=UserResponse)
 async def get_user_data_by_chat_id(
     chat_id: int,

@@ -50,6 +50,8 @@ class ChatCRUD:
         chat = Chat(
             chat_type = "private",
             name=f"private_{min(current_user.id, chat_data.other_user_id)}_{max(current_user.id, chat_data.other_user_id)}",
+            is_request=True,
+            initiator_id=current_user.id,
         )
         session.add(chat)
         await session.flush()

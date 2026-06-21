@@ -99,6 +99,17 @@ class MessageCRUD:
         return message
 
     @staticmethod
+    async def count_in_chat_by_sender(db: AsyncSession, chat_id: int, sender_id: int) -> int:
+        """How many messages `sender_id` has sent in `chat_id` (consent gate)."""
+        return (
+            await db.scalar(
+                select(func.count())
+                .select_from(Message)
+                .where(Message.chat_id == chat_id, Message.sender_id == sender_id)
+            )
+        ) or 0
+
+    @staticmethod
     async def get_messages(db: AsyncSession, chat_id: int) -> list[Message]:
         query = (
             select(Message)

@@ -110,6 +110,9 @@ function ChatPage() {
           blockUser,
           unblockUser,
           getBlockStatus,
+          acceptChat,
+          declineChat,
+          reportSpam,
           getChatMembers,
           addGroupMembers,
           leaveGroupChat,
@@ -491,6 +494,26 @@ function ChatPage() {
     setEditingMessage(null);
     setMessages([]);
   }, [subscribeChannel, getAllChats, setActiveChat, setMessages]);
+
+  const handleAcceptRequest = useCallback(async () => {
+    if (!activeChat?.id) return;
+    const ok = await acceptChat(activeChat.id);
+    if (ok) {
+      setActiveChat((c) => (c ? { ...c, is_request: false } : c));
+      getAllChats().then(setChats);
+    }
+  }, [activeChat?.id, acceptChat, getAllChats, setActiveChat]);
+
+  const handleDismissRequest = useCallback(async (kind) => {
+    if (!activeChat?.id) return;
+    const id = activeChat.id;
+    const ok = await (kind === 'spam' ? reportSpam(id) : declineChat(id));
+    if (ok) {
+      setChats((prev) => prev.filter((c) => c.id !== id));
+      setActiveChat(null);
+      setMobileView('list');
+    }
+  }, [activeChat?.id, declineChat, reportSpam, setActiveChat]);
 
   // Jump to a message found via in-chat search: close the gallery and flash the
   // bubble if it's in the loaded window (older messages may not be mounted yet).
@@ -1105,6 +1128,10 @@ function ChatPage() {
                }
              }}
              onOpenChatInfo={() => setChatInfoOpen(true)}
+             currentUserId={currentUser?.id}
+             onAcceptRequest={handleAcceptRequest}
+             onDeclineRequest={() => handleDismissRequest('decline')}
+             onReportSpam={() => handleDismissRequest('spam')}
              onBack={() => setMobileView('list')}
              replyTo={replyTo}
              onReply={handleReply}
