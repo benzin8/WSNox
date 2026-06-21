@@ -383,16 +383,25 @@ class ConnectionManager:
                     else:
                         offline_recipients.append(recipient_id)
 
+                # For albums only the first photo (album_index 0) raises a
+                # notification — the rest are tiles of the same collage, so
+                # skip the offline push for them (online delivery still happens
+                # below so every tile renders).
+                _album_id = data.get("album_id")
+                _album_index = (data.get("attachment_meta") or {}).get("album_index")
+                _notify_offline = not (_album_id and _album_index not in (0, None))
+
                 # Offline recipients: gate + push in a single shared session.
-                await self._fanout_offline_pushes(
-                    recipient_ids=offline_recipients,
-                    chat_id=chat_id,
-                    message_id=message_id,
-                    chat_info=chat_info,
-                    sender_id=sender_id,
-                    sender_display_name=sender_display_name,
-                    decrypted_text=decrypted_text,
-                )
+                if _notify_offline:
+                    await self._fanout_offline_pushes(
+                        recipient_ids=offline_recipients,
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        chat_info=chat_info,
+                        sender_id=sender_id,
+                        sender_display_name=sender_display_name,
+                        decrypted_text=decrypted_text,
+                    )
 
                 # Online recipients: deliver over their live sockets.
                 for recipient_id in online_recipients:
@@ -417,6 +426,7 @@ class ConnectionManager:
                         "attachment_url": data.get("attachment_url"),
                         "attachment_thumb_url": data.get("attachment_thumb_url"),
                         "attachment_meta": data.get("attachment_meta"),
+                        "album_id": data.get("album_id"),
                     }
                     dead = []
                     for ws in sockets:

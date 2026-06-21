@@ -250,7 +250,8 @@ function ChatPage() {
         // Media without caption — show a short label instead of "" so the
         // preview doesn't collapse into "Нет сообщений" on the live update.
         let previewText = lastReceivedMessage.text;
-        if (!previewText && lastReceivedMessage.msg_type === "image") previewText = "📷 Фото";
+        if (!previewText && lastReceivedMessage.album_id) previewText = "📷 Альбом";
+        else if (!previewText && lastReceivedMessage.msg_type === "image") previewText = "📷 Фото";
         else if (!previewText && lastReceivedMessage.msg_type === "video") previewText = "🎥 Видео";
         else if (!previewText && lastReceivedMessage.msg_type === "voice") previewText = "🎤 Голосовое сообщение";
         const updatedChat = {

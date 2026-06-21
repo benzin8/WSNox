@@ -19,5 +19,10 @@ export function shouldNotify({ message, currentUser, activeChatId, isDocumentHid
 
   if (mutedChats.includes(Number(message.chat_id))) return false;
 
+  // Albums fan out as N separate messages; only the first photo (index 0)
+  // should ding — the rest are tiles of the same collage.
+  const albumIndex = message.attachment_meta?.album_index;
+  if (message.album_id && albumIndex != null && albumIndex !== 0) return false;
+
   return true;
 }
