@@ -34,6 +34,12 @@ class Message(Base):
     attachment_thumb_key: Mapped[Optional[str]] = mapped_column(String(512), nullable=True, default=None)
     attachment_meta: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True, default=None)
 
+    # Albums: every photo of one album is a separate Message row sharing this
+    # client-generated id. NULL for single media and text. The per-photo order
+    # lives in attachment_meta["album_index"] (0..N-1); the album caption lives
+    # on the index-0 row.
+    album_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, default=None, index=True)
+
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc), index=True)
     is_read: Mapped[bool] = mapped_column(default=False)
     read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, default=None)
