@@ -39,6 +39,9 @@ class MessageBase(BaseModel):
     attachment_url: Optional[str] = None
     attachment_thumb_url: Optional[str] = None
     attachment_meta: Optional[dict] = None
+    # Albums: shared id across the photos of one collage. None for single media.
+    # The per-photo order lives in attachment_meta["album_index"].
+    album_id: Optional[str] = None
     # Sender display info — populated by the server for group chats so the
     # client can render the author label/avatar next to incoming bubbles
     # without an extra round-trip. NULL on private chats (the client already

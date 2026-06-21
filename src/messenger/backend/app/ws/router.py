@@ -50,6 +50,7 @@ async def send_media_ack_to_sender(
     attachment_url: str | None,
     attachment_thumb_url: str | None,
     attachment_meta: dict | None,
+    album_id: str | None = None,
 ) -> None:
     """Push a `message_ack` directly to the sender's WS sockets.
 
@@ -70,6 +71,7 @@ async def send_media_ack_to_sender(
         "attachment_url": attachment_url,
         "attachment_thumb_url": attachment_thumb_url,
         "attachment_meta": attachment_meta,
+        "album_id": album_id,
     }
     dead = []
     for ws in list(sockets):
@@ -154,6 +156,7 @@ async def publish_media_message(
         "attachment_url": attachment_url,
         "attachment_thumb_url": attachment_thumb_url,
         "attachment_meta": message.attachment_meta,
+        "album_id": message.album_id,
         "chat_info": chat_info,
     })
     await redis.publish(REDIS_CHAT_CHANNEL, payload)

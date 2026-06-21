@@ -839,6 +839,7 @@ async def upload_chat_media(
                 attachment_url=full_url,
                 attachment_thumb_url=thumb_url,
                 attachment_meta=message.attachment_meta,
+                album_id=message.album_id,
             )
         except Exception:  # noqa: BLE001
             logger.exception("send_media_ack_to_sender failed")
