@@ -28,6 +28,7 @@ function previewText(m) {
 export function ChatInfoModal({
   chat, chatName, isGroup, isChannel, recipientId,
   getChatMedia, searchChatMessages, fetchUserProfile, getChatMembers,
+  blockUser, unblockUser, getBlockStatus,
   onOpenMembers, onJumpToMessage, onClose,
 }) {
   const chatId = chat?.id;
@@ -46,6 +47,7 @@ export function ChatInfoModal({
   const [profile, setProfile] = useState(null);
   const [members, setMembers] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   // --- search ---
   const [query, setQuery] = useState("");
@@ -58,9 +60,9 @@ export function ChatInfoModal({
   const searchingRef = useRef(false);
 
   // Hook fns aren't memoized (new identity each render) — keep them in a ref.
-  const fnsRef = useRef({ getChatMedia, searchChatMessages, fetchUserProfile, getChatMembers });
+  const fnsRef = useRef({ getChatMedia, searchChatMessages, fetchUserProfile, getChatMembers, blockUser, unblockUser, getBlockStatus });
   useEffect(() => {
-    fnsRef.current = { getChatMedia, searchChatMessages, fetchUserProfile, getChatMembers };
+    fnsRef.current = { getChatMedia, searchChatMessages, fetchUserProfile, getChatMembers, blockUser, unblockUser, getBlockStatus };
   });
 
   // Initial media load (first setState after await — no sync setState in effect).
@@ -85,6 +87,8 @@ export function ChatInfoModal({
       if (isPrivate && recipientId && fnsRef.current.fetchUserProfile) {
         const p = await fnsRef.current.fetchUserProfile(recipientId);
         if (!cancelled) setProfile(p || null);
+        const b = await fnsRef.current.getBlockStatus?.(recipientId);
+        if (!cancelled) setBlocked(!!b);
       } else if (isGroup && chatId && fnsRef.current.getChatMembers) {
         const m = await fnsRef.current.getChatMembers(chatId);
         if (!cancelled) setMembers(m || []);
@@ -144,6 +148,17 @@ export function ChatInfoModal({
     navigator.clipboard?.writeText(`${window.location.origin}/join/${token}`);
     setLinkCopied(true);
     window.setTimeout(() => setLinkCopied(false), 2500);
+  };
+
+  const toggleBlock = async () => {
+    if (!recipientId) return;
+    if (blocked) {
+      await fnsRef.current.unblockUser?.(recipientId);
+      setBlocked(false);
+    } else {
+      await fnsRef.current.blockUser?.(recipientId);
+      setBlocked(true);
+    }
   };
 
   const onScroll = (e) => {
@@ -355,6 +370,17 @@ export function ChatInfoModal({
                   {profile?.bio && (
                     <p className="text-sm text-zinc-300 leading-relaxed mt-3">{profile.bio}</p>
                   )}
+                  <button
+                    type="button"
+                    onClick={toggleBlock}
+                    className={`mt-4 inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                      blocked
+                        ? "bg-zinc-800/60 text-zinc-200 hover:bg-zinc-800"
+                        : "bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
+                    }`}
+                  >
+                    {blocked ? "Разблокировать" : "Заблокировать"}
+                  </button>
                 </div>
               )}
 

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 from messenger.backend.app.api_v1.auth.dependencies import get_user_from_token
 from messenger.backend.app.api_v1.schemas.message import _utc_iso
+from messenger.backend.app.crud.block import BlockCRUD
 from messenger.backend.app.crud.chat import ChatCRUD, cached_is_chat_member
 from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.app.crud.notification import (
@@ -891,6 +892,9 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     if not other:
                         continue
                     recipient_id = other.user_id
+                    # Blocked either way → silently drop (no delivery).
+                    if await BlockCRUD.is_blocked_either(db, user_id, recipient_id):
+                        continue
                 else:
                     recipient_id = None
                 message_id = await manager.send_personal_message(

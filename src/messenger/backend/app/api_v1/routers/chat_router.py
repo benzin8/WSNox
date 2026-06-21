@@ -17,6 +17,7 @@ from messenger.backend.app.api_v1.schemas.chat import (
 )
 from messenger.backend.app.api_v1.schemas.message import MessagePage, MessageResponse
 from messenger.backend.app.api_v1.schemas.user import UserResponse
+from messenger.backend.app.crud.block import BlockCRUD
 from messenger.backend.app.crud.chat import (
     ChatCRUD,
     cached_chat_partners,
@@ -88,6 +89,10 @@ async def search_users(
 
 @chat_router.post("/get-or-create", response_model=ChatResponse, dependencies=[Depends(rate_limit_chat_create)])
 async def get_or_create_chat(request: ChatCreateRequest, db: AsyncSession = Depends(get_db_session), current_user=Depends(get_current_user)):
+    if request.other_user_id != current_user.id and await BlockCRUD.is_blocked_either(
+        db, current_user.id, request.other_user_id
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Чат недоступен")
     exising_chat = await ChatCRUD.get_chat_by_user_id(db, current_user.id, request.other_user_id)
     if exising_chat:
         other_user = await ChatCRUD.get_other_user_by_chat_id(db, exising_chat.id, current_user.id)
@@ -108,6 +113,39 @@ async def get_or_create_chat(request: ChatCreateRequest, db: AsyncSession = Depe
     other_user = await ChatCRUD.get_other_user_by_chat_id(db, new_chat.id, current_user.id)
     new_chat.recipient_id = other_user.user_id
     return ChatResponse.model_validate(new_chat)
+
+
+@chat_router.post("/users/{user_id}/block")
+async def block_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    """Block a user: no new DMs and no message delivery either way."""
+    if user_id == current_user.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Нельзя заблокировать себя")
+    await BlockCRUD.block(db, current_user.id, user_id)
+    return {"ok": True, "blocked": True}
+
+
+@chat_router.post("/users/{user_id}/unblock")
+async def unblock_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    await BlockCRUD.unblock(db, current_user.id, user_id)
+    return {"ok": True, "blocked": False}
+
+
+@chat_router.get("/users/{user_id}/block-status")
+async def block_status(
+    user_id: int,
+    db: AsyncSession = Depends(get_db_session),
+    current_user=Depends(get_current_user),
+):
+    return {"blocked": await BlockCRUD.has_blocked(db, current_user.id, user_id)}
+
 
 @chat_router.get("/{chat_id}/user", response_model=UserResponse)
 async def get_user_data_by_chat_id(

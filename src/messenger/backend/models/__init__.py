@@ -7,6 +7,7 @@ from .profile import Profile
 from .push_subscription import PushSubscription
 from .role_audit import RoleAuditLog
 from .user import User
+from .user_block import UserBlock
 
 __all__ = [
     "Chat",
@@ -19,4 +20,5 @@ __all__ = [
     "Profile",
     "PushSubscription",
     "RoleAuditLog",
+    "UserBlock",
 ]

@@ -245,6 +245,37 @@ export const useChatAction = () => {
         }
     }
 
+    const blockUser = async (userId) => {
+        try {
+            setError(null);
+            const res = await axios.post(`${API_BASE}/chats/users/${userId}/block`, null, getAuthConfig());
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to block");
+            return null;
+        }
+    }
+
+    const unblockUser = async (userId) => {
+        try {
+            setError(null);
+            const res = await axios.post(`${API_BASE}/chats/users/${userId}/unblock`, null, getAuthConfig());
+            return res.data;
+        } catch (err) {
+            setError(err.response?.data?.detail || "Failed to unblock");
+            return null;
+        }
+    }
+
+    const getBlockStatus = async (userId) => {
+        try {
+            const res = await axios.get(`${API_BASE}/chats/users/${userId}/block-status`, getAuthConfig());
+            return !!res.data?.blocked;
+        } catch {
+            return false;
+        }
+    }
+
     // In-chat message search by words and/or date range — { items, next_before_id }.
     const searchChatMessages = async (chatId, { q, dateFrom, dateTo, beforeId } = {}) => {
         try {
@@ -271,6 +302,9 @@ export const useChatAction = () => {
             joinChannelByToken,
             getChatMedia,
             searchChatMessages,
+            blockUser,
+            unblockUser,
+            getBlockStatus,
             searchChannelResult,
             getUserDataByChatId,
             getOrCreateChats,

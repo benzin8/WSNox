@@ -107,6 +107,9 @@ function ChatPage() {
           joinChannelByToken,
           getChatMedia,
           searchChatMessages,
+          blockUser,
+          unblockUser,
+          getBlockStatus,
           getChatMembers,
           addGroupMembers,
           leaveGroupChat,
@@ -1182,6 +1185,9 @@ function ChatPage() {
             searchChatMessages={searchChatMessages}
             fetchUserProfile={fetchUserProfile}
             getChatMembers={getChatMembers}
+            blockUser={blockUser}
+            unblockUser={unblockUser}
+            getBlockStatus={getBlockStatus}
             onJumpToMessage={handleJumpToMessage}
             onClose={() => setChatInfoOpen(false)}
             onOpenMembers={
