@@ -12,6 +12,7 @@ export function SidebarHeader({
   onOpenCreateGroup,
   onOpenCreateChannel,
   onOpenDashboard,
+  onOpenLanding,
   onAddAccount,
   onLogout,
 }) {
@@ -39,6 +40,9 @@ export function SidebarHeader({
         break;
       case "dashboard":
         onOpenDashboard?.();
+        break;
+      case "landing":
+        onOpenLanding?.();
         break;
       case "add-account":
         onAddAccount?.();

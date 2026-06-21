@@ -7,6 +7,7 @@ import {
   UsersRound,
   Megaphone,
   LayoutGrid,
+  Info,
   LogOut,
   Plus,
   Check,
@@ -180,6 +181,14 @@ function MenuBody({
           onClick={() => { onAction("dashboard"); onClose(); }}
         />
       )}
+
+      <MenuItem
+        m={m}
+        icon={<Info size={17} />}
+        label="О проекте"
+        hint="Лендинг WSNox"
+        onClick={() => { onAction("landing"); onClose(); }}
+      />
 
       <div style={{ height: 1, background: "var(--color-zinc-700)", margin: "4px 8px" }} />
       <div className="px-3 pt-1.5 pb-1 text-[11px] font-medium uppercase tracking-wider text-zinc-600">

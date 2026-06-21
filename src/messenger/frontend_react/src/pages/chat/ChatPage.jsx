@@ -994,6 +994,7 @@ function ChatPage() {
               onOpenCreateGroup={handleOpenCreateGroup}
               onOpenCreateChannel={handleOpenCreateChannel}
               onOpenDashboard={() => navigate('/dashboard')}
+              onOpenLanding={() => navigate('/landing')}
               onAddAccount={() => { beginAddAccount(); navigate('/auth/send-code'); }}
               onLogout={handleLogout}
             />

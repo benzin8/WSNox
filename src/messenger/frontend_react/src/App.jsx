@@ -102,6 +102,9 @@ function App() {
             }
           />
 
+          {/* Landing — always reachable, even when logged in */}
+          <Route path="/landing" element={<LandingPage />} />
+
           {/* Root — landing or chat */}
           <Route
             path="/"
