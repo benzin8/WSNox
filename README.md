@@ -69,7 +69,7 @@ tests/                  # pytest
 
 - **Относительные URL на фронте**: `VITE_API_BASE_URL=''` — все запросы идут на тот же хост. WebSocket аналогично определяется через `window.location.host`. Работает через любой туннель без пересборки.
 - **Авторизация**: короткий **access-JWT (15 мин)** идёт в `Authorization`-заголовке (и первым WS-сообщением); долгоживущий **refresh-JWT — в httpOnly-куке** `refresh_<user_id>` (`SameSite=Lax`, `Path=/auth`, `Secure` в проде по `COOKIE_SECURE`). XSS не может утащить refresh. На `401` клиент прозрачно рефрешит access (axios-интерсептор) и повторяет запрос. На `/auth/login` и `/auth/refresh` — rate-limit по IP.
-- **CORS**: `allow_origins=["*"], allow_credentials=False` — для обычных API-вызовов хватает `Authorization`-заголовка. Это монолит (фронт и API на одном origin), поэтому refresh-кука уходит same-origin без CORS-credentials и без слома «работы через любой туннель».
+- **CORS**: `allow_origins=[FRONTEND_BASE_URL], allow_credentials=True` — это монолит (фронт и API на одном origin), поэтому в обычной работе CORS вообще не задействуется, запросы идут same-origin. Список origin'ов сужен до собственного фронта (раньше был открыт `*`), чтобы сторонний сайт не мог делать аутентифицированные cross-origin запросы от имени пользователя. API-доки (`/docs`, `/redoc`, `/openapi.json`) отдаются только в debug — в проде схема эндпоинтов скрыта.
 - **JWT sub — строка**: при декодировании токена `user_id = int(payload.get("sub"))`.
 - **WebSocket + Redis PubSub**: при отправке сообщения бэкенд публикует в Redis, все воркеры слушают и доставляют нужным клиентам. На один и тот же `user_id` поддерживается множество сокетов (несколько вкладок).
 - **Шифрование сообщений**: хранятся как `encrypted_data` (AES-GCM), расшифровываются на сервере при отдаче.
@@ -81,8 +81,12 @@ tests/                  # pytest
 - **Чат**: WebSocket, история, поиск пользователей, последнее сообщение и счётчик непрочитанных в списке
 - **[Media-сообщения](docs/features/media-messages.md)**: фото / видео / голосовые с подписью, серверный resize фото (Pillow), **очистка метаданных** (EXIF у фото, ffmpeg `-map_metadata -1` у видео/аудио), presigned S3 URLs, оптимистичный UI с прогрессом, фуллскрин-просмотрщик через React Portal, scroll-to-reply по клику на quote
 - **[Голосовые сообщения](docs/features/voice-messages.md)**: запись в браузере через `MediaRecorder`, инлайн-плеер с «волной» и перемоткой, тот же upload-путь что у медиа (`msg_type=voice`)
+- **[Реакции на сообщения](docs/features/reactions.md)**: эмодзи-реакции (одна на юзера, тоггл) + «усиление ауры» — энергетический буст, подсвечивающий пузырь; работают и в каналах
+- **[Галерея медиа и поиск в чате](docs/features/media-and-search.md)**: тап по названию чата → вся медиатека этого чата + поиск по словам и дате (decrypt-on-the-fly, scoped к чату); каналы рендерятся «газетой»
 - **[Групповые чаты](docs/features/group-chats.md)**: создание, fan-out по `chat_members`, имя автора в чужих сообщениях, превью «Иван: …» в списке чатов, модалка участников, добавление участников админом, выход/удаление группы
 - **[Официальный канал WSNox](docs/features/announcements-channel.md)**: singleton-канал, куда автоматически добавлены все юзеры; read-only для всех, постинг — только по праву `post_announcements` через композер в дашборде
+- **[Пользовательские каналы](docs/features/channels.md)**: любой может создать публичный канал (владелец постит, остальные читают и реагируют); вступление поиском по названию или по ссылке-приглашению `/join/<token>`
+- **[Модерация и безопасность](docs/features/moderation-and-safety.md)**: согласие на переписку (первый контакт — одно сообщение → «Принять / Отклонить / Спам»), взаимная блокировка юзеров, бан аккаунтов из админки (с причиной и проверкой ранга); расширенные rate-лимиты — см. [защиту от абьюза](docs/security/abuse-prevention.md)
 - **Профили**: `display_name`, `bio`, фото; модалка с табами «Личные данные» / «Безопасность»
 - **[Аватарки](docs/features/avatars.md)**: Yandex S3 (приватный bucket + presigned GET), client-side круговой crop, server-side resize в WebP, realtime через `profile_update`
 - **[RBAC](docs/features/rbac.md)**: роли user / moderator / admin / owner с иерархией рангов и правами (`view_dashboard` / `manage_users` / `manage_roles` / `post_announcements`); `is_admin` производное от роли, гейтинг через `require_permission`
@@ -151,6 +155,10 @@ GitHub Actions (`.github/workflows/`):
 - [Восстановление и смена пароля](docs/features/password-reset.md) — reset по email-ссылке, смена через профиль, SMTP-конфиг
 - [Media-сообщения](docs/features/media-messages.md) — фото/видео/голосовые, очистка метаданных, optimistic upload с прогрессом, лимиты, lightbox-портал, reply-to-photo
 - [Голосовые сообщения](docs/features/voice-messages.md) — запись через `MediaRecorder`, инлайн-плеер, `process_audio` / `msg_type=voice`
+- [Реакции на сообщения](docs/features/reactions.md) — эмодзи-реакции + «усиление ауры», WS-фан-аут через Redis, работают в каналах
+- [Галерея медиа и поиск в чате](docs/features/media-and-search.md) — медиатека и поиск по словам/дате внутри чата, decrypt-on-the-fly над зашифрованными телами
+- [Пользовательские каналы](docs/features/channels.md) — создание публичных каналов, постинг владельцем, вступление поиском и по ссылке `/join/<token>`
+- [Модерация и безопасность](docs/features/moderation-and-safety.md) — согласие на переписку (1 сообщение → принять/отклонить/спам), блокировка, бан из админки
 
 **Деплой**
 
@@ -159,6 +167,7 @@ GitHub Actions (`.github/workflows/`):
 
 **Безопасность**
 
+- [Защита от абьюза](docs/security/abuse-prevention.md) — обзор анти-абьюз прохода (rate-лимиты, лимиты загрузок, модерация, hardening); намеренно без точных порогов
 - [Hardening-заметки](docs/security/hardening.md) — разделение ключей, AES-GCM, HSTS, rate-limit, что НЕ закрывается без E2EE
 - [Аутентификация WebSocket](docs/security/websocket-auth.md) — handshake по JWT в первом сообщении
 
