@@ -186,7 +186,6 @@ function MenuBody({
         m={m}
         icon={<Info size={17} />}
         label="О проекте"
-        hint="Лендинг WSNox"
         onClick={() => { onAction("landing"); onClose(); }}
       />
 
