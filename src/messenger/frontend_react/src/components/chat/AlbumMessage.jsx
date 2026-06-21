@@ -12,24 +12,16 @@ import { MediaLightbox } from "./MediaLightbox";
  *
  * Props:
  *  - photos: [{ id, url, thumbUrl, progress, status }] (already album-ordered)
- *  - onOpen: (index) => void  // optional; when given, used instead of the
- *                                built-in single-photo lightbox (Task 12 paging)
  */
-export function AlbumMessage({ photos, width = "min(460px, 78vw)", onOpen }) {
+export function AlbumMessage({ photos, width = "min(460px, 78vw)" }) {
   const [lightbox, setLightbox] = useState(-1);
-
-  const open = (idx) => {
-    if (onOpen) onOpen(idx);
-    else setLightbox(idx);
-  };
-
   const layout = pickAlbumLayout(photos.length);
 
   const tile = (p, idx, aspect) => (
     <button
       key={p.id ?? idx}
       type="button"
-      onClick={(e) => { e.stopPropagation(); if (p.status !== "uploading") open(idx); }}
+      onClick={(e) => { e.stopPropagation(); if (p.status !== "uploading") setLightbox(idx); }}
       className={`relative overflow-hidden bg-zinc-800/60 ${aspect}`}
     >
       <img
@@ -82,14 +74,14 @@ export function AlbumMessage({ photos, width = "min(460px, 78vw)", onOpen }) {
   return (
     <div className="relative">
       <div className="overflow-hidden rounded-xl">{grid}</div>
-      {!onOpen && (
-        <MediaLightbox
-          open={lightbox >= 0}
-          type="image"
-          url={lightbox >= 0 ? (photos[lightbox]?.url || photos[lightbox]?.thumbUrl) : null}
-          onClose={() => setLightbox(-1)}
-        />
-      )}
+      <MediaLightbox
+        open={lightbox >= 0}
+        type="image"
+        urls={photos.map((p) => p.url || p.thumbUrl)}
+        index={lightbox >= 0 ? lightbox : 0}
+        onIndexChange={setLightbox}
+        onClose={() => setLightbox(-1)}
+      />
     </div>
   );
 }
