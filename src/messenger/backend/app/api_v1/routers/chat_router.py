@@ -769,7 +769,8 @@ async def upload_chat_media(
         elif content_type in media_service.ALLOWED_AUDIO_MIME:
             payload = await media_service.process_audio(storage, current_user.id, file, client_meta)
         else:
-            raise HTTPException(status_code=415, detail="Unsupported media type")
+            # Any other type → store as a generic file attachment (msg_type=file).
+            payload = await media_service.process_file(storage, current_user.id, file)
     except media_service.FileTooLarge as e:
         raise HTTPException(status_code=413, detail="File too large") from e
     except media_service.UnsupportedFormat as e:

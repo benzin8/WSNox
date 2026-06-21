@@ -19,6 +19,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -46,6 +47,8 @@ ALLOWED_AUDIO_MIME = {
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_VIDEO_BYTES = 50 * 1024 * 1024
 MAX_AUDIO_BYTES = 20 * 1024 * 1024
+# Generic files (documents/archives/anything). Kept under the nginx 60M body cap.
+MAX_FILE_BYTES = 50 * 1024 * 1024
 MAX_DURATION_MS = 5 * 60 * 1000  # 5 min hard cap for client-reported duration
 
 # ffmpeg path (present in the Docker image; may be absent in local/dev/test —
@@ -110,7 +113,18 @@ class MediaPayload:
     attachment_key: str
     attachment_thumb_key: str | None
     attachment_meta: dict[str, Any]
-    msg_type: str  # "image" | "video"
+    msg_type: str  # "image" | "video" | "voice" | "file"
+
+
+_FILENAME_CTRL_RE = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _safe_filename(name: str | None) -> str:
+    """Display-safe original filename: strip any path and control chars, bound
+    length. Used ONLY as meta/display data — the S3 key is a UUID, never this."""
+    name = (name or "file").replace("\\", "/").split("/")[-1]
+    name = _FILENAME_CTRL_RE.sub("", name).strip()
+    return name[:200] or "file"
 
 
 async def _read_bounded(file: UploadFile, max_bytes: int) -> bytes:
@@ -422,6 +436,44 @@ async def process_audio(
         storage, user_id, file, client_meta_raw,
         allowed_mime=ALLOWED_AUDIO_MIME, max_bytes=MAX_AUDIO_BYTES, msg_type="voice",
         compute_waveform=True,
+    )
+
+
+async def process_file(storage: S3Storage, user_id: int, file: UploadFile) -> MediaPayload:
+    """Store an arbitrary file as-is (no processing). msg_type='file'.
+
+    Keeps the original filename / size / extension in meta for the file-card UI.
+    The S3 object key is a UUID — never the user's filename — so the filename is
+    pure display data (rendered by React, auto-escaped) and can't traverse paths
+    or collide. Files are downloaded via a presigned URL on the S3 origin, which
+    is a different domain than the app, so even an HTML/SVG upload can't reach
+    the app's cookies/token.
+    """
+    raw = await _read_bounded(file, MAX_FILE_BYTES)
+    if not raw:
+        raise EmptyFile()
+
+    orig_name = _safe_filename(file.filename)
+    ext = orig_name.rsplit(".", 1)[-1].lower()[:12] if "." in orig_name else ""
+    base_mime = (file.content_type or "application/octet-stream").split(";")[0].strip() or "application/octet-stream"
+
+    ts = int(datetime.now(timezone.utc).timestamp())
+    obj_id = uuid.uuid4().hex
+    key = f"media/{user_id}/{ts}/{obj_id}" + (f".{ext}" if ext else "")
+
+    await storage.put_object(key, raw, base_mime)
+
+    meta = {
+        "size_bytes": len(raw),
+        "content_type": base_mime,
+        "filename": orig_name,
+        "ext": ext,
+    }
+    return MediaPayload(
+        attachment_key=key,
+        attachment_thumb_key=None,
+        attachment_meta=meta,
+        msg_type="file",
     )
 
 
