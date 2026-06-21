@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { X, Image as ImageIcon, Play, Info, Loader2, Search, MessageSquare } from "lucide-react";
+import { X, Image as ImageIcon, Play, Loader2, Search, MessageSquare, Megaphone, BadgeCheck, Link2, Crown } from "lucide-react";
 import { MediaLightbox } from "./MediaLightbox";
+import { GroupAvatar } from "./GroupAvatar";
+import { Avatar } from "../profile/Avatar";
 
-// Opens on a chat-header tap: media gallery + in-chat search (words + date).
-// Channels get a wider grid; private/group get a compact one. Search is scoped
-// to this chat; word search runs on the server (decrypt-on-the-fly).
+// Opens on a chat-header tap. One unified view: a type-aware profile/info
+// section on top + the chat's media gallery + in-chat search (words + date).
+// Channels render a wider grid; private/group a compact one. Search is scoped
+// to this chat (word search decrypts on the fly server-side).
 function formatWhen(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -23,8 +26,13 @@ function previewText(m) {
 }
 
 export function ChatInfoModal({
-  chat, chatName, isGroup, isChannel, onOpenInfo, onClose, getChatMedia, searchChatMessages, onJumpToMessage,
+  chat, chatName, isGroup, isChannel, recipientId,
+  getChatMedia, searchChatMessages, fetchUserProfile, getChatMembers,
+  onOpenMembers, onJumpToMessage, onClose,
 }) {
+  const chatId = chat?.id;
+  const isPrivate = !isGroup && !isChannel;
+
   // --- media gallery ---
   const [items, setItems] = useState([]);
   const [cursor, setCursor] = useState(null);
@@ -33,6 +41,11 @@ export function ChatInfoModal({
   const [done, setDone] = useState(false);
   const [lightbox, setLightbox] = useState(null); // { type, url }
   const loadingRef = useRef(false);
+
+  // --- identity (profile / members) ---
+  const [profile, setProfile] = useState(null);
+  const [members, setMembers] = useState(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // --- search ---
   const [query, setQuery] = useState("");
@@ -44,18 +57,18 @@ export function ChatInfoModal({
   const [searchDone, setSearchDone] = useState(false);
   const searchingRef = useRef(false);
 
-  // Hook fns aren't memoized (new identity each render) — keep in refs.
-  const getMediaRef = useRef(getChatMedia);
-  const searchRef = useRef(searchChatMessages);
-  useEffect(() => { getMediaRef.current = getChatMedia; searchRef.current = searchChatMessages; });
-  const chatId = chat?.id;
+  // Hook fns aren't memoized (new identity each render) — keep them in a ref.
+  const fnsRef = useRef({ getChatMedia, searchChatMessages, fetchUserProfile, getChatMembers });
+  useEffect(() => {
+    fnsRef.current = { getChatMedia, searchChatMessages, fetchUserProfile, getChatMembers };
+  });
 
-  // Initial media load — first setState after the await (no sync setState in effect).
+  // Initial media load (first setState after await — no sync setState in effect).
   useEffect(() => {
     if (!chatId) return undefined;
     let cancelled = false;
     (async () => {
-      const data = await getMediaRef.current(chatId, null);
+      const data = await fnsRef.current.getChatMedia(chatId, null);
       if (cancelled) return;
       setItems(data.items || []);
       setCursor(data.next_before_id || null);
@@ -64,6 +77,21 @@ export function ChatInfoModal({
     })();
     return () => { cancelled = true; };
   }, [chatId]);
+
+  // Identity: recipient profile (private) or members (group).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (isPrivate && recipientId && fnsRef.current.fetchUserProfile) {
+        const p = await fnsRef.current.fetchUserProfile(recipientId);
+        if (!cancelled) setProfile(p || null);
+      } else if (isGroup && chatId && fnsRef.current.getChatMembers) {
+        const m = await fnsRef.current.getChatMembers(chatId);
+        if (!cancelled) setMembers(m || []);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [chatId, isPrivate, isGroup, recipientId]);
 
   useEffect(() => {
     const onEsc = (e) => { if (e.key === "Escape") onClose?.(); };
@@ -75,7 +103,7 @@ export function ChatInfoModal({
     if (loadingRef.current || done || !chatId || !cursor) return;
     loadingRef.current = true;
     setLoadingMore(true);
-    const data = await getMediaRef.current(chatId, cursor);
+    const data = await fnsRef.current.getChatMedia(chatId, cursor);
     setItems((prev) => [...prev, ...(data.items || [])]);
     setCursor(data.next_before_id || null);
     if (!data.next_before_id) setDone(true);
@@ -93,7 +121,7 @@ export function ChatInfoModal({
     const args = { beforeId: before || undefined };
     if (q) args.q = q;
     if (dateStr) { args.dateFrom = `${dateStr}T00:00:00`; args.dateTo = `${dateStr}T23:59:59`; }
-    const data = await searchRef.current(chatId, args);
+    const data = await fnsRef.current.searchChatMessages(chatId, args);
     setResults((prev) => (before ? [...prev, ...(data.items || [])] : data.items || []));
     setSearchCursor(data.next_before_id || null);
     if (!data.next_before_id) setSearchDone(true);
@@ -110,6 +138,14 @@ export function ChatInfoModal({
     setSearchDone(false);
   };
 
+  const copyInvite = () => {
+    const token = chat?.invite_token;
+    if (!token) return;
+    navigator.clipboard?.writeText(`${window.location.origin}/join/${token}`);
+    setLinkCopied(true);
+    window.setTimeout(() => setLinkCopied(false), 2500);
+  };
+
   const onScroll = (e) => {
     const el = e.currentTarget;
     if (el.scrollHeight - el.scrollTop - el.clientHeight >= 320) return;
@@ -122,6 +158,7 @@ export function ChatInfoModal({
 
   const cols = isChannel ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-3 sm:grid-cols-4";
   const canSearch = query.trim().length > 0 || dateStr;
+  const initials = (chatName || chat?.name || "?").slice(0, 1).toUpperCase();
 
   return (
     <div
@@ -132,30 +169,16 @@ export function ChatInfoModal({
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-lg max-h-[88vh] bg-zinc-950 border border-zinc-800/80 rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col"
       >
-        <header className="flex items-center justify-between gap-2 p-4 border-b border-zinc-800/60 shrink-0">
-          <div className="min-w-0">
-            <h2 className="font-semibold text-zinc-100 truncate">{chatName || "Чат"}</h2>
-            <p className="text-xs text-zinc-500">{isChannel ? "Медиа и поиск" : "Медиа и поиск"}</p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {onOpenInfo && (
-              <button
-                type="button"
-                onClick={onOpenInfo}
-                className="px-2.5 py-1.5 rounded-lg text-sm text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 flex items-center gap-1.5"
-              >
-                <Info size={15} /> {isGroup ? "Участники" : "Профиль"}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-              aria-label="Закрыть"
-            >
-              <X size={18} />
-            </button>
-          </div>
+        <header className="flex items-center justify-between gap-2 p-3.5 border-b border-zinc-800/60 shrink-0">
+          <h2 className="font-semibold text-zinc-100 truncate px-1">{chatName || "Чат"}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 shrink-0"
+            aria-label="Закрыть"
+          >
+            <X size={18} />
+          </button>
         </header>
 
         {/* Search bar */}
@@ -197,9 +220,9 @@ export function ChatInfoModal({
           )}
         </form>
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-1.5" onScroll={onScroll}>
+        <div className="flex-1 min-h-0 overflow-y-auto" onScroll={onScroll}>
           {searchActive ? (
-            <>
+            <div className="p-1.5">
               {!searching && results.length === 0 && (
                 <div className="h-40 flex items-center justify-center text-sm text-zinc-500">
                   Ничего не найдено
@@ -237,52 +260,149 @@ export function ChatInfoModal({
                   <Loader2 size={20} className="text-lime-400 animate-spin" />
                 </div>
               )}
-            </>
+            </div>
           ) : (
             <>
-              {initialLoading && (
-                <div className="h-48 flex items-center justify-center">
-                  <Loader2 size={22} className="text-lime-400 animate-spin" />
-                </div>
-              )}
-              {!initialLoading && items.length === 0 && (
-                <div className="h-48 flex flex-col items-center justify-center text-center text-zinc-500">
-                  <div className="w-14 h-14 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-3">
-                    <ImageIcon size={26} className="text-zinc-600" />
-                  </div>
-                  <p className="text-sm">Пока нет медиа</p>
-                </div>
-              )}
-              <div className={`grid ${cols} gap-1.5`}>
-                {items.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setLightbox({ type: m.msg_type, url: m.attachment_url })}
-                    style={{ aspectRatio: "1 / 1" }}
-                    className="relative rounded-lg overflow-hidden bg-zinc-900 group"
+              {/* ── identity / info ── */}
+              {isChannel && (
+                <div className="flex flex-col items-center text-center px-5 pt-5 pb-4 border-b border-zinc-800/50">
+                  <div
+                    className="w-20 h-20 rounded-full flex items-center justify-center mb-3"
+                    style={{ background: 'rgba(var(--accent-rgb),0.15)', border: '1px solid rgba(var(--accent-rgb),0.35)' }}
                   >
-                    <img
-                      src={m.attachment_thumb_url || m.attachment_url}
-                      alt=""
-                      loading="lazy"
-                      className="absolute inset-0 w-full h-full object-cover group-hover:opacity-90 transition-opacity"
-                    />
-                    {m.msg_type === "video" && (
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/20">
-                        <span className="w-8 h-8 rounded-full bg-black/55 flex items-center justify-center">
-                          <Play size={16} className="text-white translate-x-[1px]" fill="currentColor" />
-                        </span>
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-              {loadingMore && (
-                <div className="flex justify-center py-4">
-                  <Loader2 size={20} className="text-lime-400 animate-spin" />
+                    <Megaphone size={32} style={{ color: 'var(--color-lime-400)' }} />
+                  </div>
+                  <h3 className="text-lg font-bold text-zinc-100 flex items-center gap-1.5">
+                    {chat?.name || chatName}
+                    {chat?.is_official && <BadgeCheck size={16} style={{ color: 'var(--color-lime-400)' }} />}
+                  </h3>
+                  <p className="text-sm text-zinc-500 mt-0.5">
+                    {chat?.is_official ? "Официальный канал" : `${chat?.member_count || 0} подписчиков`}
+                  </p>
+                  {chat?.description && (
+                    <p className="text-sm text-zinc-300 mt-3 leading-relaxed">{chat.description}</p>
+                  )}
+                  {chat?.is_owner && chat?.invite_token && (
+                    <button
+                      type="button"
+                      onClick={copyInvite}
+                      className="mt-4 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-800/60 text-zinc-200 hover:bg-zinc-800 text-sm"
+                    >
+                      <Link2 size={15} /> {linkCopied ? "Ссылка скопирована!" : "Скопировать ссылку-приглашение"}
+                    </button>
+                  )}
                 </div>
               )}
+
+              {isGroup && (
+                <div className="px-4 pt-5 pb-4 border-b border-zinc-800/50">
+                  <div className="flex flex-col items-center text-center mb-3">
+                    <GroupAvatar id={chat?.id} name={chat?.name || chatName} size={80} className="mb-3" />
+                    <h3 className="text-lg font-bold text-zinc-100">{chat?.name || chatName}</h3>
+                    <p className="text-sm text-zinc-500 mt-0.5">
+                      {members ? `${members.length} участников` : "…"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                    {(members || []).slice(0, 14).map((m) => (
+                      <div key={m.user_id} className="flex flex-col items-center gap-1 shrink-0 w-14">
+                        <div className="relative">
+                          <Avatar url={m.avatar} initials={(m.display_name || m.username || "?").slice(0, 1).toUpperCase()} size={44} />
+                          {m.role === "admin" && (
+                            <Crown size={12} className="absolute -top-1 -right-1 text-amber-300" />
+                          )}
+                        </div>
+                        <span className="text-[11px] text-zinc-400 truncate w-full text-center">
+                          {m.display_name || m.username}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {onOpenMembers && (
+                    <button
+                      type="button"
+                      onClick={onOpenMembers}
+                      className="w-full mt-3 py-2 rounded-xl bg-zinc-800/50 text-zinc-300 hover:bg-zinc-800 text-sm"
+                    >
+                      Все участники · добавить
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {isPrivate && (
+                <div className="flex flex-col items-center text-center px-5 pt-5 pb-4 border-b border-zinc-800/50">
+                  <Avatar
+                    url={profile?.avatar_url || chat?.recipient?.avatar_thumb_url}
+                    initials={initials}
+                    online={profile?.online}
+                    size={88}
+                    ring
+                  />
+                  <h3 className="text-lg font-bold text-zinc-100 mt-3">
+                    {profile?.display_name || chatName}
+                  </h3>
+                  {profile?.username && (
+                    <p className="text-sm text-zinc-500 mt-0.5">@{profile.username}</p>
+                  )}
+                  <span className="inline-flex items-center gap-1.5 mt-2 text-xs text-zinc-400">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: profile?.online ? "var(--color-lime-400)" : "var(--color-zinc-500)" }}
+                    />
+                    {profile?.online ? "в сети" : "не в сети"}
+                  </span>
+                  {profile?.bio && (
+                    <p className="text-sm text-zinc-300 leading-relaxed mt-3">{profile.bio}</p>
+                  )}
+                </div>
+              )}
+
+              {/* ── media ── */}
+              <div className="px-3 pt-3 pb-1 text-[11px] uppercase tracking-wider text-zinc-600">Медиа</div>
+              <div className="p-1.5 pt-0">
+                {initialLoading && (
+                  <div className="h-40 flex items-center justify-center">
+                    <Loader2 size={22} className="text-lime-400 animate-spin" />
+                  </div>
+                )}
+                {!initialLoading && items.length === 0 && (
+                  <div className="h-32 flex flex-col items-center justify-center text-center text-zinc-500">
+                    <ImageIcon size={24} className="text-zinc-700 mb-2" />
+                    <p className="text-sm">Пока нет медиа</p>
+                  </div>
+                )}
+                <div className={`grid ${cols} gap-1.5`}>
+                  {items.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setLightbox({ type: m.msg_type, url: m.attachment_url })}
+                      style={{ aspectRatio: "1 / 1" }}
+                      className="relative rounded-lg overflow-hidden bg-zinc-900 group"
+                    >
+                      <img
+                        src={m.attachment_thumb_url || m.attachment_url}
+                        alt=""
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                      />
+                      {m.msg_type === "video" && (
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/20">
+                          <span className="w-8 h-8 rounded-full bg-black/55 flex items-center justify-center">
+                            <Play size={16} className="text-white translate-x-[1px]" fill="currentColor" />
+                          </span>
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                {loadingMore && (
+                  <div className="flex justify-center py-4">
+                    <Loader2 size={20} className="text-lime-400 animate-spin" />
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>

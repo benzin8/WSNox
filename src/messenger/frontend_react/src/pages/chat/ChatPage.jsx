@@ -1176,15 +1176,16 @@ function ChatPage() {
             chatName={chatName}
             isGroup={activeChat.chat_type === "group"}
             isChannel={activeChat.chat_type === "channel"}
+            recipientId={activeChat.recipient_id}
             getChatMedia={getChatMedia}
             searchChatMessages={searchChatMessages}
+            fetchUserProfile={fetchUserProfile}
+            getChatMembers={getChatMembers}
             onJumpToMessage={handleJumpToMessage}
             onClose={() => setChatInfoOpen(false)}
-            onOpenInfo={
+            onOpenMembers={
               activeChat.chat_type === "group"
                 ? () => { setChatInfoOpen(false); handleOpenGroupInfo(); }
-                : activeChat.recipient_id
-                ? () => { setChatInfoOpen(false); handleOpenUserProfile(activeChat.recipient_id); }
                 : undefined
             }
           />
