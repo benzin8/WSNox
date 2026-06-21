@@ -175,12 +175,14 @@ const MessageBubble = ({
     // left-aligned "channel posts" (Telegram-style) regardless of who is
     // viewing, instead of the narrow mine/theirs split used in chats.
     const isOutVisual = isChannel ? false : isOut;
-    const bubbleMaxWidth = isChannel ? "92%" : "75%";
+    // Channels read like a magazine: full-column flat posts. Chats keep the
+    // narrow mine/theirs bubbles.
+    const bubbleMaxWidth = isChannel ? "100%" : "75%";
     // Media display width. The bubble is sized to this so a long caption wraps
     // under the image at the image's width instead of stretching the bubble
     // wider than the photo (which left empty space on the side). Channels show
-    // wide, magazine-style posts; chats keep the compact size.
-    const mediaWidth = isChannel ? "min(560px, 92vw)" : "min(260px, 60vw)";
+    // wide, magazine-style media; chats keep the compact size.
+    const mediaWidth = isChannel ? "min(680px, 94vw)" : "min(260px, 60vw)";
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
 
@@ -308,13 +310,19 @@ const MessageBubble = ({
                     onTouchStart={handleTouchStart}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
-                    className={`text-sm leading-relaxed shadow-md cursor-pointer select-none transition-transform min-w-0 ${
+                    className={`leading-relaxed shadow-md cursor-pointer select-none transition-transform min-w-0 ${
+                        isChannel ? "text-[15px]" : "text-sm"
+                    } ${
                         isMedia
                             ? "p-1"
+                            : isChannel
+                            ? "px-4 py-3"
                             : "px-3.5 py-2"
                     } ${
                         isOutVisual
                             ? "bg-lime-400 text-zinc-900 font-medium rounded-2xl rounded-br-sm"
+                            : isChannel
+                            ? "bg-zinc-800/55 text-zinc-100 rounded-xl border border-zinc-700/50"
                             : "bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-sm border border-zinc-700/60"
                     }`}
                     style={{
