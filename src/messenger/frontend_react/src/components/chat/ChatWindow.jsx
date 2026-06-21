@@ -50,7 +50,7 @@ export const ChatWindow = ({
     return (
       <div className="flex-grow flex flex-col min-h-0 shadow-2xl">
         {/* Chat Header */}
-        <header className="h-20 flex-shrink-0 border-b border-zinc-800/80 flex items-center justify-between px-6 bg-zinc-950/90 backdrop-blur-md">
+        <header className="relative z-30 h-20 flex-shrink-0 border-b border-zinc-800/80 flex items-center justify-between px-6 bg-zinc-950/90 backdrop-blur-md">
           <div className="flex items-center gap-4 min-w-0">
             <button
               onClick={() => onBack?.()}
