@@ -777,7 +777,10 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     except (TypeError, ValueError):
                         continue
                     async with AsyncSessionLocal() as db:
-                        deleted = await MessageCRUD.delete_message(db, del_message_id, user_id, redis=redis)
+                        deleted = await MessageCRUD.delete_message(
+                            db, del_message_id, user_id, redis=redis,
+                            storage=getattr(websocket.app.state, "storage", None),
+                        )
                         if deleted:
                             other = await ChatCRUD.get_other_user_by_chat_id(db, del_chat_id, user_id)
                             if other:

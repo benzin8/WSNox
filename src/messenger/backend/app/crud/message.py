@@ -234,8 +234,14 @@ class MessageCRUD:
         return hits, next_before
 
     @staticmethod
-    async def delete_message(db: AsyncSession, message_id: int, user_id: int, *, redis: Redis | None = None) -> bool:
-        """Delete a message if the user is the sender. Returns True if deleted."""
+    async def delete_message(
+        db: AsyncSession, message_id: int, user_id: int, *, redis: Redis | None = None, storage=None
+    ) -> bool:
+        """Delete a message if the user is the sender. Returns True if deleted.
+
+        Also removes the message's S3 objects (best-effort) so deleted media
+        doesn't orphan in the bucket and rack up storage cost.
+        """
         result = await db.execute(
             select(Message).where(Message.id == message_id)
         )
@@ -243,8 +249,17 @@ class MessageCRUD:
         if not message or message.sender_id != user_id:
             return False
         recipient_id = message.recipient_id
+        attachment_key = message.attachment_key
+        attachment_thumb_key = message.attachment_thumb_key
         await db.delete(message)
         await db.commit()
+        if storage is not None:
+            for key in (attachment_key, attachment_thumb_key):
+                if key:
+                    try:
+                        await storage.delete_object(key)
+                    except Exception:  # noqa: BLE001 — best-effort cleanup
+                        pass
         affected = {user_id}
         if recipient_id is not None:
             affected.add(recipient_id)
