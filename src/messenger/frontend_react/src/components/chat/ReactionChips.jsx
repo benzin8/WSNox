@@ -30,7 +30,7 @@ function ReactorFaces({ reactors, ringClass }) {
  *
  * `onReact(type, emoji?)` — type "emoji" | "aura".
  */
-export function ReactionChips({ reactions, isOut, onReact }) {
+export function ReactionChips({ reactions, isOut, onReact, className = "" }) {
   // Key of the chip currently playing its tap "pop" ("aura" or the emoji).
   const [popKey, setPopKey] = useState(null);
   if (!reactions) return null;
@@ -71,7 +71,7 @@ export function ReactionChips({ reactions, isOut, onReact }) {
     );
 
   return (
-    <div className="flex flex-wrap items-center gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+    <div className={`flex flex-wrap items-center gap-1 mt-1 ${className}`} onClick={(e) => e.stopPropagation()}>
       {emojiEntries.map(([emoji, count]) => (
         <button
           key={emoji}

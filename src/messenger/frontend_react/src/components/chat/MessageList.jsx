@@ -446,6 +446,7 @@ const MessageBubble = ({
                         reactions={msg.reactions}
                         isOut={isOutVisual}
                         onReact={(t, e) => onReact?.(msg, t, e)}
+                        className={isMedia ? "px-2 pb-1" : ""}
                     />
                 </div>
             </div>
