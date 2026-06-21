@@ -106,6 +106,7 @@ function ChatPage() {
           subscribeChannel,
           joinChannelByToken,
           getChatMedia,
+          searchChatMessages,
           getChatMembers,
           addGroupMembers,
           leaveGroupChat,
@@ -487,6 +488,22 @@ function ChatPage() {
     setEditingMessage(null);
     setMessages([]);
   }, [subscribeChannel, getAllChats, setActiveChat, setMessages]);
+
+  // Jump to a message found via in-chat search: close the gallery and flash the
+  // bubble if it's in the loaded window (older messages may not be mounted yet).
+  const handleJumpToMessage = useCallback((id) => {
+    setChatInfoOpen(false);
+    setMobileView('chat');
+    setTimeout(() => {
+      const el = document.getElementById(`msg-${id}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.remove('message-flash');
+      void el.offsetWidth;
+      el.classList.add('message-flash');
+      setTimeout(() => el.classList.remove('message-flash'), 1600);
+    }, 80);
+  }, []);
 
   const handleLeaveGroup = useCallback(async () => {
     if (!activeChat || activeChat.chat_type !== "group") return;
@@ -1160,6 +1177,8 @@ function ChatPage() {
             isGroup={activeChat.chat_type === "group"}
             isChannel={activeChat.chat_type === "channel"}
             getChatMedia={getChatMedia}
+            searchChatMessages={searchChatMessages}
+            onJumpToMessage={handleJumpToMessage}
             onClose={() => setChatInfoOpen(false)}
             onOpenInfo={
               activeChat.chat_type === "group"
