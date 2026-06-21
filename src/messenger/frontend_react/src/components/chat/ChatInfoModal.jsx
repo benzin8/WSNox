@@ -120,7 +120,7 @@ export function ChatInfoModal({
     }
   };
 
-  const cols = isChannel ? "grid-cols-2" : "grid-cols-3";
+  const cols = isChannel ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-3 sm:grid-cols-4";
   const canSearch = query.trim().length > 0 || dateStr;
 
   return (
@@ -259,7 +259,8 @@ export function ChatInfoModal({
                     key={m.id}
                     type="button"
                     onClick={() => setLightbox({ type: m.msg_type, url: m.attachment_url })}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-zinc-900 group"
+                    style={{ aspectRatio: "1 / 1" }}
+                    className="relative rounded-lg overflow-hidden bg-zinc-900 group"
                   >
                     <img
                       src={m.attachment_thumb_url || m.attachment_url}
