@@ -147,6 +147,8 @@ async def login(data: UserLogin, response: Response, db: AsyncSession = Depends(
     user = await UserCRUD.login_user(db, data.email, data.password)
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid email or password")
+    if user.is_banned:
+        raise HTTPException(status_code=403, detail="Аккаунт заблокирован")
 
     set_refresh_cookie(response, user.id, create_refresh_token(user.id))
     await redis.delete(f"verified_for_login:{data.email}")

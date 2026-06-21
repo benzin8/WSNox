@@ -1,5 +1,6 @@
 """Founder dashboard endpoints. Gated by `users.is_admin`."""
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
@@ -11,6 +12,7 @@ from messenger.backend.app.api_v1.auth.dependencies import (
     require_permission,
 )
 from messenger.backend.app.api_v1.schemas.admin import (
+    AdminBanRequest,
     AdminMeResponse,
     AdminSetRoleRequest,
     AdminUserRow,
@@ -24,6 +26,7 @@ from messenger.backend.app.crud.message import MessageCRUD
 from messenger.backend.core.cache import invalidate, user_auth
 from messenger.backend.core.permissions import (
     ALL_ROLES,
+    PERM_BAN_USER,
     PERM_MANAGE_ROLES,
     PERM_MANAGE_USERS,
     PERM_POST_ANNOUNCEMENTS,
@@ -32,6 +35,7 @@ from messenger.backend.core.permissions import (
     is_admin_role,
     normalize_role,
     permissions_for,
+    role_rank,
 )
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db import get_db_session
@@ -236,6 +240,9 @@ def _user_row(u: User, avatar_thumb_url: str | None = None) -> AdminUserRow:
         is_admin=u.is_admin, role=normalize_role(getattr(u, "role", None)),
         created_at=u.created_at, last_seen=u.last_seen,
         avatar_thumb_url=avatar_thumb_url,
+        is_banned=bool(getattr(u, "is_banned", False)),
+        banned_at=getattr(u, "banned_at", None),
+        ban_reason=getattr(u, "ban_reason", None),
     )
 
 
@@ -332,4 +339,59 @@ async def admin_set_role(
         target.id, target.email,
     )
 
+    return _user_row(target)
+
+
+@admin_router.patch("/users/{user_id}/ban", response_model=AdminUserRow)
+async def admin_ban_user(
+    user_id: int,
+    payload: AdminBanRequest,
+    current_admin: User = Depends(require_permission(PERM_BAN_USER)),
+    session: AsyncSession = Depends(get_db_session),
+) -> AdminUserRow:
+    """Забанить / разбанить пользователя.
+
+    Защиты как у смены роли: confirm_email, нельзя себя, только строго ниже по
+    рангу. Бан блокирует логин, API и WebSocket; кэш личности сбрасывается,
+    чтобы бан подействовал сразу (в т.ч. кикает активный сокет).
+    """
+    if user_id == current_admin.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Нельзя забанить себя")
+
+    result = await session.execute(select(User).where(User.id == user_id))
+    target = result.scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Юзер не найден")
+
+    if payload.confirm_email.strip().lower() != target.email.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email подтверждения не совпадает с email юзера",
+        )
+
+    actor_role = normalize_role(getattr(current_admin, "role", None))
+    target_role = normalize_role(getattr(target, "role", None))
+    if role_rank(actor_role) <= role_rank(target_role):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Можно банить только тех, кто строго ниже по рангу",
+        )
+
+    target.is_banned = payload.banned
+    if payload.banned:
+        target.banned_at = datetime.now(timezone.utc)
+        target.ban_reason = (payload.reason or "").strip()[:300] or None
+    else:
+        target.banned_at = None
+        target.ban_reason = None
+    await session.commit()
+    await session.refresh(target)
+    await invalidate(get_redis(), user_auth(target.id))
+
+    logger.warning(
+        "user %s: id=%s(%s) by=%s(%s) reason=%r",
+        "BANNED" if payload.banned else "UNBANNED",
+        target.id, target.email, current_admin.id, current_admin.email,
+        target.ban_reason,
+    )
     return _user_row(target)

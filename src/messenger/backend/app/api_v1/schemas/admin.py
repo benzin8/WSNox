@@ -21,6 +21,9 @@ class AdminUserRow(BaseModel):
     created_at: datetime | None
     last_seen: datetime | None
     avatar_thumb_url: str | None = None
+    is_banned: bool = False
+    banned_at: datetime | None = None
+    ban_reason: str | None = None
 
 
 class AdminSetRoleRequest(BaseModel):
@@ -29,6 +32,12 @@ class AdminSetRoleRequest(BaseModel):
     role: str | None = None
     # Legacy: True -> admin, False -> user (для обратной совместимости).
     is_admin: bool | None = None
+
+
+class AdminBanRequest(BaseModel):
+    confirm_email: str       # must match the target's email (anti-fat-finger)
+    banned: bool             # True = ban, False = unban
+    reason: str | None = None
 
 
 class RoleAuditEntry(BaseModel):

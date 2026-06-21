@@ -44,5 +44,24 @@ export function useAdminUsers() {
     return updated;
   }, []);
 
-  return { users, loading, error, refresh, setRole };
+  const banUser = useCallback(async (userId, banned, confirmEmail, reason) => {
+    const token = localStorage.getItem('access_token');
+    const r = await fetch(`/api/admin/users/${userId}/ban`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ banned, confirm_email: confirmEmail, reason: reason || null }),
+    });
+    if (!r.ok) {
+      const data = await r.json().catch(() => ({}));
+      throw new Error(data.detail || `HTTP ${r.status}`);
+    }
+    const updated = await r.json();
+    setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+    return updated;
+  }, []);
+
+  return { users, loading, error, refresh, setRole, banUser };
 }

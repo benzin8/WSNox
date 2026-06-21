@@ -79,6 +79,11 @@ async def get_current_user(
 
     if user is None:
         raise credentials_exception
+    if user.is_banned:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Аккаунт заблокирован",
+        )
 
     # Fire-and-forget telemetry — не блокирует respond
     asyncio.create_task(_bump_last_seen_bg(user.id))

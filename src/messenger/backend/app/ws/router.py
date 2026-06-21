@@ -27,6 +27,7 @@ from messenger.backend.app.ws.viewing_chat import (
     set_viewing_chat,
 )
 from messenger.backend.core.crypto import decrypt_message
+from messenger.backend.core.identity import get_cached_user
 from messenger.backend.core.redis import get_redis
 from messenger.backend.db.session import AsyncSessionLocal
 from messenger.backend.models.chat import Chat
@@ -688,7 +689,9 @@ async def _authenticate(websocket: WebSocket) -> int | None:
     async with AsyncSessionLocal() as db:
         user = await get_user_from_token(token, db)
 
-    return user.id if user else None
+    if user is None or user.is_banned:
+        return None
+    return user.id
 
 
 @ws_router.websocket("/chat")
@@ -866,6 +869,12 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     reply_to_id = None
 
             async with AsyncSessionLocal() as db:
+                # Kick a banned user off a still-open socket (cache is busted on
+                # ban, so this reloads is_banned=True and drops them).
+                _cu = await get_cached_user(redis, db, user_id)
+                if _cu is None or _cu.is_banned:
+                    await websocket.close(code=WS_AUTH_FAILED, reason="banned")
+                    break
                 if not await cached_is_chat_member(redis, db, chat_id, user_id):
                     continue
                 chat = await db.get(Chat, chat_id)

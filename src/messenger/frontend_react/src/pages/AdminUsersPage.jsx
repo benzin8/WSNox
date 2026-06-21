@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import AmbientGlow from '../components/dashboard/AmbientGlow';
 import RoleConfirmModal from '../components/dashboard/RoleConfirmModal';
+import BanConfirmModal from '../components/dashboard/BanConfirmModal';
 import RoleAuditPanel from '../components/dashboard/RoleAuditPanel';
 import { Avatar } from '../components/profile/Avatar';
 import { useAdminUsers } from '../hooks/useAdminUsers';
@@ -22,10 +23,11 @@ function initials(name) {
 
 export default function AdminUsersPage() {
   const navigate = useNavigate();
-  const { users, loading, error, setRole } = useAdminUsers();
-  const { role: actorRole, canManageRoles } = useIsAdmin();
+  const { users, loading, error, setRole, banUser } = useAdminUsers();
+  const { role: actorRole, canManageRoles, canBanUsers } = useIsAdmin();
   const [query, setQuery] = useState('');
   const [pendingTarget, setPendingTarget] = useState(null);
+  const [banTarget, setBanTarget] = useState(null);
   const [showAudit, setShowAudit] = useState(false);
 
   const filtered = useMemo(() => {
@@ -114,6 +116,11 @@ export default function AdminUsersPage() {
                         </span>
                       );
                     })()}
+                    {u.is_banned && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-bold uppercase" style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171', letterSpacing: '0.08em' }}>
+                        бан
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-zinc-500 truncate">{u.email}</div>
                   <div className="text-[10px] text-zinc-600 mt-0.5">
@@ -121,19 +128,32 @@ export default function AdminUsersPage() {
                     {u.last_seen && <> · был {formatDate(u.last_seen)}</>}
                   </div>
                 </div>
-                {canManageRoles && assignableRoles(actorRole, u.role).length > 0 && (
-                  <button
-                    onClick={() => setPendingTarget(u)}
-                    className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
-                    style={{
-                      background: 'rgba(var(--accent-rgb),0.10)',
-                      color: 'var(--color-lime-400)',
-                      border: '1px solid rgba(var(--accent-rgb),0.20)',
-                    }}
-                  >
-                    Изменить роль
-                  </button>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {canManageRoles && assignableRoles(actorRole, u.role).length > 0 && (
+                    <button
+                      onClick={() => setPendingTarget(u)}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
+                      style={{
+                        background: 'rgba(var(--accent-rgb),0.10)',
+                        color: 'var(--color-lime-400)',
+                        border: '1px solid rgba(var(--accent-rgb),0.20)',
+                      }}
+                    >
+                      Изменить роль
+                    </button>
+                  )}
+                  {canBanUsers && u.role !== 'owner' && (
+                    <button
+                      onClick={() => setBanTarget(u)}
+                      className="text-xs px-3 py-1.5 rounded-lg font-medium transition-colors"
+                      style={u.is_banned
+                        ? { background: 'rgba(163,230,53,0.10)', color: 'var(--color-lime-400)', border: '1px solid rgba(163,230,53,0.20)' }
+                        : { background: 'rgba(248,113,113,0.10)', color: '#f87171', border: '1px solid rgba(248,113,113,0.20)' }}
+                    >
+                      {u.is_banned ? 'Разбан' : 'Бан'}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
             {filtered.length === 0 && (
@@ -161,6 +181,14 @@ export default function AdminUsersPage() {
         target={pendingTarget}
         options={pendingTarget ? assignableRoles(actorRole, pendingTarget.role) : []}
         onConfirm={setRole}
+      />
+
+      <BanConfirmModal
+        key={banTarget?.id ?? 'closed'}
+        open={banTarget !== null}
+        target={banTarget}
+        onClose={() => setBanTarget(null)}
+        onConfirm={banUser}
       />
     </div>
   );

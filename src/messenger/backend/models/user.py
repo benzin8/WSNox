@@ -25,6 +25,10 @@ class User(Base):
     # Legacy boolean, kept in sync with role (True for admin/owner) for backward compat.
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     last_seen: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Moderation: a banned user can't log in, use the API, or open a socket.
+    is_banned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    banned_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    ban_reason: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
 
     profile: Mapped["Profile"] = relationship(back_populates="user", uselist=False)
     sent_messages: Mapped[list["Message"]] = relationship(

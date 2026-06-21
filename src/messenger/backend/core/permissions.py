@@ -35,22 +35,24 @@ PERM_VIEW_DASHBOARD = "view_dashboard"        # see analytics / founder dashboar
 PERM_MANAGE_USERS = "manage_users"            # list users in the admin area
 PERM_MANAGE_ROLES = "manage_roles"            # change other users' roles
 PERM_POST_ANNOUNCEMENTS = "post_announcements"  # post to the official WSNox channel
+PERM_BAN_USER = "ban_user"                    # ban / unban users (moderation)
 
 ALL_PERMISSIONS = (
     PERM_VIEW_DASHBOARD,
     PERM_MANAGE_USERS,
     PERM_MANAGE_ROLES,
     PERM_POST_ANNOUNCEMENTS,
+    PERM_BAN_USER,
 )
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     ROLE_USER: frozenset(),
     ROLE_MODERATOR: frozenset({PERM_VIEW_DASHBOARD}),
     ROLE_ADMIN: frozenset(
-        {PERM_VIEW_DASHBOARD, PERM_MANAGE_USERS, PERM_MANAGE_ROLES, PERM_POST_ANNOUNCEMENTS}
+        {PERM_VIEW_DASHBOARD, PERM_MANAGE_USERS, PERM_MANAGE_ROLES, PERM_POST_ANNOUNCEMENTS, PERM_BAN_USER}
     ),
     ROLE_OWNER: frozenset(
-        {PERM_VIEW_DASHBOARD, PERM_MANAGE_USERS, PERM_MANAGE_ROLES, PERM_POST_ANNOUNCEMENTS}
+        {PERM_VIEW_DASHBOARD, PERM_MANAGE_USERS, PERM_MANAGE_ROLES, PERM_POST_ANNOUNCEMENTS, PERM_BAN_USER}
     ),
 }
 

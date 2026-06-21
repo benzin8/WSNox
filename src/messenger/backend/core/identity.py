@@ -37,6 +37,7 @@ class CachedUser:
     created_at: Optional[datetime]
     last_seen: Optional[datetime]
     role: str = "user"
+    is_banned: bool = False
 
     @classmethod
     def from_orm(cls, user: User) -> "CachedUser":
@@ -53,6 +54,7 @@ class CachedUser:
             created_at=user.created_at,
             last_seen=user.last_seen,
             role=role,
+            is_banned=bool(getattr(user, "is_banned", False)),
         )
 
     def has(self, permission: str) -> bool:
@@ -71,6 +73,7 @@ class CachedUser:
             "phone_number": self.phone_number,
             "created_at": self.created_at.isoformat() if self.created_at is not None else None,
             "last_seen": self.last_seen.isoformat() if self.last_seen is not None else None,
+            "is_banned": self.is_banned,
         }
 
     @classmethod
@@ -89,6 +92,7 @@ class CachedUser:
             created_at=datetime.fromisoformat(created_at) if created_at is not None else None,
             last_seen=datetime.fromisoformat(last_seen) if last_seen is not None else None,
             role=role,
+            is_banned=bool(data.get("is_banned", False)),
         )
 
 
