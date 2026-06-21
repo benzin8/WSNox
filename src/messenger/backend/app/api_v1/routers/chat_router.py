@@ -301,6 +301,8 @@ async def get_chats(
             decoded = "🎥 Видео"
         elif not decoded and last_msg_type == "voice":
             decoded = "🎤 Голосовое сообщение"
+        elif not decoded and last_msg_type == "file":
+            decoded = "📎 Файл"
         chat_resp.last_message = decoded
         chat_resp.last_message_time = last_msg_time
         chat_resp.unread_count = unread_cnt or 0

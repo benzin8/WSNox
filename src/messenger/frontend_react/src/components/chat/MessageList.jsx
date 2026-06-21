@@ -4,6 +4,7 @@ import { MessageActionMenu } from "./MessageActionMenu";
 import { ReactionChips } from "./ReactionChips";
 import { MediaMessage } from "./MediaMessage";
 import { AlbumMessage } from "./AlbumMessage";
+import { FileCard } from "./FileCard";
 import { VoiceMessage } from "./VoiceMessage";
 import { MessageStatus } from "./MessageStatus";
 import { Avatar } from "../profile/Avatar";
@@ -60,6 +61,7 @@ function replyQuotePreview(msg) {
     if (msg.reply_to_msg_type === "image") return { text: "Фото", icon: "image" };
     if (msg.reply_to_msg_type === "video") return { text: "Видео", icon: "video" };
     if (msg.reply_to_msg_type === "voice") return { text: "Голосовое", icon: "voice" };
+    if (msg.reply_to_msg_type === "file") return { text: "Файл", icon: null };
     return null;
 }
 
@@ -199,6 +201,7 @@ const MessageBubble = ({
 
     const isMedia = isAlbum || msg.msg_type === "image" || msg.msg_type === "video";
     const isVoice = msg.msg_type === "voice";
+    const isFile = msg.msg_type === "file";
     const replyPreview = msg.reply_to_id ? replyQuotePreview(msg) : null;
 
     // --- Swipe to reply (horizontal swipe on message) ---
@@ -412,6 +415,18 @@ const MessageBubble = ({
                             waveform={msg.attachment_meta?.waveform}
                             isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
                             isOut={isOut}
+                        />
+                    )}
+
+                    {isFile && (
+                        <FileCard
+                            filename={msg.attachment_meta?.filename}
+                            ext={msg.attachment_meta?.ext}
+                            sizeBytes={msg.attachment_meta?.size_bytes}
+                            url={msg.attachment_url}
+                            isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
+                            progress={msg.upload_progress}
+                            isOut={isOutVisual}
                         />
                     )}
 

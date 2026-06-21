@@ -13,7 +13,7 @@ export const ChatWindow = ({
     isPartnerOnline, partnerPresencePreference,
     replyTo, onReply, onReact, onCancelReply, onDeleteMessage,
     editingMessage, onEditMessage, onCancelEdit, onConfirmEdit,
-    onPickMedia, onPickMany, onSendVoice, onRetryMedia, onLeaveGroup, onDeleteGroup,
+    onPickMedia, onPickMany, onPickFile, onSendVoice, onRetryMedia, onLeaveGroup, onDeleteGroup,
     currentUserId, onAcceptRequest, onDeclineRequest, onReportSpam,
 }) => {
     const [menuOpen, setMenuOpen] = React.useState(false);
@@ -243,6 +243,7 @@ export const ChatWindow = ({
             onConfirmEdit={onConfirmEdit}
             onPickMedia={onPickMedia}
             onPickMany={onPickMany}
+            onPickFile={onPickFile}
             onSendVoice={onSendVoice}
           />
         )}

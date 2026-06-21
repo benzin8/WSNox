@@ -255,6 +255,7 @@ function ChatPage() {
         else if (!previewText && lastReceivedMessage.msg_type === "image") previewText = "📷 Фото";
         else if (!previewText && lastReceivedMessage.msg_type === "video") previewText = "🎥 Видео";
         else if (!previewText && lastReceivedMessage.msg_type === "voice") previewText = "🎤 Голосовое сообщение";
+        else if (!previewText && lastReceivedMessage.msg_type === "file") previewText = "📎 Файл";
         const updatedChat = {
           ...prevChats[idx],
           last_message: previewText,
@@ -275,7 +276,7 @@ function ChatPage() {
         const newChat = {
           ...lastReceivedMessage.chat_info,
           last_message: lastReceivedMessage.text
-            || (t === "image" ? "📷 Фото" : t === "video" ? "🎥 Видео" : t === "voice" ? "🎤 Голосовое сообщение" : ""),
+            || (t === "image" ? "📷 Фото" : t === "video" ? "🎥 Видео" : t === "voice" ? "🎤 Голосовое сообщение" : t === "file" ? "📎 Файл" : ""),
           last_message_time: new Date().toISOString(),
           unread_count: 1,
         };
@@ -666,7 +667,19 @@ function ChatPage() {
       ? 'image'
       : file.type.startsWith('audio/')
       ? 'voice'
-      : 'video';
+      : file.type.startsWith('video/')
+      ? 'video'
+      : 'file';
+
+    // For a generic file the server computes meta from the multipart, but show
+    // the card immediately from the local File while it uploads.
+    const optimisticMeta = msgType === 'file'
+      ? {
+          filename: file.name,
+          size_bytes: file.size,
+          ext: file.name.includes('.') ? file.name.split('.').pop().toLowerCase().slice(0, 12) : '',
+        }
+      : (meta || null);
 
     setPendingMediaFile(null);
     setMessages((prev) => [...prev, {
@@ -677,7 +690,7 @@ function ChatPage() {
       msg_type: msgType,
       attachment_url: localUrl,
       attachment_thumb_url: localUrl,
-      attachment_meta: meta || null,
+      attachment_meta: optimisticMeta,
       client_status: 'uploading',
       upload_progress: 0,
       // squirreled away so we can rebuild the upload on retry
@@ -824,6 +837,11 @@ function ChatPage() {
   // a {duration_ms} meta and no caption. The backend tags them msg_type=voice.
   const handleSendVoice = useCallback((file, meta) => {
     handleSendMedia(file, '', meta || null);
+  }, [handleSendMedia]);
+
+  // Generic file: no preview modal, send straight away as a file card.
+  const handlePickFile = useCallback((file) => {
+    handleSendMedia(file, '', null);
   }, [handleSendMedia]);
 
   const handleReply = useCallback((msg) => {
@@ -1220,6 +1238,7 @@ function ChatPage() {
              onConfirmEdit={handleConfirmEdit}
              onPickMedia={handlePickMedia}
              onPickMany={handlePickMany}
+             onPickFile={handlePickFile}
              onSendVoice={handleSendVoice}
              onRetryMedia={handleRetryMedia}
              onLeaveGroup={handleLeaveGroup}
