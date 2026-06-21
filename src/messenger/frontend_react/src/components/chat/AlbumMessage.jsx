@@ -29,7 +29,7 @@ export function AlbumMessage({ photos, width = "min(460px, 78vw)", onOpen }) {
     <button
       key={p.id ?? idx}
       type="button"
-      onClick={() => p.status !== "uploading" && open(idx)}
+      onClick={(e) => { e.stopPropagation(); if (p.status !== "uploading") open(idx); }}
       className={`relative overflow-hidden bg-zinc-800/60 ${aspect}`}
     >
       <img

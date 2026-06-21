@@ -3,6 +3,7 @@ import { Image as ImageIcon, MessageSquare, Mic as MicIcon, Reply, Video as Vide
 import { MessageActionMenu } from "./MessageActionMenu";
 import { ReactionChips } from "./ReactionChips";
 import { MediaMessage } from "./MediaMessage";
+import { AlbumMessage } from "./AlbumMessage";
 import { VoiceMessage } from "./VoiceMessage";
 import { MessageStatus } from "./MessageStatus";
 import { Avatar } from "../profile/Avatar";
@@ -182,7 +183,10 @@ const MessageBubble = ({
     // under the image at the image's width instead of stretching the bubble
     // wider than the photo (which left empty space on the side). Channels show
     // wide, magazine-style media; chats keep the compact size.
-    const mediaWidth = isChannel ? "min(460px, 90vw)" : "min(260px, 60vw)";
+    const isAlbum = !!msg._album;
+    const mediaWidth = isAlbum
+        ? "min(460px, 82vw)"
+        : isChannel ? "min(460px, 90vw)" : "min(260px, 60vw)";
     const touchRef = useRef(null);
     const [swipeX, setSwipeX] = useState(0);
 
@@ -193,7 +197,7 @@ const MessageBubble = ({
         ? `0 0 ${Math.min(10 + auraCount * 2.2, 50)}px ${Math.min(1 + auraCount * 0.6, 14)}px rgba(163,230,53,${Math.min(0.18 + auraCount * 0.025, 0.6)})`
         : undefined;
 
-    const isMedia = msg.msg_type === "image" || msg.msg_type === "video";
+    const isMedia = isAlbum || msg.msg_type === "image" || msg.msg_type === "video";
     const isVoice = msg.msg_type === "voice";
     const replyPreview = msg.reply_to_id ? replyQuotePreview(msg) : null;
 
@@ -365,15 +369,19 @@ const MessageBubble = ({
 
                     {isMedia && (
                         <div className="relative">
-                            <MediaMessage
-                                type={msg.msg_type}
-                                fullUrl={msg.attachment_url}
-                                thumbUrl={msg.attachment_thumb_url}
-                                meta={msg.attachment_meta}
-                                isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
-                                onDoubleTap={() => onReply(msg)}
-                                width={mediaWidth}
-                            />
+                            {isAlbum ? (
+                                <AlbumMessage photos={msg.photos} width="100%" />
+                            ) : (
+                                <MediaMessage
+                                    type={msg.msg_type}
+                                    fullUrl={msg.attachment_url}
+                                    thumbUrl={msg.attachment_thumb_url}
+                                    meta={msg.attachment_meta}
+                                    isUploading={msg.client_status === "uploading" || msg.client_status === "pending"}
+                                    onDoubleTap={() => onReply(msg)}
+                                    width={mediaWidth}
+                                />
+                            )}
                             {/* Caption-less media: float the time stamp + status as a pill
                                 pinned to the bottom-right of the photo (Telegram-style). */}
                             {!msg.text && (
@@ -457,13 +465,53 @@ const MessageBubble = ({
 export const MessageList = ({ messages, messagesEndRef, onReply, onReact, onDeleteMessage, onEditMessage, onRetryMedia, isGroup = false, isChannel = false }) => {
     const [actionMsg, setActionMsg] = useState(null);
 
+    // Collapse runs of same-album, same-direction, adjacent messages into one
+    // synthetic album item so the bubble renders them as a single collage.
+    const grouped = useMemo(() => {
+        const out = [];
+        let i = 0;
+        while (i < messages.length) {
+            const m = messages[i];
+            if (m.album_id) {
+                const run = [];
+                while (
+                    i < messages.length
+                    && messages[i].album_id === m.album_id
+                    && messages[i].type === m.type
+                ) {
+                    run.push(messages[i]);
+                    i += 1;
+                }
+                run.sort((a, b) => (a.attachment_meta?.album_index ?? 0) - (b.attachment_meta?.album_index ?? 0));
+                const head = run[0];
+                const captionMsg = run.find((p) => (p.attachment_meta?.album_index ?? 0) === 0) || head;
+                out.push({
+                    ...head,
+                    _album: true,
+                    text: captionMsg.text || "",
+                    photos: run.map((p) => ({
+                        id: p.id,
+                        url: p.attachment_url,
+                        thumbUrl: p.attachment_thumb_url,
+                        progress: p.upload_progress,
+                        status: p.client_status,
+                    })),
+                });
+            } else {
+                out.push(m);
+                i += 1;
+            }
+        }
+        return out;
+    }, [messages]);
+
     const itemsWithSeparators = useMemo(
-        () => messages.map((msg, idx) => {
+        () => grouped.map((msg, idx) => {
             const dateKey = getDateKey(msg.created_at);
-            const prevDateKey = idx > 0 ? getDateKey(messages[idx - 1].created_at) : null;
+            const prevDateKey = idx > 0 ? getDateKey(grouped[idx - 1].created_at) : null;
             const showDateSep = !!(dateKey && dateKey !== prevDateKey);
-            const prev = idx > 0 ? messages[idx - 1] : null;
-            const next = idx < messages.length - 1 ? messages[idx + 1] : null;
+            const prev = idx > 0 ? grouped[idx - 1] : null;
+            const next = idx < grouped.length - 1 ? grouped[idx + 1] : null;
             const nextDateKey = next ? getDateKey(next.created_at) : null;
             const gap = showDateSep ? 0 : getMessageGap(prev, msg);
             // Show the sender label above the first message in any run of
@@ -486,7 +534,7 @@ export const MessageList = ({ messages, messagesEndRef, onReply, onReact, onDele
             const reserveAvatarSlot = isGroup && msg.type === "incoming";
             return { msg, showDateSep, gap, showSenderName, showSenderAvatar, reserveAvatarSlot };
         }),
-        [messages, isGroup],
+        [grouped, isGroup],
     );
 
     const [toast, setToast] = useState(null);
