@@ -373,7 +373,7 @@ const MessageBubble = ({
                     {isMedia && (
                         <div className="relative">
                             {isAlbum ? (
-                                <AlbumMessage photos={msg.photos} width="100%" />
+                                <AlbumMessage photos={msg.photos} width="100%" onLongPress={() => onActionMenu(msg)} />
                             ) : (
                                 <MediaMessage
                                     type={msg.msg_type}

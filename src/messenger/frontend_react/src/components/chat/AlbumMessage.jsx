@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { pickAlbumLayout } from "./albumLayout.js";
 import { MediaLightbox } from "./MediaLightbox";
@@ -10,18 +10,48 @@ import { MediaLightbox } from "./MediaLightbox";
  * line up without needing Telegram's full mosaic algorithm. The caption is
  * rendered by MessageList via the normal bubble-text path, not here.
  *
+ * Interaction (Telegram-style): tap a tile = open the lightbox; long-press or
+ * right-click = the message action menu (reply/delete) via `onLongPress`, since
+ * the tiles otherwise swallow the tap that would reach the bubble's menu.
+ *
  * Props:
  *  - photos: [{ id, url, thumbUrl, progress, status }] (already album-ordered)
+ *  - onLongPress: () => void   // open the message action menu
  */
-export function AlbumMessage({ photos, width = "min(460px, 78vw)" }) {
+export function AlbumMessage({ photos, width = "min(460px, 78vw)", onLongPress }) {
   const [lightbox, setLightbox] = useState(-1);
+  const lpTimer = useRef(null);
+  const lpFired = useRef(false);
   const layout = pickAlbumLayout(photos.length);
+
+  const cancelLongPress = () => {
+    if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; }
+  };
+  const startLongPress = () => {
+    lpFired.current = false;
+    cancelLongPress();
+    lpTimer.current = setTimeout(() => {
+      lpFired.current = true;
+      onLongPress?.();
+    }, 450);
+  };
 
   const tile = (p, idx, aspect) => (
     <button
       key={p.id ?? idx}
       type="button"
-      onClick={(e) => { e.stopPropagation(); if (p.status !== "uploading") setLightbox(idx); }}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onLongPress?.(); }}
+      onTouchStart={startLongPress}
+      onTouchMove={cancelLongPress}
+      onTouchEnd={cancelLongPress}
+      onMouseDown={(e) => { if (e.button === 0) startLongPress(); }}
+      onMouseUp={cancelLongPress}
+      onMouseLeave={cancelLongPress}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (lpFired.current) { lpFired.current = false; return; }  // long-press handled it
+        if (p.status !== "uploading") setLightbox(idx);
+      }}
       className={`relative overflow-hidden bg-zinc-800/60 ${aspect}`}
     >
       <img
