@@ -41,6 +41,7 @@ async def lifespan(app: FastAPI):
 
     import asyncio
 
+    from .ws import ephemeral
     from .ws.presence import presence_listener, sweep_forever
     from .ws.profile_events import profile_listener
     from .ws.router import manager
@@ -54,6 +55,7 @@ async def lifespan(app: FastAPI):
     presence_listener_task = asyncio.create_task(presence_listener(manager))
     profile_listener_task = asyncio.create_task(profile_listener(manager))
     sweeper_task = asyncio.create_task(sweep_forever(manager))
+    ephemeral_task = asyncio.create_task(ephemeral.ephemeral_listener(manager))
 
     try:
         yield
@@ -67,6 +69,7 @@ async def lifespan(app: FastAPI):
         presence_listener_task.cancel()
         profile_listener_task.cancel()
         sweeper_task.cancel()
+        ephemeral_task.cancel()
         await close_redis()
 
 app = FastAPI(
