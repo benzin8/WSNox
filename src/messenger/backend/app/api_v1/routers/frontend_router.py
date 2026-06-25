@@ -17,7 +17,10 @@ frontend_router = APIRouter()
 _NO_CACHE = {"Cache-Control": "no-cache"}
 
 
-@frontend_router.get("/{rest_of_path:path}")
+# GET *and* HEAD: link-preview crawlers (Telegram, etc.) and health checks issue
+# a HEAD first. A GET-only route returns 405 to HEAD, which makes Telegram abort
+# preview generation -> no OG card even though the GET response has the og: tags.
+@frontend_router.api_route("/{rest_of_path:path}", methods=["GET", "HEAD"])
 async def serve_react_app(rest_of_path: str):
     file_path = FRONTEND_PUBLIC_DIR / rest_of_path
 
