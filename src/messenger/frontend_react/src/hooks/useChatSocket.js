@@ -15,6 +15,9 @@ export const useChatSocket = (token, activeChatIdRef) => {
     const [lastProfileEvent, setLastProfileEvent] = useState(null);
     const [lastReadReceiptEvent, setLastReadReceiptEvent] = useState(null);
     const [lastChatEvent, setLastChatEvent] = useState(null);
+    // One-time (ephemeral) chat events: eph_invited / eph_invite_sent /
+    // eph_started / eph_msg / eph_typing / eph_declined / eph_destroyed / eph_ack.
+    const [lastEphEvent, setLastEphEvent] = useState(null);
 
     const currentUserRef = useRef(null);
     const socketRef = useRef(null);
@@ -178,6 +181,13 @@ export const useChatSocket = (token, activeChatIdRef) => {
                     return;
                 }
 
+                // One-time chats ride the same socket but never touch the
+                // persisted message list — hand them to the ephemeral layer.
+                if (typeof data.type === "string" && data.type.startsWith("eph_")) {
+                    setLastEphEvent({ ...data, _rx: Date.now() });
+                    return;
+                }
+
                 if (data.chat_id === activeChatIdRef?.current) {
                     setMessages((prev) => [...prev, {
                         ...data,
@@ -283,6 +293,22 @@ export const useChatSocket = (token, activeChatIdRef) => {
         });
     };
 
+    // ---- One-time (ephemeral) chat senders ----
+    const sendEph = (payload) => {
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify(payload));
+            return true;
+        }
+        return false;
+    };
+    const ephInvite = (toUserId) => sendEph({ type: "eph_invite", to: toUserId });
+    const ephAccept = (ephId) => sendEph({ type: "eph_accept", eph_id: ephId });
+    const ephDecline = (ephId) => sendEph({ type: "eph_decline", eph_id: ephId });
+    const ephSend = (ephId, text, tempId = null) =>
+        sendEph({ type: "eph_msg", eph_id: ephId, text, temp_id: tempId });
+    const ephTyping = (ephId, on) => sendEph({ type: "eph_typing", eph_id: ephId, on });
+    const ephLeave = (ephId) => sendEph({ type: "eph_leave", eph_id: ephId });
+
     return {
         messages,
         setMessages,
@@ -298,5 +324,14 @@ export const useChatSocket = (token, activeChatIdRef) => {
         lastReadReceiptEvent,
         lastChatEvent,
         socketRef,
+        // ephemeral
+        lastEphEvent,
+        setLastEphEvent,
+        ephInvite,
+        ephAccept,
+        ephDecline,
+        ephSend,
+        ephTyping,
+        ephLeave,
     };
 };

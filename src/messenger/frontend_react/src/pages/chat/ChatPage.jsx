@@ -11,6 +11,8 @@ import { useEdgeSwipe } from '../../hooks/useEdgeSwipe';
 import { useEnergy } from '../../features/energy';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
+import { useEphemeral } from '../../hooks/useEphemeral';
+import { EphemeralLayer } from '../../components/chat/EphemeralLayer';
 import { ChatList } from '../../components/chat/ChatList';
 import { CreateGroupModal } from '../../components/chat/CreateGroupModal';
 import { CreateChannelModal } from '../../components/chat/CreateChannelModal';
@@ -79,8 +81,14 @@ function ChatPage() {
     return () => mql.removeEventListener?.('change', onChange);
   }, []);
 
-  const { messages, setMessages, sendMessage, signalLocalSend, editMessage, react, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastChatEvent, socketRef } = useChatSocket(token, activeChatIdRef);
+  const { messages, setMessages, sendMessage, signalLocalSend, editMessage, react, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastChatEvent, socketRef,
+    lastEphEvent, setLastEphEvent, ephInvite, ephAccept, ephDecline, ephSend, ephTyping, ephLeave } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
+  const ephemeral = useEphemeral({
+    currentUser,
+    lastEphEvent, setLastEphEvent,
+    ephInvite, ephAccept, ephDecline, ephSend, ephTyping, ephLeave,
+  });
   const { settings: notificationSettings } = useNotificationSettings();
   const totalUnread = chats.reduce((sum, c) => sum + (c.unread_count || 0), 0);
   useNotifications({
@@ -1223,6 +1231,11 @@ function ChatPage() {
              }}
              onOpenChatInfo={() => setChatInfoOpen(true)}
              currentUserId={currentUser?.id}
+             onStartEphemeral={
+               activeChat?.chat_type === 'private' && activeChat?.recipient_id
+                 ? () => ephemeral.invite(activeChat.recipient_id, chatName)
+                 : null
+             }
              onAcceptRequest={handleAcceptRequest}
              onDeclineRequest={() => handleDismissRequest('decline')}
              onReportSpam={() => handleDismissRequest('spam')}
@@ -1246,6 +1259,9 @@ function ChatPage() {
              />
           </div>
         </div>
+
+        {/* One-time (ephemeral) chats: invite prompt, waiting card, live window */}
+        <EphemeralLayer eph={ephemeral} />
 
         {/* Profile view modal — hidden while edit modal is open (edit replaces it) */}
         {profileModal && !showEditModal && (
