@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /auth/
+Disallow: /chat
+Disallow: /dashboard
+Disallow: /join/
+
+Sitemap: https://wsnox.urldot.ru/sitemap.xml
