@@ -82,11 +82,11 @@ function ChatPage() {
   }, []);
 
   const { messages, setMessages, sendMessage, signalLocalSend, editMessage, react, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastChatEvent, socketRef,
-    lastEphEvent, setLastEphEvent, ephInvite, ephAccept, ephDecline, ephSend, ephTyping, ephLeave } = useChatSocket(token, activeChatIdRef);
+    registerEphHandler, ephInvite, ephAccept, ephDecline, ephSend, ephTyping, ephLeave } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
   const ephemeral = useEphemeral({
     currentUser,
-    lastEphEvent, setLastEphEvent,
+    registerEphHandler,
     ephInvite, ephAccept, ephDecline, ephSend, ephTyping, ephLeave,
   });
   const { settings: notificationSettings } = useNotificationSettings();

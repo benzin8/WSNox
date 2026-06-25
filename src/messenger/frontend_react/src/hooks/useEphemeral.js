@@ -17,8 +17,7 @@ const tempId = () => `eph-${Date.now()}-${_tmp++}`;
  */
 export function useEphemeral({
     currentUser,
-    lastEphEvent,
-    setLastEphEvent,
+    registerEphHandler,
     ephInvite,
     ephAccept,
     ephDecline,
@@ -34,7 +33,13 @@ export function useEphemeral({
     const [toast, setToast] = useState(null);                  // transient notice {kind, text}
 
     const sessionRef = useRef(null);
-    sessionRef.current = session;
+    const incomingInviteRef = useRef(null);
+    const waitingRef = useRef(null);
+    // Mirror state into refs (in effects, not during render) so the async event
+    // processor and leave/send callbacks always read the latest values.
+    useEffect(() => { sessionRef.current = session; }, [session]);
+    useEffect(() => { incomingInviteRef.current = incomingInvite; }, [incomingInvite]);
+    useEffect(() => { waitingRef.current = waiting; }, [waiting]);
     const typingTimer = useRef(null);
     const destructTimer = useRef(null);
     const hideTimer = useRef(null);
@@ -102,16 +107,14 @@ export function useEphemeral({
         selfDestruct("left");
     }, [ephLeave, selfDestruct]);
 
-    // ---- consume inbound events ----
-    useEffect(() => {
-        if (!lastEphEvent) return;
-        const e = lastEphEvent;
+    // ---- consume inbound events (called synchronously per event; refs keep
+    // reads current, so a burst of events is never coalesced or lost) ----
+    const processEvent = useCallback((e) => {
         const s = sessionRef.current;
-
         switch (e.type) {
             case "eph_invited": {
                 // Busy already? politely auto-decline the newcomer.
-                if (s || incomingInvite || waiting) {
+                if (s || incomingInviteRef.current || waitingRef.current) {
                     ephDecline(e.eph_id);
                     break;
                 }
@@ -139,7 +142,7 @@ export function useEphemeral({
             case "eph_msg": {
                 if (s && e.eph_id === s.ephId) {
                     setMessages((prev) => [...prev, {
-                        id: e.temp_id || `rx-${e.ts || Date.now()}`,
+                        id: e.temp_id || `rx-${e.ts || Date.now()}-${prev.length}`,
                         text: e.text, mine: false, ts: Date.now(),
                     }]);
                 }
@@ -165,22 +168,20 @@ export function useEphemeral({
                 break;
             }
             case "eph_destroyed": {
-                if (s && e.eph_id === s.ephId) {
-                    selfDestruct(e.reason || "ended");
-                } else if (waiting && e.eph_id === waiting.ephId) {
-                    setWaiting(null);
-                } else if (incomingInvite && e.eph_id === incomingInvite.ephId) {
-                    setIncomingInvite(null);
-                }
+                if (s && e.eph_id === s.ephId) selfDestruct(e.reason || "ended");
+                else if (waitingRef.current && e.eph_id === waitingRef.current.ephId) setWaiting(null);
+                else if (incomingInviteRef.current && e.eph_id === incomingInviteRef.current.ephId) setIncomingInvite(null);
                 break;
             }
             default:
                 break;
         }
-        // consume so the same event doesn't re-fire on re-render
-        setLastEphEvent(null);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [lastEphEvent]);
+    }, [myId, ephDecline, selfDestruct]);
+
+    // Always point the socket's handler at the latest processEvent (no null gap
+    // between renders); only detach on unmount.
+    useEffect(() => { registerEphHandler(processEvent); }, [registerEphHandler, processEvent]);
+    useEffect(() => () => registerEphHandler(null), [registerEphHandler]);
 
     // ---- destroy on leaving the page: close / navigate / minimise / tab-switch ----
     useEffect(() => {

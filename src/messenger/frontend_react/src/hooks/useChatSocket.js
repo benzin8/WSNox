@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { jwtDecode } from "jwt-decode";
 
 const WS_BASE = import.meta.env.VITE_WS_BASE_URL ||
@@ -15,9 +15,10 @@ export const useChatSocket = (token, activeChatIdRef) => {
     const [lastProfileEvent, setLastProfileEvent] = useState(null);
     const [lastReadReceiptEvent, setLastReadReceiptEvent] = useState(null);
     const [lastChatEvent, setLastChatEvent] = useState(null);
-    // One-time (ephemeral) chat events: eph_invited / eph_invite_sent /
-    // eph_started / eph_msg / eph_typing / eph_declined / eph_destroyed / eph_ack.
-    const [lastEphEvent, setLastEphEvent] = useState(null);
+    // One-time (ephemeral) chat events are pushed straight to a handler so a
+    // burst of events (e.g. several quick messages) can't be coalesced/lost
+    // the way a single "last event" state value would.
+    const ephHandlerRef = useRef(null);
 
     const currentUserRef = useRef(null);
     const socketRef = useRef(null);
@@ -182,9 +183,9 @@ export const useChatSocket = (token, activeChatIdRef) => {
                 }
 
                 // One-time chats ride the same socket but never touch the
-                // persisted message list — hand them to the ephemeral layer.
+                // persisted message list — hand them straight to the layer.
                 if (typeof data.type === "string" && data.type.startsWith("eph_")) {
-                    setLastEphEvent({ ...data, _rx: Date.now() });
+                    if (ephHandlerRef.current) ephHandlerRef.current(data);
                     return;
                 }
 
@@ -308,6 +309,8 @@ export const useChatSocket = (token, activeChatIdRef) => {
         sendEph({ type: "eph_msg", eph_id: ephId, text, temp_id: tempId });
     const ephTyping = (ephId, on) => sendEph({ type: "eph_typing", eph_id: ephId, on });
     const ephLeave = (ephId) => sendEph({ type: "eph_leave", eph_id: ephId });
+    // The ephemeral layer registers its event processor here.
+    const registerEphHandler = useCallback((fn) => { ephHandlerRef.current = fn; }, []);
 
     return {
         messages,
@@ -325,8 +328,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
         lastChatEvent,
         socketRef,
         // ephemeral
-        lastEphEvent,
-        setLastEphEvent,
+        registerEphHandler,
         ephInvite,
         ephAccept,
         ephDecline,
