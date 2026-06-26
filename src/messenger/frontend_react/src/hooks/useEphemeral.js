@@ -5,7 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 // Bump this (e.g. 3000) for a softer grace period.
 const HIDE_GRACE_MS = 0;
 // Self-destruct animation length — keep in sync with the CSS .animate-ephDestruct.
-const DESTRUCT_MS = 750;
+// Long enough for the other side to read the "chat is closing" notice.
+const DESTRUCT_MS = 1100;
 
 let _tmp = 0;
 const tempId = () => `eph-${Date.now()}-${_tmp++}`;
@@ -54,10 +55,10 @@ export function useEphemeral({
     }, []);
 
     // Begin the self-destruct animation, then wipe everything from memory.
-    const selfDestruct = useCallback((reason) => {
+    const selfDestruct = useCallback((reason, byId = null) => {
         const s = sessionRef.current;
         if (!s) return;
-        setSession({ ...s, status: "destroying", reason });
+        setSession({ ...s, status: "destroying", reason, byId });
         if (destructTimer.current) clearTimeout(destructTimer.current);
         destructTimer.current = setTimeout(wipe, DESTRUCT_MS);
     }, [wipe]);
@@ -104,8 +105,8 @@ export function useEphemeral({
         const s = sessionRef.current;
         if (!s) return;
         ephLeave(s.ephId);
-        selfDestruct("left");
-    }, [ephLeave, selfDestruct]);
+        selfDestruct("left", myId);
+    }, [ephLeave, selfDestruct, myId]);
 
     // ---- consume inbound events (called synchronously per event; refs keep
     // reads current, so a burst of events is never coalesced or lost) ----
@@ -168,7 +169,7 @@ export function useEphemeral({
                 break;
             }
             case "eph_destroyed": {
-                if (s && e.eph_id === s.ephId) selfDestruct(e.reason || "ended");
+                if (s && e.eph_id === s.ephId) selfDestruct(e.reason || "ended", e.by_id);
                 else if (waitingRef.current && e.eph_id === waitingRef.current.ephId) setWaiting(null);
                 else if (incomingInviteRef.current && e.eph_id === incomingInviteRef.current.ephId) setIncomingInvite(null);
                 break;

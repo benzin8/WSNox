@@ -130,7 +130,7 @@ export const ChatWindow = ({
                 onClick={onStartEphemeral}
                 title="Одноразовый чат — без следов"
                 aria-label="Создать одноразовый чат"
-                className="hover:text-amber-400 cursor-pointer transition-colors p-1 -m-1 rounded-md"
+                className="hover:text-lime-400 cursor-pointer transition-colors p-1 -m-1 rounded-md"
               >
                 <Flame size={20} />
               </button>
