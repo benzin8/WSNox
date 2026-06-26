@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight, Fingerprint } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
+import { biometricSupported, enableBiometric } from '../../utils/biometric';
 import PasswordStrengthBar from '../../components/auth/PasswordStrengthBar';
 import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
 import { AuthCardWrapper } from '../../components/auth/AuthCardWrapper';
@@ -20,9 +21,28 @@ export default function RegisterPage() {
     const [formData, setFormData] = useState({ name: '', username: '', password: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [bioPrompt, setBioPrompt] = useState(false);
+    const [bioBusy, setBioBusy] = useState(false);
     const isSubmitting = useRef(false);
 
     useEffect(() => { enterAuth(); }, [enterAuth]);
+
+    const goToChat = () => {
+        beginTransit();
+        setTimeout(() => navigate('/chat'), 950);
+    };
+
+    const handleEnableBio = async () => {
+        setBioBusy(true);
+        try {
+            await enableBiometric();
+        } catch {
+            // user cancelled or device unsupported — proceed anyway
+        } finally {
+            setBioBusy(false);
+            goToChat();
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -47,8 +67,11 @@ export default function RegisterPage() {
                 return;
             }
             window.dispatchEvent(new Event('storage'));
-            beginTransit();
-            setTimeout(() => navigate('/chat'), 950);
+            if (biometricSupported()) {
+                setBioPrompt(true);
+                return;
+            }
+            goToChat();
             return;
         } catch (err) {
             if (err.response?.data?.detail === 'Email not verified') {
@@ -136,6 +159,36 @@ export default function RegisterPage() {
                     </form>
                 </div>
             </AuthCardWrapper>
+
+            {bioPrompt && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+                    <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900 p-7 text-center shadow-2xl">
+                        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-lime-400/20 bg-lime-400/10">
+                            <Fingerprint className="h-7 w-7 text-lime-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-zinc-100">Вход по биометрии</h3>
+                        <p className="mt-2 text-sm text-zinc-400">
+                            Включить вход по отпечатку или Face ID на этом устройстве? Сможете заходить без пароля.
+                        </p>
+                        <div className="mt-6 space-y-2">
+                            <button
+                                onClick={handleEnableBio}
+                                disabled={bioBusy}
+                                className="w-full rounded-xl bg-lime-400 py-3 font-semibold text-zinc-900 transition-all hover:bg-lime-300 disabled:opacity-50 active:scale-[0.98]"
+                            >
+                                {bioBusy ? 'Подождите…' : 'Подключить'}
+                            </button>
+                            <button
+                                onClick={goToChat}
+                                disabled={bioBusy}
+                                className="w-full rounded-xl border border-zinc-700 py-3 text-zinc-300 transition-colors hover:bg-zinc-800 disabled:opacity-50"
+                            >
+                                Позже
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

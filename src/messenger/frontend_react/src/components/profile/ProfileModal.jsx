@@ -3,6 +3,7 @@ import { Avatar } from "./Avatar";
 import { Cover, MetaRow, Pill } from "./parts";
 import { ProfileShell } from "./ProfileShell";
 import { AccountsBlock } from "../../features/accounts/AccountsBlock";
+import { BiometricToggle } from "./BiometricToggle";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 
 const MONTHS_RU = [
@@ -147,6 +148,7 @@ export const ProfileModal = ({ profile, isOwnProfile, onClose, onEdit, onAddAcco
                             </button>
                             <div className="w-full mt-3">
                                 <AccountsBlock onAddAccount={onAddAccount} />
+                                <BiometricToggle />
                             </div>
                         </>
                     )}

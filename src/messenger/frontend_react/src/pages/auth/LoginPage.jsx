@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { Lock, ArrowRight } from 'lucide-react';
+import { Lock, ArrowRight, Fingerprint } from 'lucide-react';
 import axios from 'axios';
 import { parseApiError } from '../../utils/parseApiError';
+import { biometricSupported, loginWithBiometric } from '../../utils/biometric';
 import { AuthBackdrop } from '../../components/auth/AuthBackdrop';
 import { AuthCardWrapper } from '../../components/auth/AuthCardWrapper';
 import { useEnergy } from '../../features/energy';
@@ -19,9 +20,28 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [bioLoading, setBioLoading] = useState(false);
     const isSubmitting = useRef(false);
 
     useEffect(() => { enterAuth(); }, [enterAuth]);
+
+    const handleBiometric = async () => {
+        setError('');
+        setBioLoading(true);
+        try {
+            const { access_token, user } = await loginWithBiometric();
+            const adding = isAddingAccount();
+            upsertAccount(user, access_token);
+            endAddAccount();
+            if (adding) { window.location.assign('/chat'); return; }
+            beginTransit();
+            setTimeout(() => navigate('/chat'), 950);
+        } catch (err) {
+            setError(parseApiError(err, 'Не удалось войти по биометрии'));
+        } finally {
+            setBioLoading(false);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -112,6 +132,18 @@ export default function LoginPage() {
                             {loading ? 'Вход...' : 'Войти'}
                             {!loading && <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
                         </button>
+
+                        {biometricSupported() && (
+                            <button
+                                type="button"
+                                onClick={handleBiometric}
+                                disabled={bioLoading || loading}
+                                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-700/60 bg-zinc-800/30 p-4 font-semibold text-zinc-200 backdrop-blur-sm transition-all duration-300 hover:border-lime-400/50 hover:text-lime-300 disabled:opacity-50 active:scale-[0.97]"
+                            >
+                                <Fingerprint className="w-5 h-5" />
+                                {bioLoading ? 'Подождите…' : 'Войти по биометрии'}
+                            </button>
+                        )}
 
                         <Link
                             to="/auth/forgot-password"
