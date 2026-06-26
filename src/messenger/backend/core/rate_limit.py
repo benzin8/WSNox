@@ -99,6 +99,7 @@ WS_RATE_LIMITS = {
     "message_read": 20,
     "viewing_chat": 5,
     "ping": 5,
+    "typing": 4,
     # one-time (ephemeral) chats
     "eph_msg": 5,
     "eph_invite": 1,

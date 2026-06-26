@@ -15,6 +15,7 @@ export const useChatSocket = (token, activeChatIdRef) => {
     const [lastProfileEvent, setLastProfileEvent] = useState(null);
     const [lastReadReceiptEvent, setLastReadReceiptEvent] = useState(null);
     const [lastChatEvent, setLastChatEvent] = useState(null);
+    const [lastTypingEvent, setLastTypingEvent] = useState(null);
     // One-time (ephemeral) chat events are pushed straight to a handler so a
     // burst of events (e.g. several quick messages) can't be coalesced/lost
     // the way a single "last event" state value would.
@@ -189,6 +190,11 @@ export const useChatSocket = (token, activeChatIdRef) => {
                     return;
                 }
 
+                if (data.type === "typing") {
+                    setLastTypingEvent({ ...data, _rx: Date.now() });
+                    return;
+                }
+
                 if (data.chat_id === activeChatIdRef?.current) {
                     setMessages((prev) => [...prev, {
                         ...data,
@@ -312,6 +318,13 @@ export const useChatSocket = (token, activeChatIdRef) => {
     // The ephemeral layer registers its event processor here.
     const registerEphHandler = useCallback((fn) => { ephHandlerRef.current = fn; }, []);
 
+    // "X печатает…" in a normal chat.
+    const sendTyping = (chatId, on) => {
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+            socketRef.current.send(JSON.stringify({ type: "typing", chat_id: chatId, on }));
+        }
+    };
+
     return {
         messages,
         setMessages,
@@ -326,6 +339,8 @@ export const useChatSocket = (token, activeChatIdRef) => {
         lastProfileEvent,
         lastReadReceiptEvent,
         lastChatEvent,
+        lastTypingEvent,
+        sendTyping,
         socketRef,
         // ephemeral
         registerEphHandler,

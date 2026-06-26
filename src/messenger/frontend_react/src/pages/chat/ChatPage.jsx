@@ -13,6 +13,7 @@ import { useEnergy } from '../../features/energy';
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { useEphemeral } from '../../hooks/useEphemeral';
 import { EphemeralLayer, EphemeralInviteRow } from '../../components/chat/EphemeralLayer';
+import { BiometricAnnouncement } from '../../components/profile/BiometricAnnouncement';
 import { ChatList } from '../../components/chat/ChatList';
 import { CreateGroupModal } from '../../components/chat/CreateGroupModal';
 import { CreateChannelModal } from '../../components/chat/CreateChannelModal';
@@ -82,8 +83,37 @@ function ChatPage() {
   }, []);
 
   const { messages, setMessages, sendMessage, signalLocalSend, editMessage, react, isConnected, isConnecting, lastReceivedMessage, lastPresenceEvent, lastProfileEvent, lastChatEvent, socketRef,
+    lastTypingEvent, sendTyping,
     registerEphHandler, ephInvite, ephAccept, ephDecline, ephSend, ephTyping, ephLeave } = useChatSocket(token, activeChatIdRef);
   const { onlineUsers, refreshPresence } = usePresence(socketRef, isConnected, lastPresenceEvent);
+
+  // "X печатает…" in the active chat.
+  const [partnerTyping, setPartnerTyping] = useState(false);
+  const typingSentRef = useRef(0);
+  const typingStopTimer = useRef(null);
+  const partnerTypingTimer = useRef(null);
+  useEffect(() => { setPartnerTyping(false); }, [activeChat?.id]);
+  useEffect(() => {
+    if (!lastTypingEvent || lastTypingEvent.chat_id !== activeChat?.id) return;
+    if (Number(lastTypingEvent.user_id) === Number(currentUser?.id)) return;
+    setPartnerTyping(!!lastTypingEvent.on);
+    if (partnerTypingTimer.current) clearTimeout(partnerTypingTimer.current);
+    if (lastTypingEvent.on) partnerTypingTimer.current = setTimeout(() => setPartnerTyping(false), 5000);
+  }, [lastTypingEvent, activeChat?.id, currentUser?.id]);
+  const handleType = useCallback(() => {
+    const cid = activeChat?.id;
+    if (!cid) return;
+    const now = Date.now();
+    if (now - typingSentRef.current > 2000) { sendTyping(cid, true); typingSentRef.current = now; }
+    if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
+    typingStopTimer.current = setTimeout(() => { sendTyping(cid, false); typingSentRef.current = 0; }, 3000);
+  }, [activeChat?.id, sendTyping]);
+  const stopTyping = useCallback(() => {
+    const cid = activeChat?.id;
+    if (cid) sendTyping(cid, false);
+    typingSentRef.current = 0;
+    if (typingStopTimer.current) clearTimeout(typingStopTimer.current);
+  }, [activeChat?.id, sendTyping]);
   const ephemeral = useEphemeral({
     currentUser,
     registerEphHandler,
@@ -411,6 +441,7 @@ function ChatPage() {
   const handleSendMessage = (text, replyMsg) => {
     if (!activeChat) return;
 
+    stopTyping();
     const tempId = Date.now();
     sendMessage(text, activeChat.id, replyMsg?.id ?? null, tempId);
 
@@ -1226,6 +1257,8 @@ function ChatPage() {
              isConnected={isConnected}
              isConnecting={isConnecting}
              isPartnerOnline={isPartnerOnline}
+             partnerTyping={partnerTyping}
+             onType={handleType}
              partnerPresencePreference={partnerPresencePreference}
              messagesEndRef={messagesEndRef}
              inputText={inputText}
@@ -1271,6 +1304,9 @@ function ChatPage() {
 
         {/* One-time (ephemeral) chats: invite prompt, waiting card, live window */}
         <EphemeralLayer eph={ephemeral} />
+
+        {/* One-time "biometric login is available" prompt for existing users */}
+        <BiometricAnnouncement />
 
         {/* Profile view modal — hidden while edit modal is open (edit replaces it) */}
         {profileModal && !showEditModal && (

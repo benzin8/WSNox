@@ -357,6 +357,40 @@ class ConnectionManager:
         await redis.publish(REDIS_CHAT_CHANNEL, payload)
         return message.id
 
+    async def typing_listener(self) -> None:
+        """Relay transient typing indicators to a chat's other members."""
+        redis = get_redis()
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(REDIS_CHAT_CHANNEL + ":typing")
+        try:
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    continue
+                try:
+                    data = json.loads(message["data"])
+                except (TypeError, ValueError):
+                    continue
+                payload = {
+                    "type": "typing",
+                    "chat_id": data.get("chat_id"),
+                    "user_id": data.get("user_id"),
+                    "on": data.get("on"),
+                }
+                for rid in data.get("recipient_ids", []):
+                    sockets = self.active_connections.get(int(rid))
+                    if not sockets:
+                        continue
+                    dead = []
+                    for ws in list(sockets):
+                        try:
+                            await ws.send_json(payload)
+                        except Exception:  # noqa: BLE001
+                            dead.append(ws)
+                    for ws in dead:
+                        sockets.discard(ws)
+        except asyncio.CancelledError:
+            raise
+
     async def pubsub_listener(self) -> None:
         redis = get_redis()
         pubsub = redis.pubsub()
@@ -886,6 +920,37 @@ async def websocket_chat(websocket: WebSocket) -> None:
                     "actor_aura": summary["my_aura"],
                 })
                 await redis.publish(REDIS_CHAT_CHANNEL + ":reactions", react_payload)
+                continue
+
+            if msg_type == "typing":
+                typing_chat_id = msg_data.get("chat_id")
+                if typing_chat_id is None:
+                    continue
+                try:
+                    typing_chat_id = int(typing_chat_id)
+                except (TypeError, ValueError):
+                    continue
+                typing_on = bool(msg_data.get("on"))
+                async with AsyncSessionLocal() as db:
+                    if not await cached_is_chat_member(redis, db, typing_chat_id, user_id):
+                        continue
+                    chat = await db.get(Chat, typing_chat_id)
+                    if chat is None or chat.chat_type == "channel":
+                        continue
+                    if chat.chat_type == "private":
+                        other = await ChatCRUD.get_other_user_by_chat_id(db, typing_chat_id, user_id)
+                        typing_recipient_id = other.user_id if other else None
+                    else:
+                        typing_recipient_id = None
+                    typing_recipients = await _resolve_recipient_ids(
+                        db, redis, typing_chat_id, user_id, chat.chat_type, typing_recipient_id
+                    )
+                await redis.publish(REDIS_CHAT_CHANNEL + ":typing", json.dumps({
+                    "chat_id": typing_chat_id,
+                    "user_id": user_id,
+                    "on": typing_on,
+                    "recipient_ids": typing_recipients,
+                }))
                 continue
 
             # ---- One-time (ephemeral) chats: relayed only, never persisted ----
