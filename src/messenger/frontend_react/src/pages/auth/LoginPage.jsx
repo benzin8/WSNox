@@ -74,7 +74,7 @@ export default function LoginPage() {
                 navigate('/auth/send-code', { state: { email } });
                 return;
             }
-            setError(parseApiError(err, 'Login failed'));
+            setError(parseApiError(err, 'Не получилось войти. Проверьте пароль и попробуйте снова'));
         } finally {
             setLoading(false);
             isSubmitting.current = false;

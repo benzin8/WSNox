@@ -155,7 +155,7 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
             <input
               ref={inputRef}
               type="text"
-              placeholder={editingMessage ? "Редактирование..." : "Type your message..."}
+              placeholder={editingMessage ? "Редактирование…" : "Напишите сообщение…"}
               // min-w-0 is critical: a flex <input> otherwise keeps its ~180px
               // intrinsic width and pushes the trailing send/voice buttons off
               // the bar (and off-screen) on narrow phones.

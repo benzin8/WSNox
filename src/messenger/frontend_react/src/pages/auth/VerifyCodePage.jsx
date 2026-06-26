@@ -41,7 +41,7 @@ export default function VerifyCodePage() {
                 navigate('/auth/login', { state: { email } });
             }
         } catch (err) {
-            setError(parseApiError(err, 'Invalid verification code'));
+            setError(parseApiError(err, 'Неверный код. Проверьте и введите снова'));
         } finally {
             setLoading(false);
             isSubmitting.current = false;

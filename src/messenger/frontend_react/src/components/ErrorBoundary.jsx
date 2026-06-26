@@ -29,8 +29,11 @@ class ErrorBoundary extends Component {
           color: 'var(--color-zinc-100)', fontFamily: 'system-ui, sans-serif', padding: 24,
           textAlign: 'center',
         }}>
-          <p style={{ fontSize: 18, marginBottom: 16 }}>
-            Something went wrong.
+          <p style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>
+            Что-то пошло не так
+          </p>
+          <p style={{ fontSize: 15, color: 'var(--color-zinc-400)', marginBottom: 20, maxWidth: 320, lineHeight: 1.5 }}>
+            Бывает. Обычно помогает обновить — сообщения и данные на месте, ничего не потеряется.
           </p>
           <button
             onClick={this.handleReload}
@@ -40,7 +43,7 @@ class ErrorBoundary extends Component {
               fontSize: 15, cursor: 'pointer',
             }}
           >
-            Reload
+            Обновить
           </button>
         </div>
       );

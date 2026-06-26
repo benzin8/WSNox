@@ -56,7 +56,7 @@ async def send_code(data: EmailRequest):
 async def verify_sms(data: EmailVerify, db: AsyncSession = Depends(get_db_session)):
     is_valid = await verify_code(data.email, data.code)
     if not is_valid:
-        raise HTTPException(status_code=400, detail="Invalid code")
+        raise HTTPException(status_code=400, detail="Неверный код")
 
     user = await UserCRUD.get_user_by_email(db, data.email)
     redis = get_redis()
@@ -83,7 +83,7 @@ async def register(data: UserCreate, response: Response, db: AsyncSession = Depe
 
     user = await UserCRUD.create_user(db, data, data.password)
     if not user:
-        raise HTTPException(status_code=400, detail="User with this email already exists")
+        raise HTTPException(status_code=400, detail="Аккаунт с такой почтой уже зарегистрирован")
 
     set_refresh_cookie(response, user.id, create_refresh_token(user.id))
     await redis.delete(f"verified_for_reg:{data.email}")
@@ -146,7 +146,7 @@ async def login(data: UserLogin, response: Response, db: AsyncSession = Depends(
 
     user = await UserCRUD.login_user(db, data.email, data.password)
     if not user or not verify_password(data.password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="Invalid email or password")
+        raise HTTPException(status_code=400, detail="Неверная почта или пароль")
     if user.is_banned:
         raise HTTPException(status_code=403, detail="Аккаунт заблокирован")
 
@@ -176,16 +176,16 @@ async def refresh_tokens(
     cookie_token = request.cookies.get(refresh_cookie_name(data.user_id))
     token = cookie_token or data.refresh_token
     if not token:
-        raise HTTPException(status_code=401, detail="No refresh token")
+        raise HTTPException(status_code=401, detail="Сессия истекла. Войдите снова")
 
     token_user_id = decode_token(token, expected_type="refresh")
     # The token must be valid AND belong to the requested account.
     if token_user_id is None or token_user_id != data.user_id:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
+        raise HTTPException(status_code=401, detail="Сессия истекла. Войдите снова")
 
     user = await UserCRUD.get_user_by_id(db, token_user_id)
     if user is None:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
+        raise HTTPException(status_code=401, detail="Сессия истекла. Войдите снова")
 
     # Re-affirm the cookie (sets it during legacy migration; refreshes max-age).
     set_refresh_cookie(response, user.id, token)

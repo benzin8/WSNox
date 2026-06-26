@@ -23,7 +23,7 @@ async def get_vapid_public_key():
     if not settings.vapid_public_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Push notifications are not configured",
+            detail="Пуш-уведомления пока не настроены",
         )
     return {"public_key": settings.vapid_public_key}
 

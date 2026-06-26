@@ -45,7 +45,7 @@ async def set_dnd(
     ok = await NotificationCRUD.set_dnd(db, user.id, body.enabled, redis=get_redis())
     if not ok:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Профиль не найден"
         )
     return await _build_prefs(db, user.id)
 
@@ -61,7 +61,7 @@ async def set_read_receipts(
     )
     if not ok:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Профиль не найден"
         )
     # Notify chat partners so their UI updates instantly
     partner_ids = await ChatCRUD.get_chat_partners(db, user.id)
@@ -83,7 +83,7 @@ async def set_chat_mute(
 ):
     if not await cached_is_chat_member(get_redis(), db, chat_id, user.id):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Чат не найден"
         )
     await NotificationCRUD.set_chat_mute(db, user.id, chat_id, body.muted, redis=get_redis())
     return await _build_prefs(db, user.id)

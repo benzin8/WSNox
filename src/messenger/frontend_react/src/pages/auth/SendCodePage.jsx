@@ -31,7 +31,7 @@ export default function SendCodePage() {
             await axios.post(`${API_BASE}/auth/send-code`, { email });
             navigate('/auth/verify', { state: { email } });
         } catch (err) {
-            setError(parseApiError(err, 'Failed to send code'));
+            setError(parseApiError(err, 'Не получилось отправить код. Попробуйте снова'));
         } finally {
             setLoading(false);
             isSubmitting.current = false;

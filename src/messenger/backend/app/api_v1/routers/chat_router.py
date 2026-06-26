@@ -318,7 +318,7 @@ async def create_group_chat(
 ):
     """Create a new group chat. Creator is implicitly added as admin."""
     if not request.name or not request.name.strip():
-        raise HTTPException(status_code=400, detail="Group name is required")
+        raise HTTPException(status_code=400, detail="Введите название группы")
     # All requested members must already share a private chat with the creator,
     # so we don't accidentally let anyone pull arbitrary users into a group.
     partners = set(await ChatCRUD.get_chat_partners(db, current_user.id))
@@ -446,12 +446,12 @@ async def add_group_members(
     """
     chat = await ChatCRUD.get_chat(db, chat_id)
     if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
+        raise HTTPException(status_code=404, detail="Чат не найден")
     if chat.chat_type != "group":
-        raise HTTPException(status_code=400, detail="Group chats only")
+        raise HTTPException(status_code=400, detail="Только для групповых чатов")
     role = await ChatCRUD.get_chat_role(db, chat_id, current_user.id)
     if role != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+        raise HTTPException(status_code=403, detail="Только для администратора")
     partners = set(await ChatCRUD.get_chat_partners(db, current_user.id))
     bad = [uid for uid in request.member_ids if uid != current_user.id and uid not in partners]
     if bad:
@@ -497,11 +497,11 @@ async def leave_group_chat(
 ):
     chat = await ChatCRUD.get_chat(db, chat_id)
     if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
+        raise HTTPException(status_code=404, detail="Чат не найден")
     if chat.chat_type != "group":
-        raise HTTPException(status_code=400, detail="Can leave group chats only")
+        raise HTTPException(status_code=400, detail="Выйти можно только из группового чата")
     if not await cached_is_chat_member(get_redis(), db, chat_id, current_user.id):
-        raise HTTPException(status_code=403, detail="Not a member")
+        raise HTTPException(status_code=403, detail="Вы не участник этого чата")
 
     member_ids = await cached_member_ids(get_redis(), db, chat_id)
     await ChatCRUD.remove_member(db, chat_id, current_user.id)
@@ -526,12 +526,12 @@ async def delete_chat(
     """Delete a group chat. Only admin may do this."""
     chat = await ChatCRUD.get_chat(db, chat_id)
     if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
+        raise HTTPException(status_code=404, detail="Чат не найден")
     if chat.chat_type != "group":
-        raise HTTPException(status_code=400, detail="Can delete group chats only")
+        raise HTTPException(status_code=400, detail="Удалять можно только групповые чаты")
     role = await ChatCRUD.get_chat_role(db, chat_id, current_user.id)
     if role != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+        raise HTTPException(status_code=403, detail="Только для администратора")
 
     member_ids = await cached_member_ids(get_redis(), db, chat_id)
     await ChatCRUD.delete_chat(db, chat_id)
@@ -735,7 +735,7 @@ async def upload_chat_media(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к этому чату")
     chat = await ChatCRUD.get_chat(db, chat_id)
     if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
+        raise HTTPException(status_code=404, detail="Чат не найден")
     # Channels are read-only over this path too (mirrors the WS text rule):
     # only the owner may post. The official channel has no owner, so its
     # members can't post media here — it stays admin-only via the dashboard.
@@ -746,10 +746,10 @@ async def upload_chat_media(
     # enforced via is_valid_album_index (0..9).
     if album_id is not None or album_index is not None:
         if not (is_valid_album_id(album_id) and is_valid_album_index(album_index)):
-            raise HTTPException(status_code=400, detail="Invalid album fields")
+            raise HTTPException(status_code=400, detail="Некорректные данные альбома")
         content_type_peek = (file.content_type or "").split(";")[0].strip()
         if content_type_peek not in media_service.ALLOWED_IMAGE_MIME:
-            raise HTTPException(status_code=400, detail="Albums are photo-only")
+            raise HTTPException(status_code=400, detail="В альбом можно добавлять только фото")
     # For private chats we still persist recipient_id (back-compat with old
     # clients reading the column). For group chats recipient_id is NULL and
     # fan-out happens via chat_members.
@@ -774,13 +774,13 @@ async def upload_chat_media(
             # Any other type → store as a generic file attachment (msg_type=file).
             payload = await media_service.process_file(storage, current_user.id, file)
     except media_service.FileTooLarge as e:
-        raise HTTPException(status_code=413, detail="File too large") from e
+        raise HTTPException(status_code=413, detail="Файл слишком большой") from e
     except media_service.UnsupportedFormat as e:
-        raise HTTPException(status_code=415, detail="Unsupported media type") from e
+        raise HTTPException(status_code=415, detail="Такой тип файла не поддерживается") from e
     except media_service.EmptyFile as e:
-        raise HTTPException(status_code=400, detail="Empty file") from e
+        raise HTTPException(status_code=400, detail="Файл пустой") from e
     except media_service.InvalidImage as e:
-        raise HTTPException(status_code=400, detail="Invalid image") from e
+        raise HTTPException(status_code=400, detail="Не удалось обработать изображение") from e
     except media_service.InvalidMeta as e:
         raise HTTPException(status_code=400, detail=str(e) or "Invalid meta") from e
 

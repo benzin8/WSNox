@@ -29,7 +29,7 @@ async def _send_email(to: str, subject: str, text: str, html: str | None = None)
             use_tls=True,
         )
     except Exception:
-        raise HTTPException(status_code=503, detail="Failed to send email")
+        raise HTTPException(status_code=503, detail="Не удалось отправить письмо. Попробуйте ещё раз")
 
 
 async def send_verification_code(email: str) -> None:

@@ -78,7 +78,7 @@ export default function RegisterPage() {
                 navigate('/auth/send-code', { state: { email } });
                 return;
             }
-            setError(parseApiError(err, 'Registration failed'));
+            setError(parseApiError(err, 'Не получилось зарегистрироваться. Попробуйте снова'));
         } finally {
             setLoading(false);
             isSubmitting.current = false;

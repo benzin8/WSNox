@@ -11,7 +11,7 @@ async def check_rate_limit(key: str, max_requests: int, window_seconds: int) -> 
     if current == 1:
         await redis.expire(key, window_seconds)
     if current > max_requests:
-        raise HTTPException(status_code=429, detail="Too many requests. Try again later.")
+        raise HTTPException(status_code=429, detail="Слишком много запросов. Попробуйте чуть позже")
 
 
 async def rate_limit_send_code(request: Request) -> None:

@@ -95,7 +95,7 @@ async def get_current_admin(current_user: CachedUser = Depends(get_current_user)
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
+            detail="Нужны права администратора",
         )
     return current_user
 
