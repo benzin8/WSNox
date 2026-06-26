@@ -12,6 +12,24 @@ const EPH_VARS = {
     "--eph-border": "rgba(var(--accent-rgb), 0.30)",
 };
 
+// The full-screen overlays are always a DARK surface. The app's zinc scale is
+// theme-aware (light theme inverts it), which would flip bubbles to white and
+// text to dark/unreadable here — so pin zinc to its dark values for these
+// overlays regardless of the user's chosen theme.
+const EPH_DARK = {
+    ...EPH_VARS,
+    "--color-zinc-950": "#09090b",
+    "--color-zinc-900": "#18181b",
+    "--color-zinc-800": "#27272a",
+    "--color-zinc-700": "#3f3f46",
+    "--color-zinc-600": "#52525b",
+    "--color-zinc-500": "#71717a",
+    "--color-zinc-400": "#a1a1aa",
+    "--color-zinc-300": "#d4d4d8",
+    "--color-zinc-200": "#e4e4e7",
+    "--color-zinc-100": "#f4f4f5",
+};
+
 /**
  * Renders everything for one-time chats: incoming invite prompt, a "waiting to
  * be accepted" card, the live window (with self-destruct), and a toast.
@@ -82,7 +100,7 @@ export function EphemeralInviteRow({ invite, onAccept, onOpen }) {
 
 function InvitePrompt({ invite, onAccept, onDecline, onClose }) {
     return (
-        <div onClick={onClose} className="fixed inset-0 z-[115] flex items-center justify-center p-4 bg-black/65 backdrop-blur-2xl animate-fadeIn" style={EPH_VARS}>
+        <div onClick={onClose} className="fixed inset-0 z-[115] flex items-center justify-center p-4 bg-black/65 backdrop-blur-2xl animate-fadeIn" style={EPH_DARK}>
             <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-sm rounded-3xl border border-[var(--eph-border)] bg-zinc-950/95 p-7 text-center shadow-2xl animate-popIn overflow-hidden">
                 <div className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-[var(--eph-soft)] blur-[90px]" />
                 <div className="relative">
@@ -119,7 +137,7 @@ function InvitePrompt({ invite, onAccept, onDecline, onClose }) {
 
 function WaitingCard({ waiting, onCancel }) {
     return (
-        <div className="fixed inset-0 z-[115] flex items-center justify-center p-4 bg-black/60 backdrop-blur-2xl animate-fadeIn" style={EPH_VARS}>
+        <div className="fixed inset-0 z-[115] flex items-center justify-center p-4 bg-black/60 backdrop-blur-2xl animate-fadeIn" style={EPH_DARK}>
             <div className="w-full max-w-xs rounded-3xl border border-[var(--eph-border)] bg-zinc-950/95 p-7 text-center shadow-2xl animate-popIn">
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--eph-soft)] border border-[var(--eph-border)] animate-emberPulse">
                     <Flame className="h-7 w-7 text-[var(--eph-accent)]" />
@@ -182,7 +200,7 @@ function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping
     };
 
     return (
-        <div className={`fixed inset-0 z-[110] flex items-center justify-center p-0 sm:p-4 ${destroying ? "pointer-events-none" : ""}`} style={EPH_VARS}>
+        <div className={`fixed inset-0 z-[110] flex items-center justify-center p-0 sm:p-4 ${destroying ? "pointer-events-none" : ""}`} style={EPH_DARK}>
             {/* blurred backdrop over the rest of the app */}
             <div className="absolute inset-0 bg-black/70 backdrop-blur-2xl animate-fadeIn" />
             <div
@@ -192,7 +210,7 @@ function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping
                 <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-72 w-72 rounded-full bg-[var(--eph-soft)] blur-[100px]" />
 
                 {/* header */}
-                <header className="relative z-10 flex h-16 flex-shrink-0 items-center justify-between border-b border-zinc-800/70 bg-black/30 px-4 backdrop-blur-md">
+                <header className="relative z-10 flex min-h-[4rem] flex-shrink-0 items-center justify-between border-b border-zinc-800/70 bg-black/30 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md">
                     <div className="flex items-center gap-3 min-w-0">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--eph-soft)] border border-[var(--eph-border)] animate-emberPulse">
                             <Flame className="h-5 w-5 text-[var(--eph-accent)]" />
@@ -274,13 +292,17 @@ function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping
                 )}
 
                 {/* input */}
-                <form onSubmit={submit} className="relative z-10 flex flex-shrink-0 items-center gap-2 border-t border-zinc-800/70 bg-black/30 p-3 backdrop-blur-md">
+                <form
+                    onSubmit={submit}
+                    style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+                    className="relative z-10 flex flex-shrink-0 items-center gap-2 border-t border-zinc-800/70 bg-black/30 p-3 backdrop-blur-md"
+                >
                     <input
                         value={text}
                         onChange={onChange}
                         disabled={destroying}
                         placeholder="Сообщение, которое исчезнет…"
-                        className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors focus:border-[var(--eph-border)]"
+                        className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-base text-zinc-100 placeholder-zinc-600 outline-none transition-colors focus:border-[var(--eph-border)]"
                     />
                     <button
                         type="submit"
