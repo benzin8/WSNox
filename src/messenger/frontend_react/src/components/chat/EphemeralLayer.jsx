@@ -82,7 +82,7 @@ function InvitePrompt({ invite, onAccept, onDecline }) {
                             onClick={onAccept}
                             className="flex-1 rounded-xl bg-[var(--eph-accent)] py-2.5 text-sm font-semibold text-zinc-950 transition-transform hover:brightness-110 active:scale-[0.98]"
                         >
-                            Принять 🔥
+                            Принять
                         </button>
                     </div>
                 </div>
@@ -128,6 +128,7 @@ function closingNotice(session, myId) {
 
 function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping, onLeave }) {
     const [text, setText] = useState("");
+    const [showIntro, setShowIntro] = useState(true);
     const scrollRef = useRef(null);
     const lastTyping = useRef(0);
     const destroying = session.status === "destroying";
@@ -174,7 +175,6 @@ function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping
                             <div className="truncate text-sm font-semibold text-zinc-100">
                                 {session.peer?.name || "Одноразовый чат"}
                             </div>
-                            <div className="text-[11px] font-medium text-[var(--eph-accent)]">🔥 одноразовый · не сохраняется</div>
                         </div>
                     </div>
                     <button
@@ -185,12 +185,6 @@ function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping
                         <X className="h-5 w-5" />
                     </button>
                 </header>
-
-                {/* privacy banner */}
-                <div className="relative z-10 flex items-center gap-2 border-b border-zinc-900 bg-[var(--eph-soft)] px-4 py-2 text-[11px] text-zinc-300">
-                    <ShieldOff className="h-3.5 w-3.5 flex-shrink-0 text-[var(--eph-accent)]" />
-                    <span>Сообщения не сохраняются. Чат исчезнет у обоих, если кто-то выйдет, закроет или свернёт окно.</span>
-                </div>
 
                 {/* messages */}
                 <div ref={scrollRef} className="relative z-10 flex-1 space-y-2 overflow-y-auto px-4 py-4">
@@ -228,7 +222,28 @@ function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-zinc-950/70 backdrop-blur-sm">
                         <Flame className="h-11 w-11 text-amber-400 animate-emberPulse" />
                         <div className="text-base font-semibold text-amber-200">{closingNotice(session, myId)}</div>
-                        <div className="text-xs text-amber-300/80">Чат закрывается и сгорает без следа 🔥</div>
+                        <div className="text-xs text-amber-300/80">Чат закрывается и сгорает без следа</div>
+                    </div>
+                )}
+
+                {/* intro warning shown once when the one-time chat is created */}
+                {showIntro && !destroying && (
+                    <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-zinc-950/85 backdrop-blur-md animate-fadeIn">
+                        <div className="w-full max-w-sm rounded-3xl border border-[var(--eph-border)] bg-zinc-950 p-7 text-center shadow-2xl animate-popIn">
+                            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--eph-soft)] border border-[var(--eph-border)]">
+                                <ShieldOff className="h-7 w-7 text-[var(--eph-accent)]" />
+                            </div>
+                            <h3 className="text-base font-bold text-zinc-100">Это одноразовый чат</h3>
+                            <p className="mt-2 text-sm text-zinc-400">
+                                Сообщения нигде не сохраняются и исчезнут у обоих, как только кто-то выйдет, закроет или свернёт окно.
+                            </p>
+                            <button
+                                onClick={() => setShowIntro(false)}
+                                className="mt-6 w-full rounded-xl bg-[var(--eph-accent)] py-2.5 text-sm font-semibold text-zinc-950 transition-transform hover:brightness-110 active:scale-[0.98]"
+                            >
+                                Понятно
+                            </button>
+                        </div>
                     </div>
                 )}
 
