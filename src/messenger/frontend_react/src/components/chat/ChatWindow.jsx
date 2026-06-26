@@ -1,5 +1,5 @@
 import React from "react";
-import { Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle, LogOut, Trash2, Megaphone, BadgeCheck, Link2 } from 'lucide-react';
+import { Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle, LogOut, Trash2, Megaphone, BadgeCheck, Link2, Flame } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
 import { ChatMuteToggle } from "../../features/notifications";
@@ -14,7 +14,7 @@ export const ChatWindow = ({
     replyTo, onReply, onReact, onCancelReply, onDeleteMessage,
     editingMessage, onEditMessage, onCancelEdit, onConfirmEdit,
     onPickMedia, onPickMany, onPickFile, onSendVoice, onRetryMedia, onLeaveGroup, onDeleteGroup,
-    currentUserId, onAcceptRequest, onDeclineRequest, onReportSpam,
+    currentUserId, onAcceptRequest, onDeclineRequest, onReportSpam, onStartEphemeral,
 }) => {
     const [menuOpen, setMenuOpen] = React.useState(false);
     React.useEffect(() => { setMenuOpen(false); }, [activeChat?.id]);
@@ -124,6 +124,17 @@ export const ChatWindow = ({
           </div>
           <div className="flex items-center gap-4 text-zinc-400 relative">
             <ChatMuteToggle chatId={activeChat?.id} />
+            {onStartEphemeral && (
+              <button
+                type="button"
+                onClick={onStartEphemeral}
+                title="Одноразовый чат — без следов"
+                aria-label="Создать одноразовый чат"
+                className="hover:text-lime-400 cursor-pointer transition-colors p-1 -m-1 rounded-md"
+              >
+                <Flame size={20} />
+              </button>
+            )}
             {!isGroup && !isChannel && (
               <Phone size={20} className="hover:text-lime-400 cursor-pointer transition-colors" />
             )}

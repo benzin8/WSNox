@@ -21,6 +21,7 @@ from messenger.backend.app.crud.notification import (
     should_expose_read_receipts,
 )
 from messenger.backend.app.crud.reaction import ReactionCRUD
+from messenger.backend.app.ws import ephemeral
 from messenger.backend.app.ws.push import send_push_to_user
 from messenger.backend.app.ws.viewing_chat import (
     clear_viewing_chat,
@@ -96,6 +97,17 @@ async def _resolve_sender_avatar_url(storage, profile) -> str | None:
     from messenger.backend.services.avatar_urls import resolve_avatar_urls
     urls = await resolve_avatar_urls(storage, profile.avatar, redis=get_redis())
     return urls.thumb
+
+
+async def _eph_profile(db, storage, uid: int):
+    """Resolve (display_name, avatar_thumb_url) for a one-time-chat participant."""
+    from sqlalchemy.orm import selectinload as _selectinload
+    u = await db.get(User, uid, options=[_selectinload(User.profile)])
+    if not u:
+        return None, None
+    name = u.profile.display_name if u.profile else None
+    avatar = await _resolve_sender_avatar_url(storage, u.profile if u else None)
+    return name, avatar
 
 
 async def publish_media_message(
@@ -876,6 +888,73 @@ async def websocket_chat(websocket: WebSocket) -> None:
                 await redis.publish(REDIS_CHAT_CHANNEL + ":reactions", react_payload)
                 continue
 
+            # ---- One-time (ephemeral) chats: relayed only, never persisted ----
+            if msg_type == "eph_invite":
+                to_id = msg_data.get("to")
+                try:
+                    to_id = int(to_id)
+                except (TypeError, ValueError):
+                    continue
+                if to_id == user_id:
+                    continue
+                async with AsyncSessionLocal() as db:
+                    if await BlockCRUD.is_blocked_either(db, user_id, to_id):
+                        continue
+                    name, avatar = await _eph_profile(
+                        db, getattr(websocket.app.state, "storage", None), user_id
+                    )
+                await ephemeral.create_invite(user_id, to_id, inviter_name=name, inviter_avatar=avatar)
+                continue
+
+            if msg_type == "eph_accept":
+                eph_id = msg_data.get("eph_id")
+                if not eph_id:
+                    continue
+                parts = await ephemeral.get_participants(eph_id)
+                if not parts:
+                    continue
+                a, b = parts
+                async with AsyncSessionLocal() as db:
+                    storage = getattr(websocket.app.state, "storage", None)
+                    na, aa = await _eph_profile(db, storage, a)
+                    nb, ab = await _eph_profile(db, storage, b)
+                profiles = {
+                    a: {"name": na, "avatar_url": aa},
+                    b: {"name": nb, "avatar_url": ab},
+                }
+                await ephemeral.accept_invite(eph_id, user_id, profiles)
+                continue
+
+            if msg_type == "eph_decline":
+                eph_id = msg_data.get("eph_id")
+                if eph_id:
+                    await ephemeral.decline_invite(eph_id, user_id)
+                continue
+
+            if msg_type == "eph_msg":
+                eph_id = msg_data.get("eph_id")
+                eph_text = msg_data.get("text")
+                if not (eph_id and eph_text):
+                    continue
+                eph_text = str(eph_text)[:4000]
+                ok = await ephemeral.relay_message(eph_id, user_id, eph_text, msg_data.get("temp_id"))
+                temp_id = msg_data.get("temp_id")
+                if ok and temp_id is not None:
+                    await websocket.send_json({"type": "eph_ack", "eph_id": eph_id, "temp_id": temp_id})
+                continue
+
+            if msg_type == "eph_typing":
+                eph_id = msg_data.get("eph_id")
+                if eph_id:
+                    await ephemeral.relay_typing(eph_id, user_id, bool(msg_data.get("on")))
+                continue
+
+            if msg_type == "eph_leave":
+                eph_id = msg_data.get("eph_id")
+                if eph_id:
+                    await ephemeral.leave(eph_id, user_id)
+                continue
+
             chat_id = msg_data.get("chat_id")
             text = msg_data.get("text")
             if not (chat_id and text):
@@ -949,5 +1028,8 @@ async def websocket_chat(websocket: WebSocket) -> None:
     finally:
         last_socket = await manager.disconnect(websocket, user_id)
         if last_socket:
+            # Backstop: a crash / network drop with no `eph_leave` still kills
+            # every one-time chat this user was in.
+            await ephemeral.on_user_gone(user_id)
             await clear_presence(redis, user_id)
             await publish_presence_event(redis, user_id, online=False)
