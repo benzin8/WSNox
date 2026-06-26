@@ -8,7 +8,7 @@ import { useTheme } from "../../features/theme";
 // Full emoji picker — lazy so it stays out of the main bundle until opened.
 const EmojiPicker = React.lazy(() => import("emoji-picker-react"));
 
-export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit, onPickMedia, onPickMany, onPickFile, onSendVoice }) => {
+export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit, onPickMedia, onPickMany, onPickFile, onSendVoice, onType }) => {
     const [inputText, setInputText] = useState("");
     const [showEmoji, setShowEmoji] = useState(false);
     const inputRef = React.useRef(null);
@@ -161,7 +161,7 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
               // the bar (and off-screen) on narrow phones.
               className="flex-grow min-w-0 bg-transparent border-none focus:outline-none text-base md:text-sm py-2"
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => { setInputText(e.target.value); onType?.(); }}
             />
             <button
               type="button"

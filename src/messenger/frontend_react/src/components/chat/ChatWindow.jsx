@@ -10,7 +10,7 @@ export const ChatWindow = ({
     messages, setMessages, activeChat, sendMessage,
     isConnected, isConnecting, messagesEndRef, inputText, setInputText,
     chatName, onOpenProfile, onOpenChatInfo, onBack,
-    isPartnerOnline, partnerPresencePreference,
+    isPartnerOnline, partnerPresencePreference, partnerTyping, onType,
     replyTo, onReply, onReact, onCancelReply, onDeleteMessage,
     editingMessage, onEditMessage, onCancelEdit, onConfirmEdit,
     onPickMedia, onPickMany, onPickFile, onSendVoice, onRetryMedia, onLeaveGroup, onDeleteGroup,
@@ -105,13 +105,13 @@ export const ChatWindow = ({
                         : `${activeChat?.member_count || 0} подписчиков${isOwner ? " · вы владелец" : ""}`}
                     </p>
                   ) : isGroup ? (
-                    <p className="text-xs font-medium text-zinc-500">
-                      {activeChat?.member_count ? `${activeChat.member_count} участников` : "группа"}
+                    <p className={`text-xs font-medium ${partnerTyping ? "text-lime-400" : "text-zinc-500"}`}>
+                      {partnerTyping ? "печатает…" : activeChat?.member_count ? `${activeChat.member_count} участников` : "группа"}
                     </p>
                   ) : (
                     <>
-                      <p className={`text-xs font-medium ${isPartnerOnline ? "text-lime-400" : "text-zinc-500"}`}>
-                        {isPartnerOnline ? "в сети" : "не в сети"}
+                      <p className={`text-xs font-medium ${partnerTyping || isPartnerOnline ? "text-lime-400" : "text-zinc-500"}`}>
+                        {partnerTyping ? "печатает…" : isPartnerOnline ? "в сети" : "не в сети"}
                       </p>
                       {partnerPresencePreference === "dnd" && (
                         <BellOff size={12} className="text-amber-400" />
@@ -256,6 +256,7 @@ export const ChatWindow = ({
             onPickMany={onPickMany}
             onPickFile={onPickFile}
             onSendVoice={onSendVoice}
+            onType={onType}
           />
         )}
       </div>
