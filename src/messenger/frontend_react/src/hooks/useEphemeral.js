@@ -27,6 +27,7 @@ export function useEphemeral({
     ephLeave,
 }) {
     const [incomingInvite, setIncomingInvite] = useState(null); // {ephId, fromId, fromName, fromAvatar}
+    const [inviteModalOpen, setInviteModalOpen] = useState(false); // show the accept/decline modal
     const [waiting, setWaiting] = useState(null);               // {ephId?, toId, toName}
     const [session, setSession] = useState(null);              // {ephId, peer, status}
     const [messages, setMessages] = useState([]);
@@ -79,13 +80,18 @@ export function useEphemeral({
         if (!incomingInvite) return;
         ephAccept(incomingInvite.ephId);
         setIncomingInvite(null);
+        setInviteModalOpen(false);
     }, [incomingInvite, ephAccept]);
 
     const decline = useCallback(() => {
         if (!incomingInvite) return;
         ephDecline(incomingInvite.ephId);
         setIncomingInvite(null);
+        setInviteModalOpen(false);
     }, [incomingInvite, ephDecline]);
+
+    const openInviteModal = useCallback(() => setInviteModalOpen(true), []);
+    const closeInviteModal = useCallback(() => setInviteModalOpen(false), []);
 
     const send = useCallback((text) => {
         const s = sessionRef.current;
@@ -123,6 +129,8 @@ export function useEphemeral({
                     ephId: e.eph_id, fromId: e.from_id,
                     fromName: e.from_name, fromAvatar: e.from_avatar,
                 });
+                // Non-blocking notice — the persistent prompt lives in the chat list.
+                setToast({ kind: "invite", text: `${e.from_name || "Кто-то"} приглашает в одноразовый чат` });
                 break;
             }
             case "eph_invite_sent":
@@ -225,8 +233,8 @@ export function useEphemeral({
     }, [toast]);
 
     return {
-        incomingInvite, waiting, session, messages, peerTyping, toast,
-        invite, cancelInvite, accept, decline, send, sendTyping, leave,
-        myId,
+        incomingInvite, inviteModalOpen, waiting, session, messages, peerTyping, toast,
+        invite, cancelInvite, accept, decline, openInviteModal, closeInviteModal,
+        send, sendTyping, leave, myId,
     };
 }

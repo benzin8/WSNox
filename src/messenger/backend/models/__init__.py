@@ -8,6 +8,7 @@ from .push_subscription import PushSubscription
 from .role_audit import RoleAuditLog
 from .user import User
 from .user_block import UserBlock
+from .webauthn_credential import WebAuthnCredential
 
 __all__ = [
     "Chat",
@@ -21,4 +22,5 @@ __all__ = [
     "PushSubscription",
     "RoleAuditLog",
     "UserBlock",
+    "WebAuthnCredential",
 ]

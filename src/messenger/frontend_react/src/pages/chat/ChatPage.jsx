@@ -12,7 +12,7 @@ import { useEnergy } from '../../features/energy';
 
 import { ChatWindow } from '../../components/chat/ChatWindow';
 import { useEphemeral } from '../../hooks/useEphemeral';
-import { EphemeralLayer } from '../../components/chat/EphemeralLayer';
+import { EphemeralLayer, EphemeralInviteRow } from '../../components/chat/EphemeralLayer';
 import { ChatList } from '../../components/chat/ChatList';
 import { CreateGroupModal } from '../../components/chat/CreateGroupModal';
 import { CreateChannelModal } from '../../components/chat/CreateChannelModal';
@@ -1198,12 +1198,21 @@ function ChatPage() {
                   )}
                 </div>
               ) : (
-                <ChatList
-                  chats={chats}
-                  activeChatId={activeChat?.id}
-                  onSelectChat={handleSelectChat}
-                  onlineUsers={onlineUsers}
-                />
+                <>
+                  {ephemeral.incomingInvite && (
+                    <EphemeralInviteRow
+                      invite={ephemeral.incomingInvite}
+                      onAccept={ephemeral.accept}
+                      onOpen={ephemeral.openInviteModal}
+                    />
+                  )}
+                  <ChatList
+                    chats={chats}
+                    activeChatId={activeChat?.id}
+                    onSelectChat={handleSelectChat}
+                    onlineUsers={onlineUsers}
+                  />
+                </>
               )}
             </div>
           </div>

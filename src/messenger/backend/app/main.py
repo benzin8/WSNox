@@ -13,6 +13,7 @@ from messenger.backend.services.storage import S3Storage
 from .api_v1.routers import frontend_router
 from .api_v1.routers.admin_router import admin_router
 from .api_v1.routers.auth_router import auth_router
+from .api_v1.routers.webauthn_router import webauthn_router
 from .api_v1.routers.chat_router import chat_router
 from .api_v1.routers.notification_router import notification_router
 from .api_v1.routers.profile_router import profile_router
@@ -100,6 +101,7 @@ if ASSETS_DIR.exists():
 
 app.include_router(ws_router)
 app.include_router(auth_router)
+app.include_router(webauthn_router)
 app.include_router(chat_router)
 app.include_router(profile_router)
 app.include_router(push_router)

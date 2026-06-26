@@ -18,21 +18,22 @@ const EPH_VARS = {
  * Purely presentational — all state/logic comes from useEphemeral.
  */
 export function EphemeralLayer({ eph }) {
-    const { incomingInvite, waiting, session, messages, peerTyping, toast,
-        cancelInvite, accept, decline, send, sendTyping, leave, myId } = eph;
+    const { incomingInvite, inviteModalOpen, waiting, session, messages, peerTyping, toast,
+        cancelInvite, accept, decline, closeInviteModal, send, sendTyping, leave, myId } = eph;
 
     return (
         <>
             {toast && (
                 <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[120] animate-fadeIn">
-                    <div className="px-4 py-2 rounded-xl bg-zinc-900/95 border border-zinc-700 text-zinc-200 text-sm shadow-xl backdrop-blur-md">
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900/95 border border-zinc-700 text-zinc-200 text-sm shadow-xl backdrop-blur-md">
+                        {toast.kind === "invite" && <Flame className="h-4 w-4 text-[var(--eph-accent)]" style={EPH_VARS} />}
                         {toast.text}
                     </div>
                 </div>
             )}
 
-            {incomingInvite && !session && (
-                <InvitePrompt invite={incomingInvite} onAccept={accept} onDecline={decline} />
+            {inviteModalOpen && incomingInvite && !session && (
+                <InvitePrompt invite={incomingInvite} onAccept={accept} onDecline={decline} onClose={closeInviteModal} />
             )}
 
             {waiting && !session && (
@@ -54,10 +55,35 @@ export function EphemeralLayer({ eph }) {
     );
 }
 
-function InvitePrompt({ invite, onAccept, onDecline }) {
+// Compact, persistent invite row for the chat list — non-intrusive entry point.
+export function EphemeralInviteRow({ invite, onAccept, onOpen }) {
     return (
-        <div className="fixed inset-0 z-[115] flex items-center justify-center p-4 bg-black/65 backdrop-blur-2xl animate-fadeIn" style={EPH_VARS}>
-            <div className="relative w-full max-w-sm rounded-3xl border border-[var(--eph-border)] bg-zinc-950/95 p-7 text-center shadow-2xl animate-popIn overflow-hidden">
+        <div
+            onClick={onOpen}
+            style={EPH_VARS}
+            className="mb-1 flex items-center gap-3 rounded-2xl border border-[var(--eph-border)] bg-[var(--eph-soft)] px-3 py-2.5 cursor-pointer transition-[filter] hover:brightness-125"
+        >
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-[var(--eph-border)] bg-[var(--eph-soft)] animate-emberPulse">
+                <Flame className="h-5 w-5 text-[var(--eph-accent)]" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-zinc-100">Одноразовый чат</div>
+                <div className="truncate text-xs text-zinc-400">Приглашение от {invite.fromName || "собеседника"}</div>
+            </div>
+            <button
+                onClick={(e) => { e.stopPropagation(); onAccept(); }}
+                className="flex-shrink-0 rounded-lg bg-[var(--eph-accent)] px-3 py-1.5 text-xs font-semibold text-zinc-950 transition-transform hover:brightness-110 active:scale-95"
+            >
+                Принять
+            </button>
+        </div>
+    );
+}
+
+function InvitePrompt({ invite, onAccept, onDecline, onClose }) {
+    return (
+        <div onClick={onClose} className="fixed inset-0 z-[115] flex items-center justify-center p-4 bg-black/65 backdrop-blur-2xl animate-fadeIn" style={EPH_VARS}>
+            <div onClick={(e) => e.stopPropagation()} className="relative w-full max-w-sm rounded-3xl border border-[var(--eph-border)] bg-zinc-950/95 p-7 text-center shadow-2xl animate-popIn overflow-hidden">
                 <div className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-64 rounded-full bg-[var(--eph-soft)] blur-[90px]" />
                 <div className="relative">
                     <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--eph-soft)] border border-[var(--eph-border)] animate-emberPulse">

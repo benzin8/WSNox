@@ -904,6 +904,10 @@ async def websocket_chat(websocket: WebSocket) -> None:
                         db, getattr(websocket.app.state, "storage", None), user_id
                     )
                 await ephemeral.create_invite(user_id, to_id, inviter_name=name, inviter_avatar=avatar)
+                asyncio.create_task(send_push_to_user(to_id, {
+                    "title": "Одноразовый чат",
+                    "body": f"{name or 'Кто-то'} приглашает в одноразовый чат",
+                }))
                 continue
 
             if msg_type == "eph_accept":

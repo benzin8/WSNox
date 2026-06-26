@@ -169,6 +169,10 @@ export async function switchAccount(userId) {
       accounts[idx] = { ...accounts[idx], needs_login: true };
       persist(accounts, getActiveId());
     }
+    // The account's refresh cookie is gone/expired — there's nothing to switch
+    // to. Send the user to re-authenticate this account rather than no-op.
+    beginAddAccount();
+    window.location.assign('/auth/send-code');
   }
 }
 
