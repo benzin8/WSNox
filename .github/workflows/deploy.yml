@@ -41,6 +41,7 @@ jobs:
             echo "SMTP_PORT=${{ secrets.SMTP_PORT }}"
             echo "SMTP_USER=${{ secrets.SMTP_USER }}"
             echo "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}"
+            echo "FRONTEND_BASE_URL=${{ secrets.FRONTEND_BASE_URL || 'https://wsnox.urldot.ru' }}"
             echo "SECRET_KEY=${{ secrets.SECRET_KEY }}"
             echo "ALGORITHM=${{ secrets.ALGORITHM }}"
             echo "REDIS_URL=${{ secrets.REDIS_URL }}"
