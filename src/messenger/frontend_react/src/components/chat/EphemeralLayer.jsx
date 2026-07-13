@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Flame, X, Send, ShieldOff } from "lucide-react";
+
+// Composer grows with its content up to this height, then scrolls.
+const MAX_COMPOSER_H = 140;
 
 // One-time chats follow the user's chosen accent (via --accent-rgb), but a few
 // shades darker and greyer — a dimmed, "secret" variant of their normal theme.
@@ -174,8 +177,17 @@ function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping
     const [text, setText] = useState("");
     const [showIntro, setShowIntro] = useState(true);
     const scrollRef = useRef(null);
+    const inputRef = useRef(null);
     const lastTyping = useRef(0);
     const destroying = session.status === "destroying";
+
+    // Grow the composer with its content up to MAX_COMPOSER_H, then scroll.
+    useLayoutEffect(() => {
+        const el = inputRef.current;
+        if (!el) return;
+        el.style.height = "auto";
+        el.style.height = `${Math.min(el.scrollHeight, MAX_COMPOSER_H)}px`;
+    }, [text]);
 
     useEffect(() => {
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -188,6 +200,15 @@ function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping
         setText("");
         onTyping(false);
         lastTyping.current = 0;
+    };
+
+    // Enter sends; Shift+Enter inserts a newline. isComposing guards IME input,
+    // where Enter commits the candidate rather than ending the message.
+    const onKeyDown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            submit(e);
+        }
     };
 
     const onChange = (e) => {
@@ -295,14 +316,20 @@ function EphemeralWindow({ session, messages, peerTyping, myId, onSend, onTyping
                 <form
                     onSubmit={submit}
                     style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-                    className="relative z-10 flex flex-shrink-0 items-center gap-2 border-t border-zinc-800/70 bg-black/30 p-3 backdrop-blur-md"
+                    className="relative z-10 flex flex-shrink-0 items-end gap-2 border-t border-zinc-800/70 bg-black/30 p-3 backdrop-blur-md"
                 >
-                    <input
+                    {/* A textarea, not <input type="text">: the input value
+                        sanitizer strips CR/LF, so pasted multi-line snippets
+                        lost their line breaks and indentation. */}
+                    <textarea
+                        ref={inputRef}
+                        rows={1}
                         value={text}
                         onChange={onChange}
+                        onKeyDown={onKeyDown}
                         disabled={destroying}
                         placeholder="Сообщение, которое исчезнет…"
-                        className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-base text-zinc-100 placeholder-zinc-600 outline-none transition-colors focus:border-[var(--eph-border)]"
+                        className="min-w-0 flex-1 resize-none overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-base leading-relaxed text-zinc-100 placeholder-zinc-600 outline-none transition-colors focus:border-[var(--eph-border)]"
                     />
                     <button
                         type="submit"

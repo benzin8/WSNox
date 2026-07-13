@@ -8,6 +8,9 @@ import { useTheme } from "../../features/theme";
 // Full emoji picker — lazy so it stays out of the main bundle until opened.
 const EmojiPicker = React.lazy(() => import("emoji-picker-react"));
 
+// Composer grows with its content up to this height, then scrolls.
+const MAX_COMPOSER_H = 160;
+
 export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, editingMessage, onCancelEdit, onConfirmEdit, onPickMedia, onPickMany, onPickFile, onSendVoice, onType }) => {
     const [inputText, setInputText] = useState("");
     const [showEmoji, setShowEmoji] = useState(false);
@@ -70,10 +73,28 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
       onCancelReply?.();
     };
 
+    // Enter sends; Shift+Enter inserts a newline. isComposing guards IME input,
+    // where Enter commits the candidate rather than ending the message.
+    const handleKeyDown = (e) => {
+      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+        e.preventDefault();
+        handleSubmit(e);
+      }
+    };
+
     const handleCancelEdit = () => {
       onCancelEdit?.();
       setInputText("");
     };
+
+    // Re-measure on every value change: typing, pasting, emoji insert, and the
+    // edit-mode prefill all need the box to resize.
+    React.useLayoutEffect(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, MAX_COMPOSER_H)}px`;
+    }, [inputText]);
 
     // Focus input when replying
     React.useEffect(() => {
@@ -143,7 +164,7 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
 
           <form
             onSubmit={handleSubmit}
-            className={`flex items-center gap-2 bg-zinc-800/30 rounded-2xl p-2 pl-2 border transition-all duration-300 ${
+            className={`flex items-end gap-2 bg-zinc-800/30 rounded-2xl p-2 pl-2 border transition-all duration-300 ${
               editingMessage
                 ? "border-lime-400/50 ring-4 ring-lime-400/20"
                 : "border-zinc-700/60 focus-within:border-lime-400/50 focus-within:ring-4 focus-within:ring-lime-400/40"
@@ -152,16 +173,20 @@ export const InputArea = ({ sendMessage, isConnected, replyTo, onCancelReply, ed
             {!editingMessage && onPickMedia && (
               <AttachmentPicker onPick={onPickMedia} onPickMany={onPickMany} onPickFile={onPickFile} disabled={!isConnected} />
             )}
-            <input
+            {/* A textarea, not <input type="text">: the input value sanitizer
+                strips CR/LF, so pasted multi-line snippets lost their line
+                breaks and indentation before React ever saw them. */}
+            <textarea
               ref={inputRef}
-              type="text"
+              rows={1}
               placeholder={editingMessage ? "Редактирование…" : "Напишите сообщение…"}
-              // min-w-0 is critical: a flex <input> otherwise keeps its ~180px
+              // min-w-0 is critical: a flex child otherwise keeps its ~180px
               // intrinsic width and pushes the trailing send/voice buttons off
               // the bar (and off-screen) on narrow phones.
-              className="flex-grow min-w-0 bg-transparent border-none focus:outline-none text-base md:text-sm py-2"
+              className="flex-grow min-w-0 bg-transparent border-none focus:outline-none text-base md:text-sm py-2 resize-none overflow-y-auto leading-relaxed"
               value={inputText}
               onChange={(e) => { setInputText(e.target.value); onType?.(); }}
+              onKeyDown={handleKeyDown}
             />
             <button
               type="button"
