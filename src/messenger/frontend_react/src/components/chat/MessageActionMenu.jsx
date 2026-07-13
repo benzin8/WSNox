@@ -7,6 +7,7 @@ const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
 export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, onEdit, onReact, onClose }) => {
   const overlayRef = useRef(null);
+  const contentRef = useRef(null);
   const msgRef = useRef(null);
 
   useEffect(() => {
@@ -23,8 +24,10 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
     return () => { document.body.style.overflow = ""; };
   }, []);
 
+  // Close on any click outside the content column. Testing against overlayRef
+  // alone would miss the scroll/padding wrapper, which now sits between them.
   const handleOverlayClick = (e) => {
-    if (e.target === overlayRef.current) onClose();
+    if (!contentRef.current?.contains(e.target)) onClose();
   };
 
   const time = (() => {
@@ -42,107 +45,111 @@ export const MessageActionMenu = ({ message, isOut, onReply, onDelete, onCopy, o
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center animate-actionOverlayIn"
+      className="fixed inset-0 z-50 overflow-y-auto overscroll-contain animate-actionOverlayIn"
       style={{ backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", background: "rgba(0,0,0,0.6)" }}
     >
-      {/* The message bubble — centered */}
-      <div className="flex flex-col items-center gap-4 animate-popIn">
-        {/* Reaction picker: 6 emoji + the ⚡ aura boost */}
-        <div className="flex items-center gap-1 px-2.5 py-2 rounded-full bg-zinc-800/80 border border-zinc-700/60 backdrop-blur-sm">
-          {REACTION_EMOJIS.map((e) => (
+      {/* Centering lives on this wrapper rather than on the scroll container:
+          centering a taller-than-viewport child directly inside an overflow
+          parent clips its top edge and leaves it unreachable by scrolling. */}
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div ref={contentRef} className="flex flex-col items-center gap-4 animate-popIn">
+          {/* Reaction picker: 6 emoji + the ⚡ aura boost */}
+          <div className="flex items-center gap-1 px-2.5 py-2 rounded-full bg-zinc-800/80 border border-zinc-700/60 backdrop-blur-sm">
+            {REACTION_EMOJIS.map((e) => (
+              <button
+                key={e}
+                onClick={() => { onReact?.(message, "emoji", e); onClose(); }}
+                className={`w-11 h-11 grid place-items-center rounded-full text-2xl leading-none transition-transform hover:scale-125 active:scale-110 ${
+                  message.reactions?.my_emoji === e ? "bg-lime-400/20 ring-1 ring-lime-400/50" : ""
+                }`}
+              >
+                {e}
+              </button>
+            ))}
+            <span className="w-px h-7 bg-zinc-700 mx-1" />
             <button
-              key={e}
-              onClick={() => { onReact?.(message, "emoji", e); onClose(); }}
-              className={`w-11 h-11 grid place-items-center rounded-full text-2xl leading-none transition-transform hover:scale-125 active:scale-110 ${
-                message.reactions?.my_emoji === e ? "bg-lime-400/20 ring-1 ring-lime-400/50" : ""
+              onClick={() => { onReact?.(message, "aura"); onClose(); }}
+              title="Усилить ауру"
+              aria-label="Усилить ауру"
+              className={`w-11 h-11 grid place-items-center rounded-full transition-transform hover:scale-125 active:scale-110 ${
+                message.reactions?.my_aura ? "bg-lime-400/25 ring-1 ring-lime-400/60" : ""
               }`}
             >
-              {e}
+              <Zap size={22} className="text-lime-400" fill={message.reactions?.my_aura ? "#a3e635" : "none"} />
             </button>
-          ))}
-          <span className="w-px h-7 bg-zinc-700 mx-1" />
-          <button
-            onClick={() => { onReact?.(message, "aura"); onClose(); }}
-            title="Усилить ауру"
-            aria-label="Усилить ауру"
-            className={`w-11 h-11 grid place-items-center rounded-full transition-transform hover:scale-125 active:scale-110 ${
-              message.reactions?.my_aura ? "bg-lime-400/25 ring-1 ring-lime-400/60" : ""
+          </div>
+  
+          <div
+            ref={msgRef}
+            className={`max-w-[75vw] md:max-w-md max-h-[55vh] overflow-y-auto overscroll-contain px-3.5 py-2 text-sm leading-relaxed shadow-lg ${
+              isOut
+                ? "bg-lime-400 text-zinc-900 font-medium rounded-2xl rounded-br-sm"
+                : "bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-sm border border-zinc-700/60"
             }`}
           >
-            <Zap size={22} className="text-lime-400" fill={message.reactions?.my_aura ? "#a3e635" : "none"} />
-          </button>
-        </div>
-
-        <div
-          ref={msgRef}
-          className={`max-w-[75vw] md:max-w-md px-3.5 py-2 text-sm leading-relaxed shadow-lg ${
-            isOut
-              ? "bg-lime-400 text-zinc-900 font-medium rounded-2xl rounded-br-sm"
-              : "bg-zinc-800 text-zinc-100 rounded-2xl rounded-bl-sm border border-zinc-700/60"
-          }`}
-        >
-          <div className="flex items-end gap-2">
-            <span className="whitespace-pre-wrap break-words">{message.text}</span>
-            <span className="flex items-center gap-1 shrink-0 self-end mb-0.5">
-              {message.edited_at && (
-                <span className={`text-[10px] leading-none select-none ${
-                  isOut ? "text-zinc-700/60" : "text-zinc-500/70"
-                }`}>
-                  ред.
-                </span>
-              )}
-              {time && (
-                <span className={`text-[10px] leading-none select-none ${
-                  isOut ? "text-zinc-700/70" : "text-zinc-500"
-                }`}>
-                  {time}
-                </span>
-              )}
-              {isOut && (
-                <span
-                  className={`inline-block w-1.5 h-1.5 rounded-full ${
-                    message.read_at ? "bg-zinc-900" : "bg-zinc-900/40"
-                  }`}
-                />
-              )}
-            </span>
+            <div className="flex items-end gap-2">
+              <span className="whitespace-pre-wrap break-words">{message.text}</span>
+              <span className="flex items-center gap-1 shrink-0 self-end mb-0.5">
+                {message.edited_at && (
+                  <span className={`text-[10px] leading-none select-none ${
+                    isOut ? "text-zinc-700/60" : "text-zinc-500/70"
+                  }`}>
+                    ред.
+                  </span>
+                )}
+                {time && (
+                  <span className={`text-[10px] leading-none select-none ${
+                    isOut ? "text-zinc-700/70" : "text-zinc-500"
+                  }`}>
+                    {time}
+                  </span>
+                )}
+                {isOut && (
+                  <span
+                    className={`inline-block w-1.5 h-1.5 rounded-full ${
+                      message.read_at ? "bg-zinc-900" : "bg-zinc-900/40"
+                    }`}
+                  />
+                )}
+              </span>
+            </div>
           </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-2 max-w-[calc(100vw-2rem)]">
-          <button
-            onClick={() => { onReply(message); onClose(); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-zinc-800/60 border border-zinc-700/60 hover:border-zinc-600 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
-          >
-            <Reply size={16} className="text-lime-400" />
-            <span>Ответить</span>
-          </button>
-          <button
-            onClick={() => { onCopy(message.text); onClose(); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-zinc-800/60 border border-zinc-700/60 hover:border-zinc-600 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
-          >
-            <Copy size={16} className="text-lime-400" />
-            <span>Копировать</span>
-          </button>
-          {isOut && (
+  
+          {/* Action buttons */}
+          <div className="flex flex-wrap items-center justify-center gap-2 max-w-[calc(100vw-2rem)]">
             <button
-              onClick={() => { onEdit(message); onClose(); }}
+              onClick={() => { onReply(message); onClose(); }}
               className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-zinc-800/60 border border-zinc-700/60 hover:border-zinc-600 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
             >
-              <Pencil size={16} className="text-lime-400" />
-              <span>Изменить</span>
+              <Reply size={16} className="text-lime-400" />
+              <span>Ответить</span>
             </button>
-          )}
-          {isOut && (
             <button
-              onClick={() => { onDelete(message); onClose(); }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-red-900/40 border border-zinc-700/60 hover:border-red-500/40 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
+              onClick={() => { onCopy(message.text); onClose(); }}
+              className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-zinc-800/60 border border-zinc-700/60 hover:border-zinc-600 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
             >
-              <Trash2 size={16} className="text-red-400" />
-              <span>Удалить</span>
+              <Copy size={16} className="text-lime-400" />
+              <span>Копировать</span>
             </button>
-          )}
+            {isOut && (
+              <button
+                onClick={() => { onEdit(message); onClose(); }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-zinc-800/60 border border-zinc-700/60 hover:border-zinc-600 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
+              >
+                <Pencil size={16} className="text-lime-400" />
+                <span>Изменить</span>
+              </button>
+            )}
+            {isOut && (
+              <button
+                onClick={() => { onDelete(message); onClose(); }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-zinc-800/30 hover:bg-red-900/40 border border-zinc-700/60 hover:border-red-500/40 backdrop-blur-sm rounded-xl text-zinc-100 text-sm font-medium transition-all duration-300 active:scale-[0.97]"
+              >
+                <Trash2 size={16} className="text-red-400" />
+                <span>Удалить</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>,
