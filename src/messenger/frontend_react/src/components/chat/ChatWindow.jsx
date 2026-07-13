@@ -1,7 +1,8 @@
 import React from "react";
-import { Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle, LogOut, Trash2, Megaphone, BadgeCheck, Link2, Flame } from 'lucide-react';
+import { Phone, MoreVertical, ChevronLeft, BellOff, MessageCircle, LogOut, Trash2, Megaphone, BadgeCheck, Link2, Flame, Upload } from 'lucide-react';
 import { MessageList } from "./MessageList";
 import { InputArea } from "./InputArea";
+import { routeFiles } from "./attachmentRouting";
 import { ChatMuteToggle } from "../../features/notifications";
 import { Avatar } from "../profile/Avatar";
 import { GroupAvatar } from "./GroupAvatar";
@@ -28,6 +29,49 @@ export const ChatWindow = ({
     const iSentMessage = messages.some((m) => m.type === "outgoing");
     const [linkCopied, setLinkCopied] = React.useState(false);
     React.useEffect(() => { setLinkCopied(false); }, [activeChat?.id]);
+
+    // Drag & drop files anywhere over the chat → same routing as the paperclip.
+    // Counter instead of a boolean: dragenter/dragleave fire on every child the
+    // cursor crosses, a boolean would flicker the overlay off mid-drag.
+    const [dragActive, setDragActive] = React.useState(false);
+    const dragDepth = React.useRef(0);
+    React.useEffect(() => { dragDepth.current = 0; setDragActive(false); }, [activeChat?.id]);
+    // Mirrors the JSX branch below that renders InputArea — drop is allowed
+    // exactly when the user could send via the input.
+    const canDropFiles =
+        isConnected &&
+        !(isChannel && !isOwner) &&
+        !(isRequest && !iAmInitiator) &&
+        !(isRequest && iAmInitiator && iSentMessage);
+    const dragHasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes("Files");
+    const handleDragEnter = (e) => {
+        if (!dragHasFiles(e)) return;
+        e.preventDefault();
+        dragDepth.current += 1;
+        if (canDropFiles) setDragActive(true);
+    };
+    const handleDragOver = (e) => {
+        // Always claim the drag: without preventDefault the browser opens the
+        // dropped file as a page, killing the SPA — even when we ignore the drop.
+        if (dragHasFiles(e)) e.preventDefault();
+    };
+    const handleDragLeave = (e) => {
+        if (!dragHasFiles(e)) return;
+        dragDepth.current = Math.max(0, dragDepth.current - 1);
+        if (dragDepth.current === 0) setDragActive(false);
+    };
+    const handleDrop = (e) => {
+        if (!dragHasFiles(e)) return;
+        e.preventDefault();
+        dragDepth.current = 0;
+        setDragActive(false);
+        if (!canDropFiles) return;
+        routeFiles(Array.from(e.dataTransfer.files || []), {
+            onPick: onPickMedia,
+            onPickMany,
+            onPickFile,
+        });
+    };
     const handleCopyInvite = React.useCallback(() => {
         const token = activeChat?.invite_token;
         if (!token) return;
@@ -53,7 +97,24 @@ export const ChatWindow = ({
         );
     }
     return (
-      <div className="flex-grow flex flex-col min-h-0 shadow-2xl">
+      <div
+        className="relative flex-grow flex flex-col min-h-0 shadow-2xl"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {dragActive && (
+          <div className="absolute inset-0 z-40 pointer-events-none flex items-center justify-center bg-zinc-950/70 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3 px-10 py-8 rounded-2xl border-2 border-dashed border-lime-400/60 bg-zinc-900/90 shadow-2xl">
+              <div className="w-14 h-14 rounded-full bg-lime-400/10 border border-lime-400/20 flex items-center justify-center">
+                <Upload size={26} className="text-lime-400" />
+              </div>
+              <p className="text-zinc-100 font-bold tracking-tight">Отпустите, чтобы отправить</p>
+              <p className="text-xs text-zinc-500">Фото и видео — с предпросмотром, остальное — файлом</p>
+            </div>
+          </div>
+        )}
         {/* Chat Header */}
         <header className="relative z-30 h-20 flex-shrink-0 border-b border-zinc-800/80 flex items-center justify-between px-6 bg-zinc-950/90 backdrop-blur-md">
           <div className="flex items-center gap-4 min-w-0">
